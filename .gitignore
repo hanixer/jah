@@ -1,0 +1,9 @@
+*~
+*.bak
+*.user
+Debug
+Release
+*.*sdf
+*.suo
+ipch
+build*
