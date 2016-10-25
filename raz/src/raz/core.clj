@@ -57,15 +57,7 @@
 
 (defn replace-final [x y]   )
 
-(defn transform-pattern [pattern]
-  (binding [*state-counter* 1]
-    (pattern->smachine pattern)))
-
-(defn pattern->smachine [pattern]
-  (cond
-    (char? pattern) (char->smachine pattern)
-    (conc? pattern) (conc->smachine pattern)
-    (altr? pattern) (altr->smachine pattern)))
+(declare pattern->smachine)
 
 (defn char->smachine [ch]
   (let [result {:start *state-counter*
@@ -102,6 +94,20 @@
      {}
      child-smachines)))
 
+(defn pattern->smachine [pattern]
+  (cond
+    (char? pattern) (char->smachine pattern)
+    (conc? pattern) (conc->smachine pattern)
+    (altr? pattern) (altr->smachine pattern)))
+
+(defn transform-pattern [pattern]
+  (binding [*state-counter* 1]
+    (pattern->smachine pattern)))
+
+
+
+
+
 (defn- alteration->state [pattern]
   nil
   )
@@ -120,6 +126,9 @@
 (deflex f
   (:a [(\a \b) \c])
   (:b [:star \a (\b \c) \d]))
+
+(defn rand-max []
+  (rand-int java.lang.Integer/MAX_VALUE))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
