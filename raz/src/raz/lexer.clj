@@ -28,3 +28,22 @@
      :final (:final nfa2)
      :states
      (merge-with into (:states nfa1) link-transitions (:states nfa2))}))
+
+(defn altr->nfa [nfa1 nfa2]
+  (let [start (rand-num)
+        final (rand-num)
+        states {start [[:empty (:start nfa1)]
+                       [:empty (:start nfa2)]]}
+        nfa1-additional (merge-with
+                         into
+                         (:states nfa1)
+                         (into {}
+                               (for [s (:final nfa1)] [s [[:empty final]]])))
+        nfa2-additional (merge-with
+                         into
+                         (:states nfa2)
+                         (into {}
+                               (for [s (:final nfa2)] [s [[:empty final]]])))]
+    {:start start
+     :final #{final}
+     :states (merge-with into  states nfa1-additional nfa2-additional)}))
