@@ -4,14 +4,18 @@
 
 (def ppr clojure.pprint/pprint)
 
-(def example-nfa {:start 1
-                  :final #{2 4}
-                  :states {1 [[:empty 2] [\a 4]]
-                           3 [[\b 4]]}})
+
+
+
 
 
 (defn rand-num []
   (.hashCode (java.util.UUID/randomUUID)))
+
+(let [counter (atom 0)]
+  (defn rand-num []
+    (swap! counter inc)
+    @counter))
 
 (defn char->nfa [ch]
   (let [start (rand-num)
@@ -63,9 +67,41 @@
 (defn nfa->dfa [nfa]
   )
 
+(defn empty-transitions [nfa state]
+  (map second (filter #(= (first %) :empty)
+                      ((:states nfa) state))))
+
+(defn immediate-states [nfa state]
+  (let [e-states (empty-transitions nfa state)]
+    (reduce (fn [acc x]
+              (into acc (immediate-states nfa x)))
+            [state]
+            e-states)))
+
+(defn expand-e-transitions [nfa states]
+  (let [expand-state
+        (fn [state]
+          (let [immediate-states (empty-transitions nfa state)]
+            )
+          
+          )]
+    )
+  )
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test data
+(def example-nfa {:start 1
+                  :final #{2 4}
+                  :states {1 [[:empty 2] [\a 4]]
+                           3 [[\b 4] [:empty 1] [:empty 2]]}})
+(def nfa3 {:start 1
+           :final #{4 5 6 8}
+           :states {1 [[:empty 2] [\a 4]]
+                    2 [[:empty 3] [\b 5] [:empty 8]]
+                    3 [[:empty 6]]}})
+
 (def a (char->nfa \a))
 (def b (char->nfa \b))
 (def ab (conc->nfa a b))
