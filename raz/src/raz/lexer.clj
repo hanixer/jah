@@ -71,12 +71,23 @@
   (map second (filter #(= (first %) :empty)
                       ((:states nfa) state))))
 
-(defn immediate-states [nfa state]
-  (let [e-states (empty-transitions nfa state)]
-    (reduce (fn [acc x]
-              (into acc (immediate-states nfa x)))
-            [state]
-            e-states)))
+(defn immediate-states-for-single-state [nfa state]
+  (letfn [(impl [nfa state visited]
+            (if (visited state)
+              []
+              (let [e-states (empty-transitions nfa state)
+                    visited (conj visited state)]
+                (reduce (fn [acc x]
+                          (into acc (impl nfa x visited)))
+                        [state]
+                      e-states))))]
+    (impl nfa state #{})))
+
+(defn immediate-states-for-multiple-states [nfa states]
+  (reduce (fn [acc x]
+            (into acc (immediate-states-for-single-state nfa x)))
+          []
+          states))
 
 (defn expand-e-transitions [nfa states]
   (let [expand-state
