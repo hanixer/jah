@@ -67,27 +67,45 @@
 (defn nfa->dfa [nfa]
   )
 
-(defn empty-transitions [nfa state]
+(defn empty-transitions [transitions state]
   (map second (filter #(= (first %) :empty)
-                      ((:states nfa) state))))
+                      (transitions state))))
 
-(defn immediate-states-for-single-state [nfa state]
-  (letfn [(impl [nfa state visited]
+(defn immediate-states-for-single-state [transitions state]
+  (letfn [(impl [state visited]
             (if (visited state)
               []
-              (let [e-states (empty-transitions nfa state)
+              (let [e-states (empty-transitions transitions state)
                     visited (conj visited state)]
                 (reduce (fn [acc x]
-                          (into acc (impl nfa x visited)))
-                        [state]
+                          (into acc (impl x visited)))
+                        #{state}
                       e-states))))]
-    (impl nfa state #{})))
+    (impl state #{})))
 
-(defn immediate-states-for-multiple-states [nfa states]
+(defn immediate-states-for-multiple-states [transitions states]
   (reduce (fn [acc x]
-            (into acc (immediate-states-for-single-state nfa x)))
-          []
+            (into acc (immediate-states-for-single-state transitions x)))
+          #{}
           states))
+
+(defn add-transition [transitions [symbol state]]
+  (if (not (= symbol :empty))
+    (update transitions symbol
+            (fn [states s] (if states (into states s) s)) 
+            #{state})
+    transitions))
+
+(defn out-transitions [nfa dfa-state]
+  (reduce (fn [acc x]
+            (merge-with 
+             into acc 
+             (reduce add-transition {} (get-in nfa [:states x]))))
+          {}
+          dfa-state))
+   
+;(defn nfa->dfa-states [nfa dfa-state]
+  
 
 (defn expand-e-transitions [nfa states]
   (let [expand-state
@@ -98,6 +116,7 @@
           )]
     )
   )
+
 
 
 
@@ -112,6 +131,13 @@
            :states {1 [[:empty 2] [\a 4]]
                     2 [[:empty 3] [\b 5] [:empty 8]]
                     3 [[:empty 6]]}})
+
+(def nfa4 {:start 1
+           :final #{7}
+           :states {1 [[:empty 2] [:empty 5]]
+                    2 [[\a 3] [\b 4]]
+                    3 [[:empty 8]]
+                    5 [[\a 6] [\c 7]]}})
 
 (def a (char->nfa \a))
 (def b (char->nfa \b))
