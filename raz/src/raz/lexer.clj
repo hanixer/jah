@@ -64,8 +64,6 @@
      :final (into (:final nfa) final)
      :states states}))
 
-(defn nfa->dfa [nfa]
-  )
 
 (defn empty-transitions [transitions state]
   (map second (filter #(= (first %) :empty)
@@ -89,42 +87,91 @@
           #{}
           states))
 
-(defn add-transition [transitions [symbol state]]
+(defn add-transition [nfa transitions [symbol state]]
   (if (not (= symbol :empty))
     (update transitions symbol
             (fn [states s] (if states (into states s) s))
-            #{state})
+            (immediate-states-for-single-state (:states nfa) state))
     transitions))
 
 (defn out-transitions [nfa dfa-state]
-  (let [add-transition-and-immediate
-        (comp (partial immediate-states-for-multiple-states (:states nfa)) add-transition)]
     (reduce (fn [acc x]
-             (merge-with 
-              into acc 
+              (merge-with 
+               into acc 
               (reduce 
-               add-transition-and-immediate
+               #(add-transition nfa %1 %2)
                {}
                (get-in nfa [:states x]))))
            {}
-           dfa-state)))
+           dfa-state))
    
-;(defn nfa->dfa-states [nfa dfa-state]
-  
+(defn nfa->dfa-states 
+  ([nfa dfa-state]
+   (nfa->dfa-states nfa dfa-state #{}))
+  ([nfa dfa-state visited]
+  (if (visited dfa-state) 
+    {}
+    (let [trans (out-transitions nfa dfa-state)]
+    (reduce 
+     (fn [acc [symbol state]]
+       (merge acc (nfa->dfa-states nfa state (conj visited dfa-state))))
+     {dfa-state trans}
+     trans)))))
 
-(defn expand-e-transitions [nfa states]
-  (let [expand-state
-        (fn [state]
-          (let [immediate-states (empty-transitions nfa state)]
-            )
-          
-          )]
-    )
-  )
+(defn all-states [dfa-states]
+  (reduce 
+   (fn [acc [state trans]]
+     (into (conj acc state) (map second trans)))
+   #{}
+   dfa-states))
 
+(defn dfa-final-states [nfa dfa-states]
+  (set (filter #(some (:final nfa) %) (all-states dfa-states))))
 
+(defn nfa->dfa [nfa]
+  (let [start (immediate-states-for-single-state
+               (:states nfa)
+               (:start nfa))
+        states (nfa->dfa-states nfa start)]
+    {:start start
+     :final (dfa-final-states nfa states)
+     :states states}))
 
+(defn replace-in-map [m mapping]
+  (let [mapping-keys (keys mapping)]
+    (reduce
+     (fn [acc [k v]]
+       (merge acc
+              {(if (mapping k) (mapping k) k)
+               (cond
+                 (map? v) (replace-in-map v mapping)
+                 (mapping v) (mapping v)
+                 :else v)}))
+     {}
+     m)))
+     
 
+(defn simplify-dfa [dfa]
+  (let [all (all-states (:states dfa))
+        mapping (zipmap all (range))]
+    {:start (mapping (:start dfa))
+     :final (set (replace mapping (:final dfa)))
+     :states (replace-in-map (:states dfa) mapping)}))
+
+(def nfa->dfa-s 
+  (comp simplify-dfa nfa->dfa))
+
+(defn new-state [dfa s c]
+  (get-in dfa [:states s c]))
+
+(defn dfa-accepts? [dfa s]
+  (letfn [(impl [state s]
+            (cond
+              (and (empty? s) ((:final dfa) state)) true
+              (not (empty? s)) (impl (new-state dfa state (first s)) (rest s))
+              :else false))]
+    (impl (:start dfa) s)))
+            
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test data
 (def example-nfa {:start 1
@@ -144,9 +191,54 @@
                     3 [[:empty 8]]
                     5 [[\a 6] [\c 7]]}})
 
+(def nfa5 {:start 1
+           :final #{7}
+           :states {1 [[:empty 2] [\a 7]]
+                    2 [[\a 3] [\b 4]]
+                    4 [[\a 5] [\b 6]]
+                    7 [[\b 8] [\c 11]]
+                    8 [[:empty 9] [:empty 12]]
+                    9 [[\a 10]]
+                    11 [[:empty 12]]}})
+
+(def nfa6 {:start 1
+           :final #{7}
+           :states {1 [[:empty 2] [\a 7]]
+                    2 [[\a 3] [\b 4]]
+                    3 [[\c 1]]
+                    4 [[\a 5] [\b 6]]
+                    7 [[\b 8] [\c 11]]
+                    8 [[:empty 9] [:empty 12]]
+                    9 [[\a 10]]
+                    11 [[:empty 12]]}})
+
 (def a (char->nfa \a))
 (def b (char->nfa \b))
 (def ab (conc->nfa a b))
 (def c (char->nfa \c))
 (def d (char->nfa \d))
 (def ab-c (altr->nfa ab c))
+
+(def nfa7 
+  (conc->nfa (conc->nfa (conc->nfa (star->nfa (altr->nfa a b)) a) b) b))
+(def dfa7 (nfa->dfa nfa7))
+(def dfa8 (nfa->dfa-s (star->nfa (altr->nfa a b))))
+(def dfa9 (nfa->dfa-s (conc->nfa (star->nfa a) b)))
+(def dfa1 (nfa->dfa-s (conc->nfa (conc->nfa (star->nfa a) b) b)))
+
+(def n1 (star->nfa (char->nfa \a)))
+(def d1 (nfa->dfa-s n1))
+
+(def n2 (conc->nfa n1 (char->nfa \a)))
+(def d2 (nfa->dfa-s n2))
+
+(def n3 (conc->nfa n2 (char->nfa \b)))
+(def d3 (nfa->dfa-s n3))
+
+(def n4 (conc->nfa n3 (char->nfa \a)))
+(def d4 (nfa->dfa-s n4))
+
+
+
+
+
