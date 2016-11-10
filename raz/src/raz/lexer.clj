@@ -92,17 +92,22 @@
 (defn add-transition [transitions [symbol state]]
   (if (not (= symbol :empty))
     (update transitions symbol
-            (fn [states s] (if states (into states s) s)) 
+            (fn [states s] (if states (into states s) s))
             #{state})
     transitions))
 
 (defn out-transitions [nfa dfa-state]
-  (reduce (fn [acc x]
-            (merge-with 
-             into acc 
-             (reduce add-transition {} (get-in nfa [:states x]))))
-          {}
-          dfa-state))
+  (let [add-transition-and-immediate
+        (comp (partial immediate-states-for-multiple-states (:states nfa)) add-transition)]
+    (reduce (fn [acc x]
+             (merge-with 
+              into acc 
+              (reduce 
+               add-transition-and-immediate
+               {}
+               (get-in nfa [:states x]))))
+           {}
+           dfa-state)))
    
 ;(defn nfa->dfa-states [nfa dfa-state]
   
