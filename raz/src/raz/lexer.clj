@@ -24,8 +24,9 @@
      :final #{final}
      :states {start [[ch final]]}}))
 
-(defn conc->nfa [nfa1 nfa2]
-  (let [link-transitions (reduce
+(defn conc->nfa 
+  ([nfa1 nfa2]
+   (let [link-transitions (reduce
                           (fn [acc state]
                             (conj acc
                                   [state [[:empty (:start nfa2)]]]))
@@ -35,6 +36,10 @@
      :final (:final nfa2)
      :states
      (merge-with into (:states nfa1) link-transitions (:states nfa2))}))
+  ([nfa1 nfa2 & tail]
+   (if (empty? tail)
+     (conc->nfa nfa1 nfa2)
+     (apply conc->nfa (conc->nfa nfa1 nfa2) (first tail) (rest tail)))))
 
 (defn add-final-trans-to [nfa new-final]
   (merge-with
@@ -43,7 +48,8 @@
    (into {}
          (for [s (:final nfa)] [s [[:empty new-final]]]))))
 
-(defn altr->nfa [nfa1 nfa2]
+(defn altr->nfa 
+  ([nfa1 nfa2]
   (let [start (rand-num)
         final (rand-num)
         states {start [[:empty (:start nfa1)]
@@ -53,6 +59,10 @@
     {:start start
      :final #{final}
      :states (merge-with into  states nfa1-additional nfa2-additional)}))
+  ([nfa1 nfa2 & tail]
+   (if (empty? tail)
+     (altr->nfa nfa1 nfa2)
+     (apply altr->nfa (altr->nfa nfa1 nfa2) (first tail) (rest tail)))))
 
 (defn star->nfa [nfa]
   (let [start (rand-num)
@@ -150,7 +160,6 @@
      {}
      m)))
      
-
 (defn simplify-dfa [dfa]
   (let [all (all-states (:states dfa))
         mapping (zipmap all (range))]
@@ -165,12 +174,25 @@
   (get-in dfa [:states s c]))
 
 (defn dfa-accepts? [dfa s]
-  (letfn [(impl [state s]
-            (cond
-              (and (empty? s) ((:final dfa) state)) true
-              (not (empty? s)) (impl (new-state dfa state (first s)) (rest s))
-              :else false))]
-    (impl (:start dfa) s)))
+  (loop [state (:start dfa)
+         s s]
+    (cond
+      (and (empty? s) ((:final dfa) state)) true
+      (not (empty? s)) (recur (new-state dfa state (first s)) (rest s))
+      :else false)))
+
+
+(defn pattern->nfa [pattern]
+  (cond
+    (vector? pattern) (apply conc->nfa (map pattern->nfa pattern))
+    (list? pattern) (apply altr->nfa (map pattern->nfa pattern))
+    (set? pattern) (apply star->nfa (map pattern->nfa pattern))
+    (symbol? pattern) (-> pattern name first char->nfa)
+    (char? pattern) (char->nfa pattern)
+    :else (throw (Exception. "Wrong pattern"))))
+
+(defn pattern->dfa [pattern]
+  (-> pattern pattern->nfa nfa->dfa-s))
             
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test data
@@ -238,7 +260,4 @@
 (def n4 (conc->nfa n3 (char->nfa \a)))
 (def d4 (nfa->dfa-s n4))
 
-
-
-
-
+;(def d5 (pattern->dfa '[(a b c _) #{(a b c _ \1 \2 \3)}]))
