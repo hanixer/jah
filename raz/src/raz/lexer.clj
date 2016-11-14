@@ -181,7 +181,6 @@
       (not (empty? s)) (recur (new-state dfa state (first s)) (rest s))
       :else false)))
 
-
 (defn pattern->nfa [pattern]
   (cond
     (vector? pattern) (apply conc->nfa (map pattern->nfa pattern))
@@ -193,6 +192,99 @@
 
 (defn pattern->dfa [pattern]
   (-> pattern pattern->nfa nfa->dfa-s))
+
+(defn apply-conc [operands operators]
+  {:type :conc :value [(peek (pop operators)) (peek operators)]})
+
+(defn apply-op [{args :args ops :ops}]
+  (let [op (peek ops)]
+    (cond
+      (or (= op :conc) (= op :altr))
+      (let [x (first (rest args))
+            y (first args)]
+        {:args (conj (drop 2 args) 
+                     ((if (= op :conc) conc->nfa altr->nfa) x y))
+         :ops (pop ops)})
+      
+      (= op :star)
+      {:args (conj (pop args) (star->nfa (peek args)))
+       :ops (pop ops)}
+
+      :else
+      (throw (Exception. (str "Wrong operation " op))))))
+
+(defn apply-paren [{args :args ops :ops :as stack}]
+  (cond 
+      (= (peek ops) :paren) 
+      {:args args :ops (pop ops)}
+
+      (#{:conc :altr :star} (peek ops))
+      (apply-paren (apply-op {:args args :ops ops}))
+
+      :else
+      (throw (Exception. (str "Wrong operation " (peek ops))))))
+
+(defn apply-to-end [{args :args ops :ops :as stack}]
+  (cond 
+    (empty? ops) stack
+
+    (#{:conc :altr :star} (peek ops))
+    (apply-to-end (apply-op stack))
+
+    :else
+    (throw (Exception. (str "Wrong operation " (peek ops))))))            
+
+(defn re->nfa [pattern]
+  (let [result 
+        (loop [[c & cs :as input] pattern
+               stack {:args (list) :ops (list)}]
+          (if (empty? input)
+            (apply-to-end stack)
+            (cond 
+              (= c \|)
+              (if (#{:altr :conc} (peek (:ops stack)))
+                (recur cs (update (apply-op stack) :ops #(conj % :altr)))
+                (recur cs (update stack :ops #(conj % :altr))))
+
+              (= c \@)
+              (if (= (peek (:ops stack)) :conc)
+                (recur cs (update (apply-op stack) :ops #(conj % :conc)))
+                (recur cs (update stack :ops #(conj % :conc))))
+
+              (= c \*)
+              (recur cs (apply-op (update stack :ops conj :star)))
+
+              (= c \()
+              (recur cs (update stack :ops #(conj % :paren)))
+
+              (= c \))
+              (recur cs (apply-paren stack))
+
+              :else 
+              (recur cs (update stack :args conj (char->nfa c))))))]
+    (-> result :args first)))
+
+(defn adapt-re [pattern]
+  "Adds '@' characters in places where
+   concatenation is assumed:
+     abc => a@b@c
+     (a|b)(c|d) => (a|b)@(c|d)"
+  (loop [[c1 c2 & cs :as input] pattern
+         result []]
+    (cond
+      (empty? input) (clojure.string/join result)
+
+     (and (not (#{\| \(} c1))
+          (not (nil? c2))
+          (not (#{\| \* \)} c2)))
+     (recur (rest input) (into result [c1 \@]))
+
+     :else
+     (recur (rest input) (conj result c1)))))
+
+(defn re->dfa [pattern]
+  (-> pattern adapt-re re->nfa nfa->dfa-s))      
+           
             
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test data
