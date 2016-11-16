@@ -27,7 +27,8 @@
         (= \_ c))))
 
 (defn update-lex [lex token source]
-  (assoc (update lex :tokens conj token) :source source))
+  (.add (:tokens lex) token)
+  (assoc lex :source source))
 
 (defn scan-identifier [lex]
   (assert (ident-initial (first (:source lex))))
@@ -43,7 +44,7 @@
     (ident-initial c) (scan-identifier lex)))
 
 (defn tokenize [source]
-  (loop [lex {:tokens [] :source source}]
+  (loop [lex {:tokens (java.util.ArrayList.) :source source}]
     (if (empty? (:source lex))
       (:tokens lex)
       (recur (scan lex)))))
