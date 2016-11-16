@@ -10,6 +10,22 @@
 
 (def ident-subseq (union ident-initial (char-range-set \0 \9)))
 
+'(let [a (int \a)
+      z (int \z)
+      A (int \A)
+      Z (int \Z)
+      zer (int \0)
+      nin (int \9)]
+  (defn ident-initial [c]
+    (or (<= A (int c) Z)
+        (<= a (int c) z)
+        (= \_ c)))
+  (defn ident-subseq [c]
+    (or (<= A (int c) Z)
+        (<= a (int c) z)
+        (<= zer (int c) nin)
+        (= \_ c))))
+
 (defn update-lex [lex token source]
   (assoc (update lex :tokens conj token) :source source))
 
@@ -23,7 +39,7 @@
 
 (defn scan [{tokens :tokens [c & cs :as source] :source :as lex}]
   (cond
-    (Character/isWhitespace c) (assoc lex :source cs)
+    (Character/isWhitespace ^char c) (assoc lex :source cs)
     (ident-initial c) (scan-identifier lex)))
 
 (defn tokenize [source]
