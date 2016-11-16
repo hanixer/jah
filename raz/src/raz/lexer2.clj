@@ -35,22 +35,24 @@
   lex)
 
 (defn scan-identifier [lex]
-  ;(assert (ident-initial (first (:source lex))))
-  (loop [index (inc (.get (:index lex) 0))
-         value [(nth (:source lex) (dec index))]]
-    (if (and (< index (count (:source lex)))
-             (ident-subseq (nth (:source lex) index)))
-      (recur (inc index) (conj value (nth (:source lex) index)))
-      (update-lex lex {:type :identifier :value value} index))))
+  (let [source (:source lex)]
+    (loop [index (inc (.get (:index lex) 0))
+           value [(nth source (dec index))]]
+      (if (and (< index (count source))
+               (ident-subseq (nth source index)))
+        (recur (inc index) (conj value (nth source index)))
+        (update-lex lex {:type :identifier :value value} index)))))
 
 (defn scan [{tokens :tokens source :source index :index :as lex}]
+  (let [index (.get index 0)
+        c (nth source index)]
   (cond
-    (Character/isWhitespace ^char (nth source (.get index 0))) 
+    (Character/isWhitespace ^char c) 
     (do
-      (.set index 0 (inc (.get index 0)))
+      (.set (:index lex) 0 (inc index))
       lex)
 
-    (ident-initial (nth source (.get index 0))) (scan-identifier lex)))
+    (ident-initial c) (scan-identifier lex))))
 
 
 
