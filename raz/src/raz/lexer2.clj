@@ -26,28 +26,42 @@
         (<= zer (int c) nin)
         (= \_ c))))
 
-(defn update-lex [lex token source]
+(defn empty-source [lex]
+  (>= (.get (:index lex) 0) (count (:source lex))))
+
+(defn update-lex [lex token index]
   (.add (:tokens lex) token)
-  (assoc lex :source source))
+  (.set (:index lex) 0 index)
+  lex)
 
 (defn scan-identifier [lex]
-  (assert (ident-initial (first (:source lex))))
-  (loop [[c & cs :as source] (rest (:source lex))
-         value [(first (:source lex))]]
-    (if (ident-subseq c)
-      (recur cs (conj value c))
-      (update-lex lex {:type :identifier :value value} source))))
+  ;(assert (ident-initial (first (:source lex))))
+  (loop [index (inc (.get (:index lex) 0))
+         value [(nth (:source lex) (dec index))]]
+    (if (and (< index (count (:source lex)))
+             (ident-subseq (nth (:source lex) index)))
+      (recur (inc index) (conj value (nth (:source lex) index)))
+      (update-lex lex {:type :identifier :value value} index))))
 
-(defn scan [{tokens :tokens [c & cs :as source] :source :as lex}]
+(defn scan [{tokens :tokens source :source index :index :as lex}]
   (cond
-    (Character/isWhitespace ^char c) (assoc lex :source cs)
-    (ident-initial c) (scan-identifier lex)))
+    (Character/isWhitespace ^char (nth source (.get index 0))) 
+    (do
+      (.set index 0 (inc (.get index 0)))
+      lex)
+
+    (ident-initial (nth source (.get index 0))) (scan-identifier lex)))
+
+
 
 (defn tokenize [source]
-  (loop [lex {:tokens (java.util.ArrayList.) :source source}]
-    (if (empty? (:source lex))
-      (:tokens lex)
-      (recur (scan lex)))))
+  
+  (let [index (java.util.ArrayList.)]
+    (.add index 0)
+    (loop [lex {:tokens (java.util.ArrayList.) :source source :index index}]
+          (if (empty-source lex)
+            (:tokens lex)
+            (recur (scan lex))))))
 
 (defn measure-tokenizer [n]
   (let [s (clojure.string/join (repeat n "abcde "))]
