@@ -9,6 +9,8 @@
   [x]
   (println x "Hello, World!"))
 
+(refer 'clojure.set :only '[union])
+
 (defn char-range-set
   "Generate set containing all characters in the range [from; to]"
   [from to]
@@ -18,117 +20,91 @@
 
 (def ident-subseq (union ident-initial (char-range-set \0 \9)))
 
-(defn get-token [[c & other :as all]]
-  (if (nil? c)
-    {:type :eof}
-    (do
-      (cond 
-        (ident-initial c)
-        (do
-          (loop [[c & other] all
-                 value []]
-            (if (or (nil? c)
-                    (not (ident-subseq c)))
-              {:type :ident :value value :other other}
-              (recur other (conj value c)))))
+(defn update-lex [lex token source]
+  (assoc (update lex :tokens conj token) :source source))
 
-        (java.lang.Character/isDigit (char c))
-        (loop [[c & other] all
-               value []]
-          (if (or (nil? c)
-                  (not (java.lang.Character/isDigit (char c))))
-            {:type :number :value value :other other}
-            (recur other (conj value c))))))))
+(defn scan-identifier [lex]
+  (assert (ident-initial (first (:source lex))))
+  (loop [[c & cs :as source] (rest (:source lex))
+         value [(first (:source lex))]]
+    (if (ident-subseq c)
+      (recur cs (conj value c))
+      (update-lex lex {:type :identifier :value value} source))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Generatorz
-
-; ((a|b)(c|d))|(
-(defmacro deflex [name & defs]
-  (list 'quote (map rest defs)))
-
-(defn- altr? [x] (list? x))
-(defn- star? [x] (and (vector? x) (= (first x) :star)))
-(defn- conc? [x] (and (vector? x) (not (star? x))))
-
-(defn- build-tree [pattern ] nil)
-
-(def ^:dynamic *state-counter* nil)
-
-(defn replace-final [x y]   )
-
-(declare pattern->smachine)
-
-(defn char->smachine [ch]
-  (let [result {:start *state-counter*
-                *state-counter* [{:chars [ch] :to :final}]}]
-    (set! *state-counter* (inc *state-counter*))
-    result))
-
-(defn conc->smachine [pattern]
-  (let [child-smachines (vec (map pattern->smachine pattern))]
-    (reduce
-     (fn [acc x]
-       (if (empty? acc)
-         x
-         (merge (w/prewalk #(if (= :final %) (:start x) %) acc)
-                (dissoc x :start))))
-     {}
-     child-smachines)))
-
-(defn altr->smachine [pattern]
-  (let [child-smachines (map pattern->smachine pattern)]
-    (reduce
-     (fn [acc x]
-       (if (empty? acc)
-         x
-         (let [x-start (:start x)
-               start-smachine (x x-start)]
-           (merge-with into
-                       acc
-                       (assoc 
-                        (dissoc
-                         (dissoc x :start) x-start)
-                        (:start acc)
-                        start-smachine)))))
-     {}
-     child-smachines)))
-
-(defn pattern->smachine [pattern]
+(defn scan [{tokens :tokens [c & cs :as source] :source :as lex}]
   (cond
-    (char? pattern) (char->smachine pattern)
-    (conc? pattern) (conc->smachine pattern)
-    (altr? pattern) (altr->smachine pattern)))
+    (Character/isWhitespace c) (assoc lex :source cs)
+    (ident-initial c) (scan-identifier lex)))
 
-(defn transform-pattern [pattern]
-  (binding [*state-counter* 1]
-    (pattern->smachine pattern)))
+(defn tokenize [source]
+  (loop [lex {:tokens [] :source source}]
+    (if (empty? (:source lex))
+      (:tokens lex)
+      (recur (scan lex)))))
+
+(defn measure-tokenizer [n]
+  (let [s (clojure.string/join (repeat n "abcdef "))]
+    (time (tokenize s))
+    (* n (count "abcdef "))))
+
+
+(defn update-lex-transient [lex token source]
+  (assoc! 
+   (assoc! lex :tokens 
+          (conj! (:tokens lex) token))
+   :source source))
+
+(defn scan-identifier-transient [lex]
+  (assert (ident-initial (first (:source lex))))
+  (loop [[c & cs :as source] (rest (:source lex))
+         value (transient [(first (:source lex))])]
+    (if (ident-subseq c)
+      (recur cs (conj! value c))
+      (update-lex-transient lex {:type :identifier :value (persistent! value)} source))))
+
+(defn scan-number [source]
+  (loop [[c & other :as all] source
+         value []]
+    (if (or (nil? c)
+            (not (java.lang.Character/isDigit (char c))))
+      {:type :number :value value :other all}
+      (recur other (conj value c)))))
 
 
 
-
-
-(defn- alteration->state [pattern]
-  nil
-  )
-
-(defn- patter->state [pattern]
+(defn scan-transient [{tokens :tokens [c & cs :as source] :source :as lex}]
   (cond
-    (altr? pattern) 1
-    (conc? pattern) 2
-    (star? pattern) 3
-    ))
+    (Character/isWhitespace c) (assoc! lex :source cs)
+    (ident-initial c) (scan-identifier-transient lex)
+    (java.lang.Character/isDigit (char c)) '(scan-number all)))
 
-;; a*
+(defn tokenize-transient [source]
+  (loop [lex (transient {:tokens (transient []) :source source})]
+    (if (empty? (:source lex))
+      (persistent! (:tokens lex))
+      (recur (scan-transient lex)))))
 
+
+
+(def tokenize tokenize-transient)
+
+'(defn scan2 [lex]
+  (loop [state 1
+         value []
+         [c & cs :as source] (:source lex)]
+    (cond
+      (empty? source) (assoc lex :source source)
+      (and (= state 1) (Character/isWhitespace c)) (recur state value cs)
+      (and (= state 1) (ident-initial c)) (recur 3 (conj value c) cs)
+      (and (= state 3) (ident-subseq c)) (recur 3 (conj value c) cs)
+      :else (update-lex lex {:type :identifier :value value} source))))
+
+'(defn tokenize [source]
+  (loop [lex {:tokens [] :source source}]
+    (if (empty? (:source lex))
+      (:tokens lex)
+      (recur (scan2 lex)))))
   
-
-(deflex f
-  (:a [(\a \b) \c])
-  (:b [:star \a (\b \c) \d]))
-
-(defn rand-max []
-  (rand-int java.lang.Integer/MAX_VALUE))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
