@@ -10,45 +10,38 @@
 
 (def ident-subseq (union ident-initial (char-range-set \0 \9)))
 
-'(let [a (int \a)
-      z (int \z)
-      A (int \A)
-      Z (int \Z)
-      zer (int \0)
-      nin (int \9)]
-  (defn ident-initial [c]
-    (or (<= A (int c) Z)
-        (<= a (int c) z)
-        (= \_ c)))
-  (defn ident-subseq [c]
-    (or (<= A (int c) Z)
-        (<= a (int c) z)
-        (<= zer (int c) nin)
-        (= \_ c))))
+(defrecord Token [type value])
+(defrecord Lex [tokens source])
 
-(defn update-lex [lex token source]
+(defn update-lex [^Lex lex ^Token token source]
   (assoc (update lex :tokens conj token) :source source))
 
-(defn scan-identifier [lex]
-  (assert (ident-initial (first (:source lex))))
-  (loop [[c & cs :as source] (rest (:source lex))
-         value [(first (:source lex))]]
-    (if (ident-subseq c)
-      (recur cs (conj value c))
-      (update-lex lex {:type :identifier :value value} source))))
+(defn scan-identifier [^Lex lex]
+  (let [[x & xs] (:source lex)]
+    (loop [[c & cs :as source] xs
+           value               [x]]
+      (if (ident-subseq c)
+        (recur cs (conj value c))
+        (update-lex lex (Token. :identifier value) source)))))
 
-(defn scan [{tokens :tokens [c & cs :as source] :source :as lex}]
-  (cond
-    (Character/isWhitespace ^char c) (assoc lex :source cs)
-    (ident-initial c) (scan-identifier lex)))
+(defn scan [^Lex lex]
+  (let [[c & cs] (:source lex)
+        tokens   (:tokens lex)]
+    (cond
+      (Character/isWhitespace ^char c) (assoc lex :source cs)
+      (ident-initial c)                (scan-identifier lex))))
 
 (defn tokenize [source]
-  (loop [lex {:tokens [] :source source}]
+  (loop [lex (Lex. [] source)]
     (if (empty? (:source lex))
       (:tokens lex)
       (recur (scan lex)))))
 
+(use 'criterium.core)
+
 (defn measure-tokenizer [n]
   (let [s (clojure.string/join (repeat n "abcde "))]
-    (time (tokenize s))
+    (bench (tokenize s))
     (* n (count "abcde "))))
+
+
