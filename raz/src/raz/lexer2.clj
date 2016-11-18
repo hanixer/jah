@@ -98,30 +98,31 @@
     (cond 
       (= c1 \0) (cond 
                   (or (= c2 \x) (= c2 \X)) (scan-hexadecimal lex)
-                  (octal-digit c1) (scan-octal lex)
-                  (= c2 \.) (scan-floating lex)
+                  (octal-digit c2) (scan-octal lex)
+                  (= c2 \.) (scan-floating lex [\0] (rest source))
                   :else (scan-integer-suffix lex (:source lex) [\0]))
       (or (nonzero-decimal c1) (= c1 \.)) (scan-decimal lex)
       :else (throw (Exception. "Wrong number token")))))
 
 (defn scan [lex]
-  (let [[c & cs] (:source lex)]        
+  (let [[c1 c2 & cs] (:source lex)]        
     (cond
-      (Character/isWhitespace ^char c) (assoc lex :source cs)
-      (ident-initial c) (scan-identifier lex)
-      (Character/isDigit ^char c) (scan-number lex))))
+      (Character/isWhitespace ^char c1) (assoc lex :source (rest (:source lex)))
+      (ident-initial c1) (scan-identifier lex)
+      (Character/isDigit ^char c1) (scan-number lex)
+      (and (= c1 \.) (Character/isDigit ^char c2)) (scan-floating lex [] (:source lex)))))
 
 (defn tokenize [source]
   (loop [lex {:tokens [] :source source}]
     (if (empty? (:source lex))
       (:tokens lex)
-      (recur (scan lex)))))
+      (recur (scan lex))))) 
 
 (use 'criterium.core)
 
 
 (defn measure-tokenizer [n]
-  (let [s (clojure.string/join (repeat n "abcde "))]
+  (let [s (clojure.string/join (repeat n "abcde 0.12312e+1238           "))]
     (bench (tokenize s))
     (* n (count "abcde "))))
 
