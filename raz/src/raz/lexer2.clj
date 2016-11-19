@@ -122,7 +122,7 @@
 
 
 (defn measure-tokenizer [n]
-  (let [s (clojure.string/join (repeat n "abcde 0.12312e+1238           "))]
+  (let [s (clojure.string/join (repeat n "1 1 abcd 0.00123f 12 1234 asdf"))]
     (bench (tokenize s))
     (* n (count "abcde "))))
 
