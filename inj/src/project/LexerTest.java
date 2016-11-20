@@ -62,6 +62,23 @@ public class LexerTest {
 		assertOneCharacter("'\\udead'");
 		assertOneCharacter("'\\UdeadBEAF'");
 	}
+	
+	@Test
+	public void testString() {
+		assertOneTokenString("\"abc\"");
+		assertOneTokenString("u\"abc\"");
+		assertOneTokenString("u8\"abc\"");
+		assertOneTokenString("U\"abc\"");
+		assertOneTokenString("L\"abc\"");
+		assertOneTokenString("L\"\\x12afaf\"");
+		assertOneTokenString("\"\\u11aa\"");
+		assertOneTokenString("\"\\012356\"");
+		assertOneTokenString("\"\"");
+
+		assertTokenError("\"abc\n\"");
+		assertTokenError("\"a\\u111 bc\"");
+		assertTokenError("\"a\\ bc\"");
+	}
 
 	private void assertOneCharacter(String s) {
 		lexer = new Lexer(s);
@@ -75,6 +92,17 @@ public class LexerTest {
 		Token tk = lexer.getToken();
 		assertEquals(TokenKind.NUMBER, tk.kind);
 		assertEquals(s, tk.text);
+	}
+	private void assertOneTokenString(String s) {
+		lexer = new Lexer(s);
+		Token tk = lexer.getToken();
+		assertEquals(TokenKind.STRING, tk.kind);
+		assertEquals(s, tk.text);
+	}
+	private void assertTokenError(String s) {
+		lexer = new Lexer(s);
+		Token tk = lexer.getToken();
+		assertEquals(TokenKind.ERROR, tk.kind);
 	}
 
 }

@@ -10,7 +10,6 @@ import project.Token.TokenKind;
  * What's not supported:
  * 		- user defined literals
  * 		- trigraph sequences 
- *
  */
 public class Lexer {
 	final char[] source;
@@ -45,16 +44,31 @@ public class Lexer {
 		if (currPos >= sourceLen)
 			return new Token(TokenKind.EOF);
 
+		int startPos = currPos;
 		char c = source[currPos];
+		if (c == '#') {
+			currPos++;
+			if (currPos < sourceLen && source[currPos] == '#') {
+				currPos++;
+				tk = makeToken(startPos, TokenKind.DOUBLE_POUND);
+			} else {
+				tk = makeToken(startPos, TokenKind.POUND);
+			}				
+		} else if (c == '.') {
+			
+		}
 		if (isCharacterLiteralInitial(c))
 			tk = scanCharacterLiteral();
+		else if (isStringLiteralInitial(c))
+			tk = scanStringLiteral();
+		else if (isRawStringLiteralInitial(c))
+			tk = scanRawStringLiteral();
 		else if (isIdentifierInitial(c))
 			tk = scanIdentifier();
 		else if (Character.isDigit(c))
 			tk = scanNumber();
 		else if (c == '.') {
 			if (currPos + 1 < sourceLen && Character.isDigit(source[currPos + 1])) {
-				int startPos = currPos;
 				consumeFractionalNumberEnd();
 				tk = makeToken(startPos, TokenKind.NUMBER);
 			}
@@ -65,6 +79,94 @@ public class Lexer {
 		return tk;
 	}
 
+	private Token scanRawStringLiteral() {
+		int startPos = currPos;
+		
+		consumeUpToDoubleQuote();
+		
+		return null;
+	}
+
+	private Token scanStringLiteral() {
+		int startPos = currPos;
+		
+		consumeUpToDoubleQuote();
+		
+		while (currPos < sourceLen && source[currPos] != '"') {
+			if (source[currPos] == '\\') {
+				currPos++;
+				if (!consumeCharEscape()) {
+					return errorToken(startPos);
+				}
+			} else if (source[currPos] == '\n')
+				return errorToken(startPos);
+			else
+				currPos++;
+		}
+		
+		if (currPos < sourceLen && source[currPos] == '"')
+			currPos++;
+		else
+			return errorToken(startPos);
+		
+		return makeToken(startPos, TokenKind.STRING);
+	}
+	
+	private boolean isRawStringLiteralInitial(char c) {
+		if (c == 'R' && (currPos + 1 < sourceLen && source[currPos + 1] == '"'))
+			return true;
+		
+		int offset = stringEncodingPrefixOffset();
+		int pos1 = currPos + offset;
+		int pos2 = currPos + offset + 1;
+		if (offset > 0 && 
+				(pos1 < sourceLen && source[pos1] == 'R') &&
+				(pos2 < sourceLen && source[pos2] == '"'))
+			return true;
+		
+		
+		return false;
+	}
+
+	private void consumeUpToDoubleQuote() {
+		for ( ; currPos < sourceLen; ++currPos) {
+			if (source[currPos] == '"') {
+				currPos++;
+				break;
+			}
+		}
+	}
+
+	private Token errorToken(int startPos) {
+		return new Token(TokenKind.ERROR, startPos, currPos);
+	}
+	
+	private int stringEncodingPrefixOffset() {
+		int pos = currPos;
+		if (pos < sourceLen) {
+			if (source[pos] == 'u') {
+				pos++;
+				if (pos < sourceLen && source[pos] == '8') {
+					pos++;
+				}
+			} else if (source[pos] == 'U' || source[pos] == 'L')
+				pos++;
+		}
+
+		return pos - currPos;
+	}
+
+	private boolean isStringLiteralInitial(char c) {
+		if (c == '"')
+			return true;
+		
+		int offset = stringEncodingPrefixOffset();
+		if (offset > 0 && (currPos + offset < sourceLen && source[currPos + offset] == '"'))
+			return true;
+		
+		return false;
+	}
+
 	private Token scanCharacterLiteral() {
 		int startPos = currPos;
 		if (source[currPos] == '\'')
@@ -73,65 +175,59 @@ public class Lexer {
 			currPos += 2;
 		
 		if (currPos >= sourceLen)
-			return new Token(TokenKind.ERROR, startPos, currPos);
+			return errorToken(startPos);
 
 		if (source[currPos] == '\\') {
 			currPos++;
-			if (currPos < sourceLen) {
-				char c = source[currPos];
-				switch (c) {
-				case '\'':
-				case '"':
-				case '?':
-				case '\\':
-				case 'a':
-				case 'b':
-				case 'f':
-				case 'n':
-				case 'r':
-				case 't':
-				case 'v':
-					currPos++;
-					break;
-				default:
-					if (c == 'x') {
-						currPos++;
-						
-						if (currPos >= sourceLen || !isHexadecimalDigit(source[currPos]))
-							return new Token(TokenKind.ERROR, startPos, currPos);
-						
-						while (currPos < sourceLen && isHexadecimalDigit(source[currPos]))
-							currPos++;
-					} else if (c == 'u' || c == 'U') {
-						currPos++;
-						int numberHexToRead = c == 'u' ? 4 : 8;
-						int i = 0;
-						for (;i < numberHexToRead; ++i) {
-							if (currPos >= sourceLen || !isHexadecimalDigit(source[currPos]))
-								return new Token(TokenKind.ERROR, startPos, currPos);
-							currPos++;
-						}
-						
-						if (i < numberHexToRead)
-							return new Token(TokenKind.ERROR, startPos, currPos);
-					} else if (isOctalDigit(c)) {
-						while (currPos < sourceLen && isOctalDigit(source[currPos]))
-							currPos++;
-					} else 
-						return new Token(TokenKind.ERROR, startPos, currPos);						
-				}
-			}
+			if (!consumeCharEscape()) 
+				return errorToken(startPos);	
 		} else if (source[currPos] == '\n' || source[currPos] == '\'')
-			return new Token(TokenKind.ERROR, startPos, currPos);
+			return errorToken(startPos);
 		else 
 			currPos++;
 		
 		if (currPos < sourceLen && source[currPos] == '\'')
 			currPos++;
 		else
-			return new Token(TokenKind.ERROR, startPos, currPos);			
+			return errorToken(startPos);			
 
 		return makeToken(startPos, TokenKind.CHAR);
+	}
+
+	private boolean consumeCharEscape() {
+		boolean success = true;
+		if (currPos < sourceLen) {
+			char c = source[currPos];
+			if (isSingleEscapeCharacter(c))
+				currPos++;
+			else if (c == 'x') {
+				currPos++;
+				if (currPos >= sourceLen || !isHexadecimalDigit(source[currPos]))
+					success = false;
+
+				while (currPos < sourceLen && isHexadecimalDigit(source[currPos]))
+					currPos++;
+			} else if (c == 'u' || c == 'U') {
+				currPos++;
+				int numberHexToRead = c == 'u' ? 4 : 8;
+				int i = 0;
+				for (; i < numberHexToRead; ++i) {
+					if (currPos >= sourceLen || !isHexadecimalDigit(source[currPos])) {
+						success = false;
+						break;
+					}
+					currPos++;
+				}
+
+				if (i < numberHexToRead)
+					success = false;
+			} else if (isOctalDigit(c)) {
+				while (currPos < sourceLen && isOctalDigit(source[currPos]))
+					currPos++;
+			} else
+				success = false;
+		}
+		return success;
 	}
 
 	private Token scanNumber() {
@@ -302,7 +398,25 @@ public class Lexer {
 			return true;
 		else
 			return false;
-
+	}
+	
+	boolean isSingleEscapeCharacter(char c) {
+		switch (c) {
+		case '\'':
+		case '"':
+		case '?':
+		case '\\':
+		case 'a':
+		case 'b':
+		case 'f':
+		case 'n':
+		case 'r':
+		case 't':
+		case 'v':
+			return true;
+		default:
+			return false;
+		}
 	}
 
 	public static int[] massivi = new int[1028];
