@@ -3,9 +3,11 @@ package project;
 public class Token {
 	public enum TokenKind {
 		EOF,
+		ERROR,
 		IDENTIFIER,
 		NUMBER,
-		OTHER
+		CHAR,
+		OTHER,
 	}
 	public TokenKind kind;
 	public int startPos;
@@ -19,6 +21,12 @@ public class Token {
 	Token(TokenKind kind, String text) {
 		this.kind = kind;
 		this.text = text;
+	}
+	
+	Token(TokenKind kind, int startPos, int endPos) {
+		this.kind = kind;
+		this.startPos = startPos;
+		this.endPos = endPos;
 	}
 	
 	public String toString() {

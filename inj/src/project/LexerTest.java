@@ -36,14 +36,45 @@ public class LexerTest {
 	}
 	
 	@Test
-	public void testOtherFloating() {
-		assertOneToken("1.01f");
+	public void testOtherNumbers() {
+		assertOneTokenNumber("1.01f");
+		assertOneTokenNumber(".01f");
+		assertOneTokenNumber("123ULL");
+		assertOneTokenNumber("123llu");
+		assertOneTokenNumber("123Lu");
+		assertOneTokenNumber("0xDeaDbEef");
+		assertOneTokenNumber("0123u");
+		assertOneTokenNumber("1.21378e+123f");
+		assertOneTokenNumber("1.21378e-123L");
+		assertOneTokenNumber("1.21378e123L");
+	}
+	
+	@Test
+	public void testCharacters() {
+		assertOneCharacter("'c'");
+		assertOneCharacter("u'c'");
+		assertOneCharacter("U'c'");
+		assertOneCharacter("L'c'");
+		assertOneCharacter("'\\a'");
+		assertOneCharacter("'\\12'");
+		assertOneCharacter("'\\xA2'");
+		assertOneCharacter("'\\n'");
+		assertOneCharacter("'\\udead'");
+		assertOneCharacter("'\\UdeadBEAF'");
 	}
 
-	private void assertOneToken(String s) {
+	private void assertOneCharacter(String s) {
 		lexer = new Lexer(s);
 		Token tk = lexer.getToken();
-		assertTrue(tk.kind == TokenKind.NUMBER && tk.text == s);
+		assertEquals(TokenKind.CHAR, tk.kind);
+		assertEquals(s, tk.text);
+	}
+
+	private void assertOneTokenNumber(String s) {
+		lexer = new Lexer(s);
+		Token tk = lexer.getToken();
+		assertEquals(TokenKind.NUMBER, tk.kind);
+		assertEquals(s, tk.text);
 	}
 
 }
