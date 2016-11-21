@@ -2,7 +2,7 @@ package project;
 
 public class Token {
 	public enum TokenKind {
-		EOF, ERROR, IDENTIFIER, NUMBER, CHAR, STRING, OTHER, DOUBLE_POUND, POUND
+		EOF, ERROR, COMMENT, IDENTIFIER, NUMBER, CHAR, STRING, OTHER, DOUBLE_POUND, POUND
 	}
 
 	public TokenKind kind;

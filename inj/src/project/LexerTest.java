@@ -62,7 +62,7 @@ public class LexerTest {
 		assertOneCharacter("'\\udead'");
 		assertOneCharacter("'\\UdeadBEAF'");
 	}
-	
+
 	@Test
 	public void testString() {
 		assertOneTokenString("\"abc\"");
@@ -78,6 +78,23 @@ public class LexerTest {
 		assertTokenError("\"abc\n\"");
 		assertTokenError("\"a\\u111 bc\"");
 		assertTokenError("\"a\\ bc\"");
+	}
+	
+	@Test
+	public void testRawString() {
+		assertOneTokenString("R\"()\"");
+		assertOneTokenString("R\"(abc)\"");
+		assertOneTokenString("uR\"(abc)\"");
+		assertOneTokenString("u8R\"(abc)\"");
+		assertOneTokenString("UR\"(abc)\"");
+		assertOneTokenString("LR\"(abc)\"");
+		assertOneTokenString("u8R\"**(abc)**\"");
+		assertOneTokenString("R\"1(()()()()wjiofeoewjfewf\n\nwjeiorjwer\\)1\"");
+
+		assertTokenError("R\"\t(abc)\t");
+		assertTokenError("R\"\t(ab");
+		assertTokenError("R\"**(ab)*\"");
+		assertTokenError("R\"abc\"");
 	}
 
 	private void assertOneCharacter(String s) {

@@ -2,14 +2,10 @@ package project;
 
 import java.util.ArrayList;
 
-import java.util.Iterator;
-import java.util.Random;
-
 import project.Token.TokenKind;
+
 /**
- * What's not supported:
- * 		- user defined literals
- * 		- trigraph sequences 
+ * What's not supported: - user defined literals - trigraph sequences
  */
 public class Lexer {
 	final char[] source;
@@ -53,9 +49,9 @@ public class Lexer {
 				tk = makeToken(startPos, TokenKind.DOUBLE_POUND);
 			} else {
 				tk = makeToken(startPos, TokenKind.POUND);
-			}				
+			}
 		} else if (c == '.') {
-			
+
 		}
 		if (isCharacterLiteralInitial(c))
 			tk = scanCharacterLiteral();
@@ -65,6 +61,8 @@ public class Lexer {
 			tk = scanRawStringLiteral();
 		else if (isIdentifierInitial(c))
 			tk = scanIdentifier();
+		else if (isComment())
+			tk = scanComment();
 		else if (Character.isDigit(c))
 			tk = scanNumber();
 		else if (c == '.') {
@@ -79,19 +77,117 @@ public class Lexer {
 		return tk;
 	}
 
+	private Token scanComment() {
+		Token tk = null;
+		int startPos = currPos;
+		currPos++;
+		if (source[currPos] == '*') {
+			boolean isCommentEndFound = false;
+			
+			currPos++;
+			while (currPos < sourceLen) {
+				if (source[currPos] == '*' && (currPos + 1 < sourceLen && source[currPos + 1] == '/')) {
+					currPos += 2;
+					isCommentEndFound = true;
+					break;
+				}
+				
+				currPos++;
+			}
+			
+			if (isCommentEndFound)
+				tk = makeToken(startPos, TokenKind.COMMENT);
+			else
+				tk = errorToken(startPos);
+		} else {
+			while (currPos < sourceLen && source[currPos] != '\n') {
+				currPos++;
+			}
+			
+			tk = makeToken(startPos, TokenKind.COMMENT);
+		}
+		
+		return tk;
+	}
+
+	private boolean isComment() {
+		return source[currPos] == '/' &&
+				currPos + 1 < sourceLen &&
+				(source[currPos + 1] == '*' || source[currPos + 1] == '/');
+	}
+
 	private Token scanRawStringLiteral() {
 		int startPos = currPos;
-		
+
 		consumeUpToDoubleQuote();
-		
-		return null;
+
+		int prefixBegPos = currPos;
+		int prefixLen = 0;
+
+		// consume prefix and (
+		while (currPos < sourceLen) {
+			if (source[currPos] == '(') {
+				prefixLen = currPos - prefixBegPos;
+				currPos++;				
+				break;
+			} else if (!isRawStringPrefixCharacter(source[currPos])) {
+				currPos++;
+				return errorToken(startPos);
+			} else
+				currPos++;
+		}
+
+		if (currPos >= sourceLen)
+			return errorToken(startPos);
+
+		boolean isStringCorrect = false;
+		boolean isMatchingPrefix = false;
+		int prefixMatchedCount = 0;
+		while (currPos < sourceLen) {
+			if (source[currPos] == ')') {
+				isMatchingPrefix = true;
+				prefixMatchedCount = 0;
+			} else if (isMatchingPrefix) {
+				if (prefixMatchedCount == prefixLen && source[currPos] == '"') {
+					currPos++;
+					isStringCorrect = true;
+					break;
+				} else if (source[prefixBegPos + prefixMatchedCount] == source[currPos])
+					prefixMatchedCount++;
+				else {
+					isMatchingPrefix = false;
+					prefixMatchedCount = 0;
+				}
+			}
+
+			currPos++;
+		}
+
+		if (isStringCorrect)
+			return makeToken(startPos, TokenKind.STRING);
+		else
+			return errorToken(startPos);
+	}
+
+	boolean isRawStringPrefixCharacter(char c) {
+		switch (c) {
+		case ')':
+		case '\\':
+		case '\t':
+		case 0x0B: // vertical tab
+		case '\f':
+		case '\n':
+			return false;
+		default:
+			return true;
+		}
 	}
 
 	private Token scanStringLiteral() {
 		int startPos = currPos;
-		
+
 		consumeUpToDoubleQuote();
-		
+
 		while (currPos < sourceLen && source[currPos] != '"') {
 			if (source[currPos] == '\\') {
 				currPos++;
@@ -103,33 +199,30 @@ public class Lexer {
 			else
 				currPos++;
 		}
-		
+
 		if (currPos < sourceLen && source[currPos] == '"')
 			currPos++;
 		else
 			return errorToken(startPos);
-		
+
 		return makeToken(startPos, TokenKind.STRING);
 	}
-	
+
 	private boolean isRawStringLiteralInitial(char c) {
 		if (c == 'R' && (currPos + 1 < sourceLen && source[currPos + 1] == '"'))
 			return true;
-		
+
 		int offset = stringEncodingPrefixOffset();
 		int pos1 = currPos + offset;
 		int pos2 = currPos + offset + 1;
-		if (offset > 0 && 
-				(pos1 < sourceLen && source[pos1] == 'R') &&
-				(pos2 < sourceLen && source[pos2] == '"'))
+		if (offset > 0 && (pos1 < sourceLen && source[pos1] == 'R') && (pos2 < sourceLen && source[pos2] == '"'))
 			return true;
-		
-		
+
 		return false;
 	}
 
 	private void consumeUpToDoubleQuote() {
-		for ( ; currPos < sourceLen; ++currPos) {
+		for (; currPos < sourceLen; ++currPos) {
 			if (source[currPos] == '"') {
 				currPos++;
 				break;
@@ -140,7 +233,7 @@ public class Lexer {
 	private Token errorToken(int startPos) {
 		return new Token(TokenKind.ERROR, startPos, currPos);
 	}
-	
+
 	private int stringEncodingPrefixOffset() {
 		int pos = currPos;
 		if (pos < sourceLen) {
@@ -159,11 +252,11 @@ public class Lexer {
 	private boolean isStringLiteralInitial(char c) {
 		if (c == '"')
 			return true;
-		
+
 		int offset = stringEncodingPrefixOffset();
 		if (offset > 0 && (currPos + offset < sourceLen && source[currPos + offset] == '"'))
 			return true;
-		
+
 		return false;
 	}
 
@@ -173,23 +266,23 @@ public class Lexer {
 			currPos += 1;
 		else
 			currPos += 2;
-		
+
 		if (currPos >= sourceLen)
 			return errorToken(startPos);
 
 		if (source[currPos] == '\\') {
 			currPos++;
-			if (!consumeCharEscape()) 
-				return errorToken(startPos);	
+			if (!consumeCharEscape())
+				return errorToken(startPos);
 		} else if (source[currPos] == '\n' || source[currPos] == '\'')
 			return errorToken(startPos);
-		else 
+		else
 			currPos++;
-		
+
 		if (currPos < sourceLen && source[currPos] == '\'')
 			currPos++;
 		else
-			return errorToken(startPos);			
+			return errorToken(startPos);
 
 		return makeToken(startPos, TokenKind.CHAR);
 	}
@@ -399,7 +492,7 @@ public class Lexer {
 		else
 			return false;
 	}
-	
+
 	boolean isSingleEscapeCharacter(char c) {
 		switch (c) {
 		case '\'':
