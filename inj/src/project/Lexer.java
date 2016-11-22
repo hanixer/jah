@@ -11,10 +11,18 @@ public class Lexer {
 	final char[] source;
 	final int sourceLen;
 	int currPos;
+	int savedPos;
+	int tokStartPos;
+	boolean isAtNewLine;
+	boolean isPreviousPoundOnNewLine;
 
 	Lexer(String src) {
 		source = src.toCharArray();
 		sourceLen = source.length;
+		currPos = -1;
+		isAtNewLine = true;
+		isPreviousPoundOnNewLine = false;
+		advance();
 	}
 
 	ArrayList<Token> getTokens() {
@@ -27,9 +35,13 @@ public class Lexer {
 				break;
 
 			result.add(tk);
-		} while (currPos < sourceLen);
+		} while (isBeforeEnd());
 
 		return result;
+	}
+
+	private boolean isBeforeEnd() {
+		return currPos < sourceLen;
 	}
 
 	Token getToken() {
@@ -37,122 +49,226 @@ public class Lexer {
 
 		skipWhitespaces();
 
-		if (currPos >= sourceLen)
+		if (isAtEnd())
 			return new Token(TokenKind.EOF);
 
 		int startPos = currPos;
-		char c = source[currPos];
-		if (c == '#') {
-			currPos++;
-			if (currPos < sourceLen && source[currPos] == '#') {
-				currPos++;
+		tokStartPos = currPos;
+		char c = peekChar();
+		switch (c) {
+		case 'u':
+			advance();
+			if (isBeforeEnd()) {
+				if (isCurrChar('8')) {
+					advance();
+					if (isBeforeEnd()) {
+						tk = scanAfterStringPrefix();
+					}
+				} else
+					tk = scanAfterCharOrStringPrefix();
+			} else
+				tk = scanIdentifier();
+			break;
+		case 'U':
+			advance();
+			if (isBeforeEnd())
+				tk = scanAfterCharOrStringPrefix();
+			else
+				tk = scanIdentifier();
+			break;
+		case 'L':
+			advance();
+			if (isBeforeEnd())
+				tk = scanAfterCharOrStringPrefix();
+			else
+				tk = scanIdentifier();
+			break;
+		case 'R':
+			advance();
+			if (isBeforeEnd() && isCurrChar('"'))
+				tk = scanRawStringLiteral();
+			else
+				tk = scanIdentifier();
+			break;
+		case '\'':
+			tk = scanCharacterLiteral();
+			break;
+		case '"':
+			tk = scanStringLiteral();
+			break;
+		case '#':
+			advance();
+			
+			if (isBeforeEnd() && isCurrChar('#')) {
+				advance();
 				tk = makeToken(startPos, TokenKind.DOUBLE_POUND);
-			} else {
+			}
+			else {
+				if (isAtNewLine)
+					isPreviousPoundOnNewLine = true;
+				
 				tk = makeToken(startPos, TokenKind.POUND);
 			}
-		} else if (c == '.') {
-
-		}
-		if (isCharacterLiteralInitial(c))
-			tk = scanCharacterLiteral();
-		else if (isStringLiteralInitial(c))
-			tk = scanStringLiteral();
-		else if (isRawStringLiteralInitial(c))
-			tk = scanRawStringLiteral();
-		else if (isIdentifierInitial(c))
-			tk = scanIdentifier();
-		else if (isComment())
-			tk = scanComment();
-		else if (Character.isDigit(c))
-			tk = scanNumber();
-		else if (c == '.') {
-			if (currPos + 1 < sourceLen && Character.isDigit(source[currPos + 1])) {
-				consumeFractionalNumberEnd();
-				tk = makeToken(startPos, TokenKind.NUMBER);
+			
+			break;
+		case '/':
+			advance();
+			if (isBeforeEnd() && (isCurrChar('*') || isCurrChar('/')))
+				tk = scanComment();
+			else {
+				tk = makeToken(tokStartPos, TokenKind.DIVIDE);
+				advance();
 			}
-		} else if (c == '\'') {
-
+			break;
+		default:
+			if (isIdentifierInitial(c))
+				tk = scanIdentifier();
+			else if (isComment())
+				tk = scanComment();
+			else if (Character.isDigit(c))
+				tk = scanNumber();
+			else if (c == '.') {
+				savePos();
+				advance();
+				if (isBeforeEnd() && Character.isDigit(peekChar())) {
+					consumeFractionalNumberEnd();
+					tk = makeToken(startPos, TokenKind.NUMBER);
+				} else {
+					restorePos();
+				}
+			}
 		}
 
 		return tk;
+	}
+
+	private Token scanAfterCharOrStringPrefix() {
+		Token tk = null;
+		if (isCurrChar('\'')) {
+			tk = scanCharacterLiteral();
+		} else if (isCurrChar('"')) {
+			tk = scanStringLiteral();
+		} else if (isCurrChar('R')) {
+			advance();
+			if (isBeforeEnd() && isCurrChar('"')) {
+				tk = scanRawStringLiteral();
+			} else {
+				tk = scanIdentifier();
+			}
+		}
+		return tk;
+	}
+
+	private Token scanAfterStringPrefix() {
+		Token tk = null;
+		if (isCurrChar('"')) {
+			tk = scanStringLiteral();
+		} else if (isCurrChar('R')) {
+			advance();
+			if (isBeforeEnd() && isCurrChar('"')) {
+				tk = scanRawStringLiteral();
+			} else {
+				tk = scanIdentifier();
+			}
+		}
+		return tk;
+	}
+
+	private boolean isCurrChar(char c) {
+		return source[currPos] == c;
+	}
+
+	private void restorePos() {
+		currPos = savedPos;
+	}
+
+	private void savePos() {
+		savedPos = currPos;
+	}
+
+	private boolean isAtEnd() {
+		return currPos >= sourceLen;
 	}
 
 	private Token scanComment() {
 		Token tk = null;
 		int startPos = currPos;
-		currPos++;
-		if (source[currPos] == '*') {
+		advance();
+		if (peekChar() == '*') {
 			boolean isCommentEndFound = false;
-			
-			currPos++;
-			while (currPos < sourceLen) {
-				if (source[currPos] == '*' && (currPos + 1 < sourceLen && source[currPos + 1] == '/')) {
+
+			advance();
+			while (isBeforeEnd()) {
+				if (peekChar() == '*' && (currPos + 1 < sourceLen && source[currPos + 1] == '/')) {
 					currPos += 2;
 					isCommentEndFound = true;
 					break;
 				}
-				
-				currPos++;
+
+				advance();
 			}
-			
+
 			if (isCommentEndFound)
 				tk = makeToken(startPos, TokenKind.COMMENT);
 			else
 				tk = errorToken(startPos);
 		} else {
-			while (currPos < sourceLen && source[currPos] != '\n') {
-				currPos++;
+			while (isBeforeEnd() && peekChar() != '\n') {
+				advance();
 			}
-			
+
 			tk = makeToken(startPos, TokenKind.COMMENT);
 		}
-		
+
 		return tk;
 	}
 
+	private void advance() {
+		currPos++;
+		if (currPos + 1 < sourceLen && source[currPos] == '\\' && source[currPos + 1] == '\n')
+			currPos += 2;
+	}
+
 	private boolean isComment() {
-		return source[currPos] == '/' &&
-				currPos + 1 < sourceLen &&
-				(source[currPos + 1] == '*' || source[currPos + 1] == '/');
+		return peekChar() == '/' && currPos + 1 < sourceLen
+				&& (source[currPos + 1] == '*' || source[currPos + 1] == '/');
 	}
 
 	private Token scanRawStringLiteral() {
-		int startPos = currPos;
-
 		consumeUpToDoubleQuote();
 
 		int prefixBegPos = currPos;
 		int prefixLen = 0;
 
 		// consume prefix and (
-		while (currPos < sourceLen) {
-			if (source[currPos] == '(') {
+		while (isBeforeEnd()) {
+			if (peekChar() == '(') {
 				prefixLen = currPos - prefixBegPos;
-				currPos++;				
+				advance();
 				break;
-			} else if (!isRawStringPrefixCharacter(source[currPos])) {
-				currPos++;
-				return errorToken(startPos);
+			} else if (!isRawStringPrefixCharacter(peekChar())) {
+				advance();
+				return errorToken(tokStartPos);
 			} else
-				currPos++;
+				advance();
 		}
 
-		if (currPos >= sourceLen)
-			return errorToken(startPos);
+		if (isAtEnd())
+			return errorToken(tokStartPos);
 
 		boolean isStringCorrect = false;
 		boolean isMatchingPrefix = false;
 		int prefixMatchedCount = 0;
-		while (currPos < sourceLen) {
-			if (source[currPos] == ')') {
+		while (isBeforeEnd()) {
+			if (peekChar() == ')') {
 				isMatchingPrefix = true;
 				prefixMatchedCount = 0;
 			} else if (isMatchingPrefix) {
-				if (prefixMatchedCount == prefixLen && source[currPos] == '"') {
-					currPos++;
+				if (prefixMatchedCount == prefixLen && peekChar() == '"') {
+					advance();
 					isStringCorrect = true;
 					break;
-				} else if (source[prefixBegPos + prefixMatchedCount] == source[currPos])
+				} else if (source[prefixBegPos + prefixMatchedCount] == peekChar())
 					prefixMatchedCount++;
 				else {
 					isMatchingPrefix = false;
@@ -160,13 +276,13 @@ public class Lexer {
 				}
 			}
 
-			currPos++;
+			advance();
 		}
 
 		if (isStringCorrect)
-			return makeToken(startPos, TokenKind.STRING);
+			return makeToken(tokStartPos, TokenKind.STRING);
 		else
-			return errorToken(startPos);
+			return errorToken(tokStartPos);
 	}
 
 	boolean isRawStringPrefixCharacter(char c) {
@@ -184,47 +300,32 @@ public class Lexer {
 	}
 
 	private Token scanStringLiteral() {
-		int startPos = currPos;
-
 		consumeUpToDoubleQuote();
 
-		while (currPos < sourceLen && source[currPos] != '"') {
-			if (source[currPos] == '\\') {
-				currPos++;
+		while (isBeforeEnd() && peekChar() != '"') {
+			if (peekChar() == '\\') {
+				advance();
 				if (!consumeCharEscape()) {
-					return errorToken(startPos);
+					return errorToken(tokStartPos);
 				}
-			} else if (source[currPos] == '\n')
-				return errorToken(startPos);
+			} else if (peekChar() == '\n')
+				return errorToken(tokStartPos);
 			else
-				currPos++;
+				advance();
 		}
 
-		if (currPos < sourceLen && source[currPos] == '"')
-			currPos++;
+		if (isBeforeEnd() && peekChar() == '"')
+			advance();
 		else
-			return errorToken(startPos);
+			return errorToken(tokStartPos);
 
-		return makeToken(startPos, TokenKind.STRING);
-	}
-
-	private boolean isRawStringLiteralInitial(char c) {
-		if (c == 'R' && (currPos + 1 < sourceLen && source[currPos + 1] == '"'))
-			return true;
-
-		int offset = stringEncodingPrefixOffset();
-		int pos1 = currPos + offset;
-		int pos2 = currPos + offset + 1;
-		if (offset > 0 && (pos1 < sourceLen && source[pos1] == 'R') && (pos2 < sourceLen && source[pos2] == '"'))
-			return true;
-
-		return false;
+		return makeToken(tokStartPos, TokenKind.STRING);
 	}
 
 	private void consumeUpToDoubleQuote() {
-		for (; currPos < sourceLen; ++currPos) {
-			if (source[currPos] == '"') {
-				currPos++;
+		for (; isBeforeEnd(); advance()) {
+			if (peekChar() == '"') {
+				advance();
 				break;
 			}
 		}
@@ -234,99 +335,73 @@ public class Lexer {
 		return new Token(TokenKind.ERROR, startPos, currPos);
 	}
 
-	private int stringEncodingPrefixOffset() {
-		int pos = currPos;
-		if (pos < sourceLen) {
-			if (source[pos] == 'u') {
-				pos++;
-				if (pos < sourceLen && source[pos] == '8') {
-					pos++;
-				}
-			} else if (source[pos] == 'U' || source[pos] == 'L')
-				pos++;
-		}
-
-		return pos - currPos;
-	}
-
-	private boolean isStringLiteralInitial(char c) {
-		if (c == '"')
-			return true;
-
-		int offset = stringEncodingPrefixOffset();
-		if (offset > 0 && (currPos + offset < sourceLen && source[currPos + offset] == '"'))
-			return true;
-
-		return false;
-	}
-
 	private Token scanCharacterLiteral() {
-		int startPos = currPos;
-		if (source[currPos] == '\'')
-			currPos += 1;
-		else
-			currPos += 2;
+		advance();
 
-		if (currPos >= sourceLen)
-			return errorToken(startPos);
+		if (isAtEnd())
+			return errorToken(tokStartPos);
 
-		if (source[currPos] == '\\') {
-			currPos++;
+		if (peekChar() == '\\') {
+			advance();
 			if (!consumeCharEscape())
-				return errorToken(startPos);
-		} else if (source[currPos] == '\n' || source[currPos] == '\'')
-			return errorToken(startPos);
+				return errorToken(tokStartPos);
+		} else if (peekChar() == '\n' || peekChar() == '\'')
+			return errorToken(tokStartPos);
 		else
-			currPos++;
+			advance();
 
-		if (currPos < sourceLen && source[currPos] == '\'')
-			currPos++;
+		if (isBeforeEnd() && peekChar() == '\'')
+			advance();
 		else
-			return errorToken(startPos);
+			return errorToken(tokStartPos);
 
-		return makeToken(startPos, TokenKind.CHAR);
+		return makeToken(tokStartPos, TokenKind.CHAR);
 	}
 
 	private boolean consumeCharEscape() {
 		boolean success = true;
-		if (currPos < sourceLen) {
-			char c = source[currPos];
+		if (isBeforeEnd()) {
+			char c = peekChar();
 			if (isSingleEscapeCharacter(c))
-				currPos++;
+				advance();
 			else if (c == 'x') {
-				currPos++;
-				if (currPos >= sourceLen || !isHexadecimalDigit(source[currPos]))
+				advance();
+				if (isAtEnd() || !isHexadecimalDigit(peekChar()))
 					success = false;
 
-				while (currPos < sourceLen && isHexadecimalDigit(source[currPos]))
-					currPos++;
+				while (isBeforeEnd() && isHexadecimalDigit(peekChar()))
+					advance();
 			} else if (c == 'u' || c == 'U') {
-				currPos++;
+				advance();
 				int numberHexToRead = c == 'u' ? 4 : 8;
 				int i = 0;
 				for (; i < numberHexToRead; ++i) {
-					if (currPos >= sourceLen || !isHexadecimalDigit(source[currPos])) {
+					if (isAtEnd() || !isHexadecimalDigit(peekChar())) {
 						success = false;
 						break;
 					}
-					currPos++;
+					advance();
 				}
 
 				if (i < numberHexToRead)
 					success = false;
 			} else if (isOctalDigit(c)) {
-				while (currPos < sourceLen && isOctalDigit(source[currPos]))
-					currPos++;
+				while (isBeforeEnd() && isOctalDigit(peekChar()))
+					advance();
 			} else
 				success = false;
 		}
 		return success;
 	}
 
+	private char peekChar() {
+		return source[currPos];
+	}
+
 	private Token scanNumber() {
 		Token tk = null;
 		int startPos = currPos;
-		char c = source[currPos];
+		char c = peekChar();
 
 		if (c == '0') {
 			if (currPos + 1 < sourceLen) {
@@ -336,7 +411,7 @@ public class Lexer {
 				else if ('0' <= c2 && c2 <= '7')
 					tk = scanOctal();
 				else if (c2 == '.') {
-					currPos++;
+					advance();
 					consumeFractionalNumberEnd();
 					tk = makeToken(startPos, TokenKind.NUMBER);
 				}
@@ -351,10 +426,10 @@ public class Lexer {
 		int startPos = currPos;
 		char c;
 
-		while (currPos < sourceLen) {
-			c = source[currPos];
+		while (isBeforeEnd()) {
+			c = peekChar();
 			if (Character.isDigit(c))
-				currPos++;
+				advance();
 			else if (isIntegerSuffix(c)) {
 				consumeIntegerSuffix(c);
 				break;
@@ -370,51 +445,50 @@ public class Lexer {
 	}
 
 	private void consumeFractionalNumberEnd() {
-		currPos++;
-		while (currPos < sourceLen && Character.isDigit(source[currPos]))
-			currPos++;
+		advance();
+		while (isBeforeEnd() && Character.isDigit(peekChar()))
+			advance();
 
-		if (currPos < sourceLen && (source[currPos] == 'e' || source[currPos] == 'E'))
-			currPos++;
+		if (isBeforeEnd() && (peekChar() == 'e' || peekChar() == 'E'))
+			advance();
 
-		if (currPos < sourceLen && (source[currPos] == '+' || source[currPos] == '-'))
-			currPos++;
+		if (isBeforeEnd() && (peekChar() == '+' || peekChar() == '-'))
+			advance();
 
-		while (currPos < sourceLen && Character.isDigit(source[currPos]))
-			currPos++;
+		while (isBeforeEnd() && Character.isDigit(peekChar()))
+			advance();
 
-		if (currPos < sourceLen && (source[currPos] == 'f' || source[currPos] == 'F' || source[currPos] == 'l'
-				|| source[currPos] == 'L'))
-			currPos++;
+		if (isBeforeEnd() && (peekChar() == 'f' || peekChar() == 'F' || peekChar() == 'l' || peekChar() == 'L'))
+			advance();
 	}
 
 	private void consumeIntegerSuffix(char c) {
 		if (c == 'u' || c == 'U') {
-			currPos++;
-			if (currPos < sourceLen) {
-				char c2 = source[currPos];
+			advance();
+			if (isBeforeEnd()) {
+				char c2 = peekChar();
 				if (c2 == 'l' || c2 == 'L') {
-					currPos++;
-					if (currPos < sourceLen) {
-						char c3 = source[currPos];
+					advance();
+					if (isBeforeEnd()) {
+						char c3 = peekChar();
 						if (c3 == c2)
-							currPos++;
+							advance();
 					}
 				}
 			}
 		} else if (c == 'l' || c == 'L') {
-			currPos++;
-			if (currPos < sourceLen) {
-				char c2 = source[currPos];
+			advance();
+			if (isBeforeEnd()) {
+				char c2 = peekChar();
 				if (c2 == c) {
-					currPos++;
-					if (currPos < sourceLen) {
-						char c3 = source[currPos];
+					advance();
+					if (isBeforeEnd()) {
+						char c3 = peekChar();
 						if (c3 == 'u' || c3 == 'U')
-							currPos++;
+							advance();
 					}
 				} else if (c2 == 'u' || c2 == 'U')
-					currPos++;
+					advance();
 			}
 		}
 	}
@@ -425,13 +499,13 @@ public class Lexer {
 
 	private Token scanOctal() {
 		int startPos = currPos;
-		currPos++;
+		advance();
 
-		while (currPos < sourceLen && isOctalDigit(source[currPos]))
-			currPos++;
+		while (isBeforeEnd() && isOctalDigit(peekChar()))
+			advance();
 
-		if (currPos < sourceLen && isIntegerSuffix(source[currPos]))
-			consumeIntegerSuffix(source[currPos]);
+		if (isBeforeEnd() && isIntegerSuffix(peekChar()))
+			consumeIntegerSuffix(peekChar());
 
 		return makeToken(startPos, TokenKind.NUMBER);
 	}
@@ -444,26 +518,30 @@ public class Lexer {
 		int startPos = currPos;
 		currPos += 2;
 
-		while (currPos < sourceLen && isHexadecimalDigit(source[currPos]))
-			currPos++;
+		while (isBeforeEnd() && isHexadecimalDigit(peekChar()))
+			advance();
 
-		if (currPos < sourceLen && isIntegerSuffix(source[currPos]))
-			consumeIntegerSuffix(source[currPos]);
+		if (isBeforeEnd() && isIntegerSuffix(peekChar()))
+			consumeIntegerSuffix(peekChar());
 
 		return makeToken(startPos, TokenKind.NUMBER);
 	}
 
 	private void skipWhitespaces() {
-		while (currPos < sourceLen && Character.isWhitespace(source[currPos]))
-			currPos++;
+		while (isBeforeEnd() && Character.isWhitespace(peekChar())) {
+			if (isCurrChar('\n'))
+				isAtNewLine = true;
+			
+			advance();
+		}
 	}
 
 	private Token scanIdentifier() {
 		int startPos = currPos;
-		currPos++;
+		advance();
 
-		while (currPos < sourceLen && isIdentifierCharacter(source[currPos]))
-			currPos++;
+		while (isBeforeEnd() && isIdentifierCharacter(peekChar()))
+			advance();
 
 		return new Token(TokenKind.IDENTIFIER, new String(source, startPos, currPos - startPos));
 	}

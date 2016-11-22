@@ -96,6 +96,12 @@ public class LexerTest {
 		assertTokenError("R\"**(ab)*\"");
 		assertTokenError("R\"abc\"");
 	}
+	
+	@Test
+	public void testBackslashNewline() {
+		assertOneCharacter("'\\\nc'");
+		assertOneTokenString("u8R\\\n\"*(ab)*\"");
+	}
 
 	private void assertOneCharacter(String s) {
 		lexer = new Lexer(s);
