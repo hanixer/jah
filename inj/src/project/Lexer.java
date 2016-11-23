@@ -47,7 +47,7 @@ public class Lexer {
 	Token getToken() {
 		Token tk = null;
 
-		skipWhitespaces();
+		handleWhitespaces();
 
 		if (isAtEnd())
 			return new Token(TokenKind.EOF);
@@ -527,7 +527,7 @@ public class Lexer {
 		return makeToken(startPos, TokenKind.NUMBER);
 	}
 
-	private void skipWhitespaces() {
+	private void handleWhitespaces() {
 		while (isBeforeEnd() && Character.isWhitespace(peekChar())) {
 			if (isCurrChar('\n'))
 				isAtNewLine = true;
