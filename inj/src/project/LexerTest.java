@@ -102,28 +102,68 @@ public class LexerTest {
 		assertOneCharacter("'\\\nc'");
 		assertOneTokenString("u8R\\\n\"*(ab)*\"");
 	}
+	
+	@Test 
+	public void testPreprocessingTokens() {
+		input("#include some\n");
+		pound();
+		identifier("include");
+		identifier("some");
+		eod();
+		eof();
+		
+		input("#include some\ngap");
+		pound();
+		identifier("include");
+		identifier("some");
+		eod();
+		identifier("gap");
+		eof();
+	}
+
+	private void eod() {
+		assertEquals(TokenKind.EOD, lexer.getToken().kind);
+	}
+
+	private void eof() {
+		assertEquals(TokenKind.EOF, lexer.getToken().kind);
+	}
+
+	private void identifier(String s2) {
+		Token token = lexer.getToken();
+		assertEquals(TokenKind.IDENTIFIER, token.kind);
+		assertEquals(s2, token.text);
+	}
+
+	private void pound() {
+		assertEquals(TokenKind.POUND, lexer.getToken().kind);
+	}
+
+	private void input(String s) {
+		lexer = new Lexer(s);
+	}
 
 	private void assertOneCharacter(String s) {
-		lexer = new Lexer(s);
+		input(s);
 		Token tk = lexer.getToken();
 		assertEquals(TokenKind.CHAR, tk.kind);
 		assertEquals(s, tk.text);
 	}
 
 	private void assertOneTokenNumber(String s) {
-		lexer = new Lexer(s);
+		input(s);
 		Token tk = lexer.getToken();
 		assertEquals(TokenKind.NUMBER, tk.kind);
 		assertEquals(s, tk.text);
 	}
 	private void assertOneTokenString(String s) {
-		lexer = new Lexer(s);
+		input(s);
 		Token tk = lexer.getToken();
 		assertEquals(TokenKind.STRING, tk.kind);
 		assertEquals(s, tk.text);
 	}
 	private void assertTokenError(String s) {
-		lexer = new Lexer(s);
+		input(s);
 		Token tk = lexer.getToken();
 		assertEquals(TokenKind.ERROR, tk.kind);
 	}
