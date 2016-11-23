@@ -17,7 +17,7 @@ public class Lexer {
 	boolean isPreviousPoundOnNewLine;
 	Token token;
 
-	Lexer(String src) {
+	public Lexer(String src) {
 		source = src.toCharArray();
 		sourceLen = source.length;
 		currPos = -1;
