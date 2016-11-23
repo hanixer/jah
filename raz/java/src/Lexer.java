@@ -1,3 +1,7 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 
 //import Token.TokenKind;
@@ -111,30 +115,34 @@ public class Lexer {
 	    scanAfterMinus();
 	    break;
 	case '*':
-	    makeTokenAndAdvance(TokenKind.STAR);
+	    scanSingleOpOrWithAssign(TokenKind.STAR_ASSIGN, TokenKind.STAR);
 	    break;
 	case '/':
 	    scanAfterSlash();
 	    break;
 	case '%':
-	    advance();
-	    if (isPosValidAndCharEquals('='))
-		makeTokenAndAdvance(TokenKind.PERCENT_ASSIGN);
-	    else
-		makeToken(TokenKind.PERCENT);
+	    scanSingleOpOrWithAssign(TokenKind.PERCENT_ASSIGN, TokenKind.PERCENT);
 	    break;
 	case '^':
-	    advance();
-	    if (isPosValidAndCharEquals('='))
-		makeTokenAndAdvance(TokenKind.HAT_ASSIGN);
-	    else
-		makeToken(TokenKind.HAT);
+	    scanSingleOpOrWithAssign(TokenKind.HAT_ASSIGN, TokenKind.HAT);
 	    break;
 	case '&':
 	    scanAmperOrBar();
 	    break;
 	case '|':
 	    scanAmperOrBar();
+	    break;
+	case '~':
+	    makeTokenAndAdvance(TokenKind.TILDE);
+	    break;
+	case '!':
+	    scanSingleOpOrWithAssign(TokenKind.NOT_EQUAL, TokenKind.EXCLAM);
+	    break;
+	case '=':
+	    scanSingleOpOrWithAssign(TokenKind.EQUAL, TokenKind.ASSIGN);
+	    break;
+	case ',':
+	    makeTokenAndAdvance(TokenKind.COMMA);
 	    break;
 	case 'u':
 	    advance();
@@ -174,8 +182,13 @@ public class Lexer {
 	    scanCharacterLiteral();
 	    break;
 	case '"':
-	    scanStringLiteral();
+	    if (isIncludeDirective) {
+		isIncludeDirective = false;
+		scanInclude();
+	    } else
+		scanStringLiteral();
 	    break;
+	case '\r':
 	case '\n':
 	    if (isPreprocessingDirective) {
 		isPreprocessingDirective = false;
@@ -216,6 +229,14 @@ public class Lexer {
 	}
     }
 
+    private void scanSingleOpOrWithAssign(TokenKind kindAssign, TokenKind kindSingle) {
+	advance();
+	if (isPosValidAndCharEquals('='))
+	    makeTokenAndAdvance(kindAssign);
+	else
+	    makeToken(kindSingle);
+    }
+
     private void scanAmperOrBar() {
 	char ch = peekChar();
 
@@ -244,11 +265,15 @@ public class Lexer {
 
     private void scanAfterSlash() {
 	advance();
-	if (isBeforeEnd() && (isCurrChar('*') || isCurrChar('/')))
-	    scanComment();
-	else {
-	    makeToken(TokenKind.SLASH);
+	if (isBeforeEnd()) {
+	    if (isCurrChar('*') || isCurrChar('/'))
+		scanComment();
+	    else if (isCurrChar('='))
+		makeTokenAndAdvance(TokenKind.SLASH_ASSIGN);
 	}
+
+	if (token == null)
+	    makeToken(TokenKind.SLASH);
     }
 
     private void scanAfterMinus() {
@@ -318,32 +343,38 @@ public class Lexer {
 
     private void scanAngleBracket() {
 	assert (isCurrChar('<') || isCurrChar('>'));
-	TokenKind shift = null, compar = null, shiftAssign = null;
+	TokenKind shift = null, compar = null, shiftAssign = null, orEqual = null;
 
 	if (isCurrChar('<')) {
 	    shift = TokenKind.SHIFT_LEFT_ASSIGN;
 	    shiftAssign = TokenKind.SHIFT_LEFT_ASSIGN;
 	    compar = TokenKind.LESS_THEN;
+	    orEqual = TokenKind.LESS_EQ;
 	} else if (isCurrChar('>')) {
 	    shift = TokenKind.SHIFT_RIGHT_ASSIGN;
 	    shiftAssign = TokenKind.SHIFT_RIGHT_ASSIGN;
 	    compar = TokenKind.MORE_THEN;
+	    orEqual = TokenKind.MORE_EQ;
 	} else {
 	    assert (false);
 	}
 
 	advance();
 
-	if (isPosValidAndCharEquals('<')) {
-	    advance();
-	    if (isPosValidAndCharEquals('=')) {
+	if (isBeforeEnd()) {
+	    if (isCurrChar('<')) {
 		advance();
-		makeTokenAndAdvance(shiftAssign);
-	    } else
-		makeTokenAndAdvance(shift);
-	} else {
-	    makeTokenAndAdvance(compar);
+		if (isPosValidAndCharEquals('=')) {
+		    advance();
+		    makeTokenAndAdvance(shiftAssign);
+		} else
+		    makeTokenAndAdvance(shift);
+	    } else if (isCurrChar('='))
+		makeTokenAndAdvance(orEqual);
 	}
+
+	if (token == null)
+	    makeTokenAndAdvance(compar);
     }
 
     private void makeTokenAndAdvance(TokenKind kind) {
@@ -638,25 +669,23 @@ public class Lexer {
     }
 
     private void scanNumber() {
-
-	char c = peekChar();
-
-	if (c == '0') {
-	    if (currPos + 1 < sourceLen) {
-		char c2 = source[currPos + 1];
+	if (isCurrChar('0')) {
+	    advance();
+	    if (isBeforeEnd()) {
+		char c2 = peekChar();
 		if (c2 == 'x' || c2 == 'X')
 		    scanHexadecimal();
 		else if ('0' <= c2 && c2 <= '7')
 		    scanOctal();
 		else if (c2 == '.') {
-		    advance();
 		    consumeFractionalNumberEnd();
 		    makeToken(TokenKind.NUMBER);
 		}
 	    }
-	} else
-	    scanDecimal();
+	}
 
+	if (token == null)
+	    scanDecimal();
     }
 
     private void scanDecimal() {
@@ -839,12 +868,32 @@ public class Lexer {
     public static void main(String[] args) {
 	while (true) {
 	    String s = Util.readLine();
-	    Lexer l = new Lexer(s);
-	    ArrayList<Token> a = l.getTokens();
+	    printTokens(s);
+	}
+    }
 
+    public static void printTokens(String s) {
+	Lexer l = new Lexer(s);
+	ArrayList<Token> a = l.getTokens();
+
+	for (Token token : a) {
+	    System.out.println(token.toString());
+	}
+    }
+
+    public static void printTokensToFile(String s, String file) {
+	Lexer l = new Lexer(s);
+	ArrayList<Token> a = l.getTokens();
+
+	try {
+	    PrintWriter writer = new PrintWriter(file);
 	    for (Token token : a) {
-		System.out.println(token.toString());
+		writer.println(token.toString());
 	    }
+	    writer.close();
+	} catch (FileNotFoundException e) {
+	    // TODO Auto-generated catch block
+	    e.printStackTrace();
 	}
     }
 }

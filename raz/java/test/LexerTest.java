@@ -124,6 +124,26 @@ public class LexerTest {
 		eof();		
 	}
 
+	@Test
+	public void testCR() {
+	    input("1 + \r\n 2");
+	    number("1");
+	    op(TokenKind.PLUS);
+	    number("2");
+	    eof();
+	}
+
+	public void op(TokenKind opKind) {
+	    Token t = lexer.getToken();
+	    assertEquals(opKind, t.kind);
+	}
+
+	public void number(String numStr) {
+	    Token t = lexer.getToken();
+	    assertEquals(TokenKind.NUMBER, t.kind);
+	    assertEquals(numStr, t.text);
+	}
+	
 	private void angleInclude(String s) {
 		Token token = lexer.getToken();
 		assertEquals(TokenKind.ANGLE_INCLUDE, token.kind);
@@ -161,9 +181,7 @@ public class LexerTest {
 
 	private void assertOneTokenNumber(String s) {
 		input(s);
-		Token tk = lexer.getToken();
-		assertEquals(TokenKind.NUMBER, tk.kind);
-		assertEquals(s, tk.text);
+		number(s);
 	}
 	private void assertOneTokenString(String s) {
 		input(s);

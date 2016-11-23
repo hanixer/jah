@@ -31,7 +31,7 @@ public enum TokenKind {
     MORE_THEN,
     PLUS_ASSIGN,
     MINUS_ASSIGN,
-    ASTERIKS_ASSIGN,
+    STAR_ASSIGN,
     SLASH_ASSIGN,
     PERCENT_ASSIGN,
     HAT_ASSIGN,
