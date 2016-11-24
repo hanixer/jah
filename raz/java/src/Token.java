@@ -3,7 +3,7 @@ public class Token {
 	public TokenKind kind;
 	public int startPos;
 	public int endPos;
-	public String text;
+	public String text = "";
 
 	Token(TokenKind kind) {
 		this.kind = kind;
@@ -20,7 +20,17 @@ public class Token {
 		this.endPos = endPos;
 	}
 
+	Token(TokenKind kind, String text, int startPos, int endPos) {
+		this.kind = kind;
+		this.text = text;
+		this.startPos = startPos;
+		this.endPos = endPos;
+	}
+
 	public String toString() {
-		return "[" + kind.toString() + " : " + text + "]";
+		if (text.isEmpty())
+			return "[" + kind.toString() + " : (" + startPos + ", " + endPos + ")]";
+		else
+			return "[" + kind.toString() + " : (" + startPos + ", " + endPos + ") : " + text + "]";
 	}
 }

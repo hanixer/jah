@@ -52,12 +52,12 @@ public enum TokenKind {
     COMMA,
     ARROW_STAR,
     ARROW,
+    
     COMMENT,
     IDENTIFIER,
     NUMBER,
     CHAR,
     STRING,
-    OTHER,
     EOD,
     ANGLE_INCLUDE,
     QUOTE_INCLUDE,

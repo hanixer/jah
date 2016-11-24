@@ -214,12 +214,17 @@ public class Lexer {
 				advance();
 				if (isBeforeEnd() && Character.isDigit(peekChar())) {
 					consumeFractionalNumberEnd();
-					makeToken(TokenKind.NUMBER);
+					makeNumberToken();
 				} else {
 					restorePos();
 				}
 			}
 		}
+	}
+
+	private void makeNumberToken() {
+		String text = new String(source, tokStartPos, currPos - tokStartPos);
+		token = new Token(TokenKind.NUMBER, text, tokStartPos, currPos - 1);
 	}
 
 	private void scanSingleOpOrWithAssign(TokenKind kindAssign, TokenKind kindSingle) {
@@ -309,7 +314,7 @@ public class Lexer {
 				errorToken();
 		} else if (isBeforeEnd() && Character.isDigit(peekChar())) {
 			consumeFractionalNumberEnd();
-			makeToken(TokenKind.NUMBER);
+			makeNumberToken();
 		} else
 			makeToken(TokenKind.DOT);
 	}
@@ -395,7 +400,7 @@ public class Lexer {
 
 		if (isBeforeEnd() && isCurrChar(endChar)) {
 			advance();
-			makeToken(kind);
+			makeTokenWithText(kind);
 		} else
 			errorToken();
 	}
@@ -543,7 +548,7 @@ public class Lexer {
 		}
 
 		if (isStringCorrect)
-			makeToken(TokenKind.STRING);
+			makeTokenWithText(TokenKind.STRING);
 		else
 			errorToken();
 	}
@@ -586,7 +591,7 @@ public class Lexer {
 			return;
 		}
 
-		makeToken(TokenKind.STRING);
+		makeTokenWithText(TokenKind.STRING);
 	}
 
 	private void consumeUpToDoubleQuote() {
@@ -624,9 +629,14 @@ public class Lexer {
 
 		if (isBeforeEnd() && peekChar() == '\'') {
 			advance();
-			makeToken(TokenKind.CHAR);
+			makeTokenWithText(TokenKind.CHAR);
 		} else
 			errorToken();
+	}
+
+	private void makeTokenWithText(TokenKind k) {
+		String text = new String(source, tokStartPos, currPos - tokStartPos);
+		token = new Token(k, text, tokStartPos, currPos - 1);
 	}
 
 	private boolean consumeCharEscape() {
@@ -680,7 +690,7 @@ public class Lexer {
 					scanOctal();
 				else if (c2 == '.') {
 					consumeFractionalNumberEnd();
-					makeToken(TokenKind.NUMBER);
+					makeNumberToken();
 				}
 			}
 		}
@@ -708,7 +718,7 @@ public class Lexer {
 
 		}
 
-		makeToken(TokenKind.NUMBER);
+		makeNumberToken();
 	}
 
 	private void consumeFractionalNumberEnd() {
@@ -761,7 +771,7 @@ public class Lexer {
 	}
 
 	private void makeToken(TokenKind k) {
-		token = new Token(k, new String(source, tokStartPos, currPos - tokStartPos));
+		token = new Token(k, tokStartPos, currPos - 1);
 	}
 
 	private void scanOctal() {
@@ -773,7 +783,7 @@ public class Lexer {
 		if (isBeforeEnd() && isIntegerSuffix(peekChar()))
 			consumeIntegerSuffix(peekChar());
 
-		makeToken(TokenKind.NUMBER);
+		makeNumberToken();
 	}
 
 	private boolean isOctalDigit(char c) {
@@ -790,7 +800,7 @@ public class Lexer {
 		if (isBeforeEnd() && isIntegerSuffix(peekChar()))
 			consumeIntegerSuffix(peekChar());
 
-		makeToken(TokenKind.NUMBER);
+		makeNumberToken();
 	}
 
 	private void skipWhitespaces() {
@@ -813,7 +823,7 @@ public class Lexer {
 		if (isPreprocessingDirective && text.compareTo("include") == 0 && !isIncludeDirective)
 			isIncludeDirective = true;
 
-		token = new Token(TokenKind.IDENTIFIER, text);
+		token = new Token(TokenKind.IDENTIFIER, text, tokStartPos, currPos - 1);
 	}
 
 	boolean isIdentifierInitial(char c) {

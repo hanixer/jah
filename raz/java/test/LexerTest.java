@@ -21,14 +21,14 @@ public class LexerTest {
 	public void test() {
 		lexer = new Lexer("123 234");
 		Object[] output = lexer.getTokens().stream().map(t -> t.text).toArray();
-		assertArrayEquals(Arrays.asList("123", "234", null).toArray(), output);
+		assertArrayEquals(Arrays.asList("123", "234", "").toArray(), output);
 	}
 
 	@Test
 	public void testFloating() {
 		lexer = new Lexer(" 1.0f 2.1023123f 1.0e+123 ");
 		Object[] output = lexer.getTokens().stream().map(t -> t.text).toArray();
-		assertArrayEquals(Arrays.asList("1.0f", "2.1023123f", "1.0e+123", null).toArray(), output);
+		assertArrayEquals(Arrays.asList("1.0f", "2.1023123f", "1.0e+123", "").toArray(), output);
 	}
 
 	@Test
