@@ -21,16 +21,16 @@ public class LexerTest {
 	public void test() {
 		lexer = new Lexer("123 234");
 		Object[] output = lexer.getTokens().stream().map(t -> t.text).toArray();
-		assertArrayEquals(Arrays.asList("123", "234").toArray(), output);		
+		assertArrayEquals(Arrays.asList("123", "234", null).toArray(), output);
 	}
-	
+
 	@Test
 	public void testFloating() {
 		lexer = new Lexer(" 1.0f 2.1023123f 1.0e+123 ");
 		Object[] output = lexer.getTokens().stream().map(t -> t.text).toArray();
-		assertArrayEquals(Arrays.asList("1.0f", "2.1023123f", "1.0e+123").toArray(), output);		
+		assertArrayEquals(Arrays.asList("1.0f", "2.1023123f", "1.0e+123", null).toArray(), output);
 	}
-	
+
 	@Test
 	public void testOtherNumbers() {
 		assertOneTokenNumber("1.01f");
@@ -44,7 +44,7 @@ public class LexerTest {
 		assertOneTokenNumber("1.21378e-123L");
 		assertOneTokenNumber("1.21378e123L");
 	}
-	
+
 	@Test
 	public void testCharacters() {
 		assertOneCharacter("'c'");
@@ -75,7 +75,7 @@ public class LexerTest {
 		assertTokenError("\"a\\u111 bc\"");
 		assertTokenError("\"a\\ bc\"");
 	}
-	
+
 	@Test
 	public void testRawString() {
 		assertOneTokenString("R\"()\"");
@@ -92,14 +92,14 @@ public class LexerTest {
 		assertTokenError("R\"**(ab)*\"");
 		assertTokenError("R\"abc\"");
 	}
-	
+
 	@Test
 	public void testBackslashNewline() {
 		assertOneCharacter("'\\\nc'");
 		assertOneTokenString("u8R\\\n\"*(ab)*\"");
 	}
-	
-	@Test 
+
+	@Test
 	public void testPreprocessingTokens() {
 		input("#include some\n");
 		pound();
@@ -107,7 +107,7 @@ public class LexerTest {
 		identifier("some");
 		eod();
 		eof();
-		
+
 		input("#include some\ngap");
 		pound();
 		identifier("include");
@@ -115,35 +115,35 @@ public class LexerTest {
 		eod();
 		identifier("gap");
 		eof();
-		
+
 		input("#include <iostream>");
 		pound();
 		identifier("include");
 		angleInclude("<iostream>");
 		eod();
-		eof();		
+		eof();
 	}
 
 	@Test
 	public void testCR() {
-	    input("1 + \r\n 2");
-	    number("1");
-	    op(TokenKind.PLUS);
-	    number("2");
-	    eof();
+		input("1 + \r\n 2");
+		number("1");
+		op(TokenKind.PLUS);
+		number("2");
+		eof();
 	}
 
 	public void op(TokenKind opKind) {
-	    Token t = lexer.getToken();
-	    assertEquals(opKind, t.kind);
+		Token t = lexer.getToken();
+		assertEquals(opKind, t.kind);
 	}
 
 	public void number(String numStr) {
-	    Token t = lexer.getToken();
-	    assertEquals(TokenKind.NUMBER, t.kind);
-	    assertEquals(numStr, t.text);
+		Token t = lexer.getToken();
+		assertEquals(TokenKind.NUMBER, t.kind);
+		assertEquals(numStr, t.text);
 	}
-	
+
 	private void angleInclude(String s) {
 		Token token = lexer.getToken();
 		assertEquals(TokenKind.ANGLE_INCLUDE, token.kind);
@@ -183,12 +183,14 @@ public class LexerTest {
 		input(s);
 		number(s);
 	}
+
 	private void assertOneTokenString(String s) {
 		input(s);
 		Token tk = lexer.getToken();
 		assertEquals(TokenKind.STRING, tk.kind);
 		assertEquals(s, tk.text);
 	}
+
 	private void assertTokenError(String s) {
 		input(s);
 		Token tk = lexer.getToken();
