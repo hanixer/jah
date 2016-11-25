@@ -110,3 +110,35 @@
                                                (fn [v2] (success (+ v1 v2))))))))
                (>>= term
                     (fn [v] (success v)))))
+
+(defn f [x]
+  (Math/sqrt x))
+
+(defn g [x]
+  (/ (Math/cos x) (+ 22 (Math/sin x))))
+
+(defn f_ [x]
+  [(f x) "f was called."])
+
+(defn g_ [x]
+  [(g x) "g was called."])
+
+(defn f_g_ [x]
+  (let [[t s] (g_ x)]
+    (let [[t2 s2] (f_ t)]
+      [t2 (str s s2)])))
+
+(defn bind [f]
+  (fn [[x s]]
+    (let [[fx fs] (f x)]
+      [fx (str s fs)])))
+
+(defn <++> [f g]
+  (let [f_ (bind f)]
+    (fn [x] (f_ (g x)))))
+
+(defn unit [x]
+  [x ""])
+
+(defn lift [f]
+  (comp unit f))
