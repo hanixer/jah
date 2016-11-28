@@ -1,0 +1,101 @@
+literal:
+x	integer-literal
+x	character-literal
+x	floating-literal
+x	string-literal
+x	boolean-literal
+x	pointer-literal
+	user-defined-literal
+
+primary-expression:
++-	literal
+	this
+	( expression )
++-	id-expression
+	lambda-expression
+
+id-expression:
++-	unqualified-id
+	qualified-id
+	
+unqualified-id:
+x	identifier
+	operator-function-id
+	conversion-function-id
+	literal-operator-id
+	~ class-name
+	~ decltype-specifier
+	template-id
+
+qualified-id:
+	nested-name-specifier templateopt unqualified-id
+	:: identifier
+	:: operator-function-id
+	:: literal-operator-id
+	:: template-id
+	
+nested-name-specifier:
+	::opt type-name ::
+	::opt namespace-name ::
+	decltype-specifier ::
+	nested-name-specifier identifier ::
+	nested-name-specifier templateopt simple-template-id ::
+	
+postfix-expression:
++-	primary-expression
+	postfix-expression [ expression ]
+	postfix-expression [ braced-init-list ]
+	postfix-expression ( expression-listopt)
+	simple-type-specifier ( expression-listopt)
+	typename-specifier ( expression-listopt)
+	simple-type-specifier braced-init-list
+	typename-specifier braced-init-list
+	postfix-expression . templateopt id-expression
+	postfix-expression -> templateopt id-expression
+	postfix-expression . pseudo-destructor-name
+	postfix-expression -> pseudo-destructor-name
+	postfix-expression ++
+	postfix-expression --
+	dynamic_cast < type-id > ( expression )
+	static_cast < type-id > ( expression )
+	reinterpret_cast < type-id > ( expression )
+	const_cast < type-id > ( expression )
+	typeid ( expression )
+	typeid ( type-id )
+expression-list:
+	initializer-list
+pseudo-destructor-name:
+	nested-name-specifieropt type-name :: ~ type-name
+	nested-name-specifier template simple-template-id :: ~ type-name
+	nested-name-specifieropt~ type-name
+	~ decltype-specifier
+	
+unary-expression:
++-	postfix-expression
++-	++ cast-expression
++-	-- cast-expression
++-	unary-operator cast-expression
++-	sizeof unary-expression
+	sizeof ( type-id )
++-	sizeof ... ( identifier )
+	alignof ( type-id )
+	noexcept-expression
+	new-expression
+	delete-expression
+unary-operator: one of
+x	* & + - ! ~
+	
+cast-expression:
++-	unary-expression
+	( type-id ) cast-expression
+	
+pm-expression:
++-	cast-expression
+	pm-expression .* cast-expression
+	pm-expression ->* cast-expression
+	
+multiplicative-expression:
+x	pm-expression
+x	multiplicative-expression * pm-expression
+x	multiplicative-expression / pm-expression
+x	multiplicative-expression % pm-expression

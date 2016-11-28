@@ -1,3 +1,4 @@
+package parser;
 import static org.junit.Assert.*;
 
 import java.util.Arrays;
@@ -5,6 +6,10 @@ import java.util.Arrays;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import parser.Lexer;
+import parser.Token;
+import parser.TokenKind;
 
 public class LexerTest {
 	Lexer lexer;

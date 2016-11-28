@@ -1,4 +1,5 @@
-public enum TokenKind {
+package parser;
+public enum TokenKind {	
     EOF,
     ERROR,
     L_BRACKET,
@@ -61,4 +62,16 @@ public enum TokenKind {
     EOD,
     ANGLE_INCLUDE,
     QUOTE_INCLUDE,
+	
+	SIZEOF("sizeof"),
+	
+	;
+
+	public final String value;
+	TokenKind() {
+		value = "";
+	}
+	TokenKind(String s) {
+		value = s;
+	}
 }
