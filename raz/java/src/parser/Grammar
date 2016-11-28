@@ -99,3 +99,52 @@ x	pm-expression
 x	multiplicative-expression * pm-expression
 x	multiplicative-expression / pm-expression
 x	multiplicative-expression % pm-expression
+
+additive-expression:
+x	multiplicative-expression
+x	additive-expression + multiplicative-expression
+x	additive-expression - multiplicative-expression
+
+shift-expression:
+x	additive-expression
+x	shift-expression << additive-expression
+x	shift-expression >> additive-expression
+
+relational-expression:
+x	shift-expression
+x	relational-expression < shift-expression
+x	relational-expression > shift-expression
+x	relational-expression <= shift-expression
+x	relational-expression >= shift-expression
+
+equality-expression:
+x	relational-expression
+x	equality-expression == relational-expression
+x	equality-expression != relational-expression
+	
+and-expression:
+x	equality-expression
+x	and-expression & equality-expression
+
+exclusive-or-expression:
+x	and-expression
+x	exclusive-or-expression ˆ and-expression
+
+logical-and-expression:
+x	inclusive-or-expression
+x	logical-and-expression && inclusive-or-expression
+
+logical-or-expression:
+x	logical-and-expression
+x	logical-or-expression || logical-and-expression
+
+conditional-expression:
+x	logical-or-expression
+	logical-or-expression ? expression : assignment-expression
+	
+assignment-expression:
+	conditional-expression
+	logical-or-expression assignment-operator initializer-clause
+	throw-expression
+assignment-operator: one of
+	= *= /= %= += -= >>= <<= &= ˆ= |=

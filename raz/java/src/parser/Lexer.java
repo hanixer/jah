@@ -352,8 +352,8 @@ public class Lexer {
 		} else if (isCurrChar('>')) {
 			shift = TokenKind.SHIFT_RIGHT_ASSIGN;
 			shiftAssign = TokenKind.SHIFT_RIGHT_ASSIGN;
-			compar = TokenKind.MORE_THEN;
-			orEqual = TokenKind.MORE_EQ;
+			compar = TokenKind.GREATER_THEN;
+			orEqual = TokenKind.GREATER_EQ;
 		} else {
 			assert (false);
 		}

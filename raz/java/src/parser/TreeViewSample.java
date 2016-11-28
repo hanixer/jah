@@ -79,7 +79,7 @@ public class TreeViewSample extends Application {
 
 	private void updateTree() {
 		Parser p = new Parser(textField.getText());
-		Parser.Node node = p.additiveExpression();
+		Parser.Node node = p.assignmentExpression();
 		tree.setRoot(createTreeItem(node));
 	}
 }
