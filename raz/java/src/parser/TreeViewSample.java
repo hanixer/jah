@@ -11,6 +11,7 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -57,10 +58,10 @@ public class TreeViewSample extends Application {
 		updateTree();
 		
 		Button button = new Button("Refresh");
-		Pane root = new Pane();
-		root.getChildren().add(textField);
-		root.getChildren().add(button);
-root.getChildren().add(tree);
+		BorderPane root = new BorderPane();
+		root.setCenter(tree);
+		root.setTop(textField);
+		root.setLeft(button);
 		
 		button.setOnAction(new EventHandler<ActionEvent>() {
 			
