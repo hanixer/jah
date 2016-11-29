@@ -41,7 +41,7 @@ public class TreeViewSample extends Application {
 		primaryStage.setTitle("Tree View Sample");
 
 		tree = new TreeView<>(null);
-		textField = new TextField("1 + 2 * 3");
+		textField = new TextField("5 >> 1 + 2 * 3");
 		
 		updateTree();
 		
@@ -65,7 +65,7 @@ public class TreeViewSample extends Application {
 
 	private void updateTree() {
 		Parser p = new Parser(textField.getText());
-		Parser.Node node = p.postfixExpression();
+		Parser.Node node = p.shiftExpression();
 		tree.setRoot(createTreeItem(node));
 	}
 }

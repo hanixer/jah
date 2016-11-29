@@ -172,75 +172,75 @@ public class Parser {
 	}
 
 	Node multiplicativeExpression() {
-		int sp = p;
-		Node node = new Node("MultiplicativeExpression");
+		Node pmExpr = pmExpression();
 
-		Node pme = pmExpression();
-		if (pme != null) {
+		if (pmExpr != null) {
+			Node node = new Node("MultiplicativeExpression");
+			node.addChildren(pmExpr);
+			
+			int sp = p;
 			if (isNextToken(TokenKind.STAR) || isNextToken(TokenKind.SLASH) || isNextToken(TokenKind.PERCENT)) {
 				Node opNode = consumeAndMakeNode();
 
-				Node me = multiplicativeExpression();
-				if (me != null) {
-					node.addChildren(pme, opNode, me);
+				Node multExpr = multiplicativeExpression();
+				if (multExpr != null) {
+					node.addChildren(opNode, multExpr);
 					return node;
 				}
-			} else {
-				node.addChildren(pme);
-				return node;
 			}
+			
+			restoreToken(sp);
+			return node;
 		}
 
-		restoreToken(sp);
 		return null;
 	}
 
 	Node additiveExpression() {
-		int sp = p;
-		Node node = new Node("AdditiveExpression");
+		Node multExpr = multiplicativeExpression();
 
-		Node pme = multiplicativeExpression();
-		if (pme != null) {
+		if (multExpr != null) {
+			Node node = new Node("AdditiveExpression");
+			node.addChildren(multExpr);
+			int sp = p;
 			if (isNextToken(TokenKind.PLUS) || isNextToken(TokenKind.MINUS)) {
 				Node opNode = consumeAndMakeNode();
 
-				Node ae = additiveExpression();
-				if (ae != null) {
-					node.addChildren(pme, opNode, ae);
+				Node addExpr = additiveExpression();
+				if (addExpr != null) {
+					node.addChildren(opNode, addExpr);
 					return node;
 				}
-			} else {
-				node.addChildren(pme);
-				return node;
 			}
+			
+			restoreToken(sp);
+			return node;
 		}
 
-		p = sp;
 		return null;
 	}
 
 	Node shiftExpression() {
-		int sp = p;
-		Node node = new Node("ShiftExpression");
-
 		Node additExpr = additiveExpression();
+
 		if (additExpr != null) {
-			int sp2 = p;
+			Node node = new Node("ShiftExpression");
+			node.addChildren(additExpr);
+			int sp = p;
 			if (isNextToken(TokenKind.SHIFT_LEFT) || isNextToken(TokenKind.SHIFT_RIGHT)) {
-				Node shiftNode = consumeAndMakeNode();
+				Node opNode = consumeAndMakeNode();
 
 				Node shiftExprNode = shiftExpression();
 				if (shiftExprNode != null) {
-					node.addChildren(additExpr, shiftNode, shiftExprNode);
+					node.addChildren(opNode, shiftExprNode);
 					return node;
 				}
 			}
-			p = sp2;
-			node.addChildren(additExpr);
+			
+			restoreToken(sp);
 			return node;
 		}
 
-		p = sp;
 		return null;
 	}
 

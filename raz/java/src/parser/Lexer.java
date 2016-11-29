@@ -344,14 +344,15 @@ public class Lexer {
 	private void scanAngleBracket() {
 		assert (isCurrChar('<') || isCurrChar('>'));
 		TokenKind shift = null, compar = null, shiftAssign = null, orEqual = null;
-
+		char ch = peekChar();
+		
 		if (isCurrChar('<')) {
-			shift = TokenKind.SHIFT_LEFT_ASSIGN;
+			shift = TokenKind.SHIFT_LEFT;
 			shiftAssign = TokenKind.SHIFT_LEFT_ASSIGN;
 			compar = TokenKind.LESS_THEN;
 			orEqual = TokenKind.LESS_EQ;
 		} else if (isCurrChar('>')) {
-			shift = TokenKind.SHIFT_RIGHT_ASSIGN;
+			shift = TokenKind.SHIFT_RIGHT;
 			shiftAssign = TokenKind.SHIFT_RIGHT_ASSIGN;
 			compar = TokenKind.GREATER_THEN;
 			orEqual = TokenKind.GREATER_EQ;
@@ -362,7 +363,7 @@ public class Lexer {
 		advance();
 
 		if (isBeforeEnd()) {
-			if (isCurrChar('<')) {
+			if (isCurrChar(ch)) {
 				advance();
 				if (isPosValidAndCharEquals('=')) {
 					advance();

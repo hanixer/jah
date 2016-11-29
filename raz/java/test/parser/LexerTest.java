@@ -128,6 +128,15 @@ public class LexerTest {
 		eod();
 		eof();
 	}
+	
+	@Test
+	public void testShiftOperations() {
+		input("<<");
+		op(TokenKind.SHIFT_LEFT);
+		
+		input(">>");
+		op(TokenKind.SHIFT_RIGHT);		
+	}
 
 	@Test
 	public void testCR() {
