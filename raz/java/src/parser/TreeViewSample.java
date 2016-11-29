@@ -43,16 +43,11 @@ public class TreeViewSample extends Application {
 	
 	@Override
 	public void start(Stage primaryStage) {
-		Parser p = new Parser("a+++ 2");
-		Parser.Node node = p.additiveExpression();
-
 		primaryStage.setTitle("Tree View Sample");
-
-		TreeItem<String> rootItem = createTreeItem(node);
 
 		Button btn = new Button("ERERE");
 
-		tree = new TreeView<>(rootItem);
+		tree = new TreeView<>(null);
 		textField = new TextField("1 + 2 * 3");
 		
 		updateTree();
@@ -79,7 +74,7 @@ public class TreeViewSample extends Application {
 
 	private void updateTree() {
 		Parser p = new Parser(textField.getText());
-		Parser.Node node = p.assignmentExpression();
+		Parser.Node node = p.relationalExpression();
 		tree.setRoot(createTreeItem(node));
 	}
 }

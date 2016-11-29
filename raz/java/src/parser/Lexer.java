@@ -1,4 +1,5 @@
 package parser;
+
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -35,7 +36,7 @@ public class Lexer {
 			getToken();
 			result.add(token);
 		} while (token.kind != TokenKind.EOF);
-		
+
 		return result;
 	}
 

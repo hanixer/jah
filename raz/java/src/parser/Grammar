@@ -54,8 +54,8 @@ postfix-expression:
 	postfix-expression -> templateopt id-expression
 	postfix-expression . pseudo-destructor-name
 	postfix-expression -> pseudo-destructor-name
-	postfix-expression ++
-	postfix-expression --
++-	postfix-expression ++
++-	postfix-expression --
 	dynamic_cast < type-id > ( expression )
 	static_cast < type-id > ( expression )
 	reinterpret_cast < type-id > ( expression )
