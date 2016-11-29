@@ -11,9 +11,10 @@ import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
-public class TreeViewSample extends Application {
+public class ParserVisualizer extends Application {
 	TreeView<String> tree;
 	TextField textField;
+	String initialExpression = "1*2*3";
 	
 	public static void main(String[] args) {
 		launch(args);
@@ -41,7 +42,7 @@ public class TreeViewSample extends Application {
 		primaryStage.setTitle("Tree View Sample");
 
 		tree = new TreeView<>(null);
-		textField = new TextField("5 >> 1 + 2 * 3");
+		textField = new TextField(initialExpression);
 		
 		updateTree();
 		
@@ -65,7 +66,7 @@ public class TreeViewSample extends Application {
 
 	private void updateTree() {
 		Parser p = new Parser(textField.getText());
-		Parser.Node node = p.shiftExpression();
+		Parser.Node node = p.multiplicativeExpression();
 		tree.setRoot(createTreeItem(node));
 	}
 }

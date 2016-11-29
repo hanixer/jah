@@ -5,6 +5,12 @@ import java.util.Arrays;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
+/**
+ * {@code Parser p = new Parser();}
+ * 
+ * @author Chiteredy Onfe
+ *
+ */
 public class Parser {
 	static class Node {
 		public ArrayList<Node> childs = new ArrayList<>();
@@ -46,11 +52,11 @@ public class Parser {
 		ArrayList<Token> ts = lexer.getTokens();
 		tokens = new Token[ts.size()];
 		tokens = ts.toArray(tokens);
-		
+
 		if (tokens.length > 0)
 			tok = tokens[0];
-		else 
-			tok = new Token(TokenKind.EOF);		
+		else
+			tok = new Token(TokenKind.EOF);
 	}
 
 	Node expression() {
@@ -59,7 +65,7 @@ public class Parser {
 
 	Node primaryExpression() {
 		int sp = p;
-		
+
 		if (tok.isLiteral() || tok.is(TokenKind.IDENTIFIER)) {
 			Token tok = consume();
 			return makeNode(tok);
@@ -86,14 +92,14 @@ public class Parser {
 		Node node = new Node("PostfixExpressionPart");
 		if (tok.is(TokenKind.PLUS_PLUS) || tok.is(TokenKind.MINUS_MINUS)) {
 			Node opNode = consumeAndMakeNode();
-			
+
 			Node postfixExprPart = postfixExpressionPart();
-			
-			if (postfixExprPart != null) 
+
+			if (postfixExprPart != null)
 				node.addChildren(opNode, postfixExprPart);
-			else 
+			else
 				node.addChildren(opNode);
-			
+
 			return node;
 		}
 
@@ -172,27 +178,23 @@ public class Parser {
 	}
 
 	Node multiplicativeExpression() {
-		Node pmExpr = pmExpression();
-
-		if (pmExpr != null) {
-			Node node = new Node("MultiplicativeExpression");
-			node.addChildren(pmExpr);
-			
-			int sp = p;
-			if (isNextToken(TokenKind.STAR) || isNextToken(TokenKind.SLASH) || isNextToken(TokenKind.PERCENT)) {
-				Node opNode = consumeAndMakeNode();
-
-				Node multExpr = multiplicativeExpression();
-				if (multExpr != null) {
-					node.addChildren(opNode, multExpr);
-					return node;
-				}
-			}
-			
-			restoreToken(sp);
+		Node pmExpr1 = pmExpression();
+		if (pmExpr1 == null)
+			return null;
+		
+		if (tok.isNot(TokenKind.STAR)) {
+			Node node = new Node("MultiplicativeExpression", pmExpr1);
 			return node;
 		}
-
+			
+		int savedPos = p;
+		Node opNode = consumeAndMakeNode();
+		Node pmExpr2 = pmExpression();
+		if (pmExpr2 == null) {
+			restoreToken(savedPos);
+			return new Node("MultiplicativeExpression", pmExpr1);
+		}
+		
 		return null;
 	}
 
@@ -212,7 +214,7 @@ public class Parser {
 					return node;
 				}
 			}
-			
+
 			restoreToken(sp);
 			return node;
 		}
@@ -236,7 +238,7 @@ public class Parser {
 					return node;
 				}
 			}
-			
+
 			restoreToken(sp);
 			return node;
 		}
@@ -245,24 +247,27 @@ public class Parser {
 	}
 
 	Node relationalExpression() {
-		int sp = p;
-		Node node = new Node("RelationalExpression");
+		Node shiftExpr = shiftExpression();
 
-		Node shiftExprNode = shiftExpression();
-		if (shiftExprNode != null) {
+		if (shiftExpr != null) {
+			Node node = new Node("RelationalExpression");
+			node.addChildren(shiftExpr);
+			int sp = p;
 			if (isNextToken(TokenKind.LESS_THEN) || isNextToken(TokenKind.GREATER_THEN)
 					|| isNextToken(TokenKind.LESS_EQ) || isNextToken(TokenKind.GREATER_EQ)) {
-				Node relopNode = consumeAndMakeNode();
+				Node opNode = consumeAndMakeNode();
 
 				Node relExprNode = relationalExpression();
 				if (relExprNode != null) {
-					node.addChildren(shiftExprNode, relopNode, relExprNode);
+					node.addChildren(opNode, relExprNode);
 					return node;
 				}
 			}
+
+			restoreToken(sp);
+			return node;
 		}
 
-		p = sp;
 		return null;
 	}
 
@@ -458,7 +463,6 @@ public class Parser {
 		}
 		return false;
 	}
-
 
 	private Node consumeAndMakeNode() {
 		Token opTok = consume();

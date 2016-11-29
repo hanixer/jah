@@ -30,7 +30,7 @@ public class Token {
 
 		if (kind == TokenKind.IDENTIFIER) {
 			if (TokenKind.SIZEOF.value.compareTo(text) == 0) {
-				kind = TokenKind.SIZEOF;
+				this.kind = TokenKind.SIZEOF;
 			}
 		}
 	}
