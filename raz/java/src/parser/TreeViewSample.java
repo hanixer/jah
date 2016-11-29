@@ -3,17 +3,12 @@ package parser;
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
-import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
 public class TreeViewSample extends Application {
@@ -45,8 +40,6 @@ public class TreeViewSample extends Application {
 	public void start(Stage primaryStage) {
 		primaryStage.setTitle("Tree View Sample");
 
-		Button btn = new Button("ERERE");
-
 		tree = new TreeView<>(null);
 		textField = new TextField("1 + 2 * 3");
 		
@@ -62,8 +55,6 @@ public class TreeViewSample extends Application {
 			
 			@Override
 			public void handle(ActionEvent event) {
-				// TODO Auto-generated method stub
-				String s = textField.getText();
 				updateTree();
 			}
 		});
@@ -74,7 +65,7 @@ public class TreeViewSample extends Application {
 
 	private void updateTree() {
 		Parser p = new Parser(textField.getText());
-		Parser.Node node = p.relationalExpression();
+		Parser.Node node = p.postfixExpression();
 		tree.setRoot(createTreeItem(node));
 	}
 }

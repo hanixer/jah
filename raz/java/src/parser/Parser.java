@@ -37,6 +37,7 @@ public class Parser {
 
 	Lexer lexer;
 	Token[] tokens;
+	Token tok;
 	int p;
 	Context context = new Context();
 
@@ -45,6 +46,11 @@ public class Parser {
 		ArrayList<Token> ts = lexer.getTokens();
 		tokens = new Token[ts.size()];
 		tokens = ts.toArray(tokens);
+		
+		if (tokens.length > 0)
+			tok = tokens[0];
+		else 
+			tok = new Token(TokenKind.EOF);		
 	}
 
 	Node expression() {
@@ -53,11 +59,10 @@ public class Parser {
 
 	Node primaryExpression() {
 		int sp = p;
-		if (p < tokens.length) {
-			if (tokens[p].isLiteral() || isNextToken(TokenKind.IDENTIFIER)) {
-				Token tok = advance();
-				return makeNode(tok);
-			}
+		
+		if (tok.isLiteral() || tok.is(TokenKind.IDENTIFIER)) {
+			Token tok = consume();
+			return makeNode(tok);
 		}
 
 		p = sp;
@@ -65,28 +70,33 @@ public class Parser {
 	}
 
 	Node postfixExpression() {
-		int sp = p;
-		Node pe = primaryExpression();
-		if (pe != null) {
-			Node pep = postfixExpressionPart();
-			if (pep != null)
-				return new Node("PostfixExpression", pe, pep);
+		Node primExpr = primaryExpression();
+		if (primExpr != null) {
+			Node postfixExpr = postfixExpressionPart();
+			if (postfixExpr != null)
+				return new Node("PostfixExpression", primExpr, postfixExpr);
 			else
-				return new Node("PostfixExpression", pe);
+				return new Node("PostfixExpression", primExpr);
 		}
 
-		p = sp;
 		return null;
 	}
 
 	Node postfixExpressionPart() {
-		int sp = p;
-		if (isNextToken(TokenKind.PLUS_PLUS) || isNextToken(TokenKind.MINUS_MINUS)) {
-			Token tok = advance();
-			return makeNode(tok);
+		Node node = new Node("PostfixExpressionPart");
+		if (tok.is(TokenKind.PLUS_PLUS) || tok.is(TokenKind.MINUS_MINUS)) {
+			Node opNode = consumeAndMakeNode();
+			
+			Node postfixExprPart = postfixExpressionPart();
+			
+			if (postfixExprPart != null) 
+				node.addChildren(opNode, postfixExprPart);
+			else 
+				node.addChildren(opNode);
+			
+			return node;
 		}
 
-		p = sp;
 		return null;
 	}
 
@@ -101,53 +111,45 @@ public class Parser {
 		}
 
 		p = sp;
-		if (isNextToken(TokenKind.PLUS_PLUS) || isNextToken(TokenKind.MINUS_MINUS)) {
-			Token tok = advance();
-			Node incDecr = new Node(tok);
-			Node ce = castExpression();
-			if (ce != null) {
-				node.addChildren(incDecr, ce);
+		if (tok.is(TokenKind.PLUS_PLUS) || tok.is(TokenKind.MINUS_MINUS)) {
+			Node incDecr = consumeAndMakeNode();
+			Node castExpr = castExpression();
+			if (castExpr != null) {
+				node.addChildren(incDecr, castExpr);
 				return node;
 			}
 		}
 
-		p = sp;
-		if (p < tokens.length && tokens[p].isUnaryOperator()) {
-			Token tok = advance();
-			Node unarOper = new Node(tok);
-			Node ce = castExpression();
-			if (ce != null) {
-				node.addChildren(unarOper, ce);
+		restoreToken(sp);
+		if (tok.isUnaryOperator()) {
+			Node unarOper = consumeAndMakeNode();
+			Node castExpr = castExpression();
+			if (castExpr != null) {
+				node.addChildren(unarOper, castExpr);
 				return node;
 			}
 		}
 
-		p = sp;
+		restoreToken(sp);
 		if (isNextToken(TokenKind.SIZEOF)) {
-			Token sizeof = advance();
-			Node sizeofNode = new Node(sizeof);
-			int psizeof = p;
-			Node ue = unaryExpression();
-			if (ue != null) {
-				node.addChildren(sizeofNode, ue);
+			Node sizeofNode = consumeAndMakeNode();
+			Node unaryExpr = unaryExpression();
+			if (unaryExpr != null) {
+				node.addChildren(sizeofNode, unaryExpr);
 				return node;
 			}
 
 			if (isNextToken(TokenKind.ELIPSIS)) {
-				Token elipseTok = advance();
-				Node elipseNode = new Node(elipseTok);
+				Node elipseNode = consumeAndMakeNode();
 
 				if (isNextToken(TokenKind.L_PAREN)) {
-					Token lparenTok = advance();
-					Node lparenNode = new Node(lparenTok);
+					Node lparenNode = consumeAndMakeNode();
 
 					if (isNextToken(TokenKind.IDENTIFIER)) {
-						Token identTok = advance();
-						Node identNode = new Node(identTok);
+						Node identNode = consumeAndMakeNode();
 
 						if (isNextToken(TokenKind.R_PAREN)) {
-							Token rparenTok = advance();
-							Node rparenNode = new Node(rparenTok);
+							Node rparenNode = consumeAndMakeNode();
 
 							node.addChildren(elipseNode, lparenNode, identNode, rparenNode);
 							return node;
@@ -157,7 +159,7 @@ public class Parser {
 			}
 		}
 
-		p = sp;
+		restoreToken(sp);
 		return null;
 	}
 
@@ -176,8 +178,7 @@ public class Parser {
 		Node pme = pmExpression();
 		if (pme != null) {
 			if (isNextToken(TokenKind.STAR) || isNextToken(TokenKind.SLASH) || isNextToken(TokenKind.PERCENT)) {
-				Token opTok = advance();
-				Node opNode = new Node(opTok);
+				Node opNode = consumeAndMakeNode();
 
 				Node me = multiplicativeExpression();
 				if (me != null) {
@@ -190,7 +191,7 @@ public class Parser {
 			}
 		}
 
-		p = sp;
+		restoreToken(sp);
 		return null;
 	}
 
@@ -201,8 +202,7 @@ public class Parser {
 		Node pme = multiplicativeExpression();
 		if (pme != null) {
 			if (isNextToken(TokenKind.PLUS) || isNextToken(TokenKind.MINUS)) {
-				Token opTok = advance();
-				Node opNode = new Node(opTok);
+				Node opNode = consumeAndMakeNode();
 
 				Node ae = additiveExpression();
 				if (ae != null) {
@@ -227,8 +227,7 @@ public class Parser {
 		if (additExpr != null) {
 			int sp2 = p;
 			if (isNextToken(TokenKind.SHIFT_LEFT) || isNextToken(TokenKind.SHIFT_RIGHT)) {
-				Token shiftTok = advance();
-				Node shiftNode = new Node(shiftTok);
+				Node shiftNode = consumeAndMakeNode();
 
 				Node shiftExprNode = shiftExpression();
 				if (shiftExprNode != null) {
@@ -253,8 +252,7 @@ public class Parser {
 		if (shiftExprNode != null) {
 			if (isNextToken(TokenKind.LESS_THEN) || isNextToken(TokenKind.GREATER_THEN)
 					|| isNextToken(TokenKind.LESS_EQ) || isNextToken(TokenKind.GREATER_EQ)) {
-				Token relopTok = advance();
-				Node relopNode = new Node(relopTok);
+				Node relopNode = consumeAndMakeNode();
 
 				Node relExprNode = relationalExpression();
 				if (relExprNode != null) {
@@ -275,8 +273,7 @@ public class Parser {
 		Node relExprNode = relationalExpression();
 		if (relExprNode != null) {
 			if (isNextToken(TokenKind.EQUAL) || isNextToken(TokenKind.NOT_EQUAL)) {
-				Token eqTok = advance();
-				Node eqNode = new Node(eqTok);
+				Node eqNode = consumeAndMakeNode();
 
 				Node eqExpr = equalityExpression();
 				if (eqExpr != null) {
@@ -297,8 +294,7 @@ public class Parser {
 		Node eqExpr = equalityExpression();
 		if (eqExpr != null) {
 			if (isNextToken(TokenKind.AMPERSAND)) {
-				Token andTok = advance();
-				Node andNode = new Node(andTok);
+				Node andNode = consumeAndMakeNode();
 
 				Node andExpr = andExpression();
 				if (andExpr != null) {
@@ -319,8 +315,7 @@ public class Parser {
 		Node andExpr = andExpression();
 		if (andExpr != null) {
 			if (isNextToken(TokenKind.AMPERSAND)) {
-				Token xorTok = advance();
-				Node xorNode = new Node(xorTok);
+				Node xorNode = consumeAndMakeNode();
 
 				Node xorExpr = xorExpression();
 				if (xorExpr != null) {
@@ -341,8 +336,7 @@ public class Parser {
 		Node xorExpr = xorExpression();
 		if (xorExpr != null) {
 			if (isNextToken(TokenKind.AMPERSAND)) {
-				Token iorTok = advance();
-				Node iorNode = new Node(iorTok);
+				Node iorNode = consumeAndMakeNode();
 
 				Node iorExpr = iorExpression();
 				if (iorExpr != null) {
@@ -363,8 +357,7 @@ public class Parser {
 		Node iorExpr = iorExpression();
 		if (iorExpr != null) {
 			if (isNextToken(TokenKind.AMPERSAND)) {
-				Token logandTok = advance();
-				Node logandNode = new Node(logandTok);
+				Node logandNode = consumeAndMakeNode();
 
 				Node logandExpr = logandExpression();
 				if (logandExpr != null) {
@@ -385,8 +378,7 @@ public class Parser {
 		Node logandExpr = logandExpression();
 		if (logandExpr != null) {
 			if (isNextToken(TokenKind.AMPERSAND)) {
-				Token logorTok = advance();
-				Node logorNode = new Node(logorTok);
+				Node logorNode = consumeAndMakeNode();
 
 				Node logorExpr = logorExpression();
 				if (logorExpr != null) {
@@ -407,8 +399,7 @@ public class Parser {
 		Node logorExpr = logorExpression();
 		if (logorExpr != null) {
 			if (isNextToken(TokenKind.QUESTION)) {
-				Token qTok = advance();
-				Node qNode = new Node(qTok);
+				Node qNode = consumeAndMakeNode();
 
 			} else {
 				node.addChildren(logorExpr);
@@ -433,8 +424,7 @@ public class Parser {
 		Node logorExpr = logorExpression();
 		if (logorExpr != null) {
 			if (p < tokens.length && tokens[p].isAssignmentOperator()) {
-				Token asgnTok = advance();
-				Node asgnNode = new Node(asgnTok);
+				Node asgnNode = consumeAndMakeNode();
 
 				Node asgnExpr = assignmentExpression();
 				if (asgnExpr != null) {
@@ -453,10 +443,13 @@ public class Parser {
 		return n;
 	}
 
-	private Token advance() {
-		Token t = tokens[p];
-		p++;
-		return t;
+	private Token consume() {
+		Token prevTok = tok;
+		if (tok.isNot(TokenKind.EOF)) {
+			p++;
+			tok = tokens[p];
+		}
+		return prevTok;
 	}
 
 	private boolean isNextToken(TokenKind kind) {
@@ -466,4 +459,15 @@ public class Parser {
 		return false;
 	}
 
+
+	private Node consumeAndMakeNode() {
+		Token opTok = consume();
+		Node opNode = new Node(opTok);
+		return opNode;
+	}
+
+	private void restoreToken(int savedPosition) {
+		p = savedPosition;
+		tok = tokens[p];
+	}
 }
