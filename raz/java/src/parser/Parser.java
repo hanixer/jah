@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Dictionary;
 import java.util.Hashtable;
+import java.util.Stack;
 
 /**
  * {@code Parser p = new Parser();}
@@ -177,6 +178,42 @@ public class Parser {
 	return castExpression();
     }
 
+    Node binaryOpExpression() {
+	Node node = null;
+	Stack<Node> operands = new Stack<>();
+	Stack<Token> operators = new Stack<>();
+	while (true) {
+	    Node operand = pmExpression();
+	    if (operand == null)
+		return null;
+
+	    if (!tok.isBinaryOperator()) {
+		node.addChildren(operand);
+		return node;
+	    }
+
+	    if (operators.isEmpty()) {
+		operators.push(tok);
+		consume();
+	    } else {
+		if (operators.peek().opPrecedence() < tok.opPrecedence()) {
+		    operators.push(tok);
+		    consume();
+		} else if (operands.size() >= 2) {
+		    Node op2 = operands.pop();
+		    Node op1 = operands.pop();
+		    Node prevOp = new Node(operators.pop());
+		    Node newNode = new Node("BinaryOpExpression", op1, prevOp, op2);
+		    operands.push(newNode);
+		    operators.push(tok);
+		    consume();		    
+		}
+	    }
+	}
+
+	return null;
+    }
+
     Node multiplicativeExpression() {
 	Node pmExpr1 = pmExpression();
 	if (pmExpr1 == null)
@@ -194,7 +231,7 @@ public class Parser {
 	    restoreToken(savedPos);
 	    return new Node("MultiplicativeExpression", pmExpr1);
 	}
-	
+
 	Node node = pmExpr1;
 	while (true) {
 	    node = new Node("MultiplicativeExpression", node, opNode, pmExpr2);
@@ -434,10 +471,10 @@ public class Parser {
 	Node primExpr = primaryExpression();
 	if (primExpr == null)
 	    return null;
-	
+
 	if (tok.isNot(TokenKind.ASSIGN))
 	    return new Node("AssignmentExpression", primExpr);
-	
+
 	int savedPos = p;
 	Node opNode = consumeAndMakeNode();
 	Node asgnExpr = assignmentExpression();
@@ -445,9 +482,9 @@ public class Parser {
 	    restoreToken(savedPos);
 	    return new Node("AssignmentExpression", primExpr);
 	}
-	
+
 	return new Node("AssignmentExpression", primExpr, opNode, asgnExpr);
-	
+
     }
 
     private Node makeNode(Token tok) {

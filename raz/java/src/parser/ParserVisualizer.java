@@ -66,7 +66,7 @@ public class ParserVisualizer extends Application {
 
 	private void updateTree() {
 		Parser p = new Parser(textField.getText());
-		Parser.Node node = p.assignmentExpression();
+		Parser.Node node = p.multiplicativeExpression();
 		tree.setRoot(createTreeItem(node));
 	}
 }
