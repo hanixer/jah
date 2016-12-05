@@ -87,6 +87,25 @@ public:
    double value;
 };
 
+class VariableExprAst : public ExprAst
+{
+public:
+    VariableExprAst(std::string s) : name(s) {}
+    std::string name;
+};
+
+class BinaryExprAst : public ExprAst
+{
+public:
+    BinaryExprAst(char op, ExprAstPtr lhs, ExprAstPtr rhs)
+        : op(op), lhs(std::move(lhs)), rhs(std::move(rhs))
+    {}
+
+    char op;
+    ExprAstPtr lhs;
+    ExprAstPtr rhs;
+};
+
 ExprAstPtr parseNumExpr()
 {
    if (getTok() == TOK_NUMBER)
