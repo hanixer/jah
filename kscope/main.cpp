@@ -238,7 +238,10 @@ int main()
       tok = getTok();
       std::cout << tok  << '\t' << stringVal << '\t' << doubleVal << '\n';
 
-   } while(tok != TOK_EOF);
+   }
+   while(tok != TOK_EOF);
+
+
 
    return 0;
 }
