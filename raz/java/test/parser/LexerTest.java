@@ -135,7 +135,15 @@ public class LexerTest {
 		op(TokenKind.SHIFT_LEFT);
 		
 		input(">>");
-		op(TokenKind.SHIFT_RIGHT);		
+		op(TokenKind.SHIFT_RIGHT);
+		
+		input("1<<2*3");
+		number("1");
+		op(TokenKind.SHIFT_LEFT);
+		number("2");
+		op(TokenKind.STAR);
+		number("3");
+		eof();
 	}
 
 	@Test

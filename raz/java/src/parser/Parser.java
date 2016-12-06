@@ -177,6 +177,42 @@ public class Parser {
     Node pmExpression() {
 	return castExpression();
     }
+    
+    Node parseBinaryExpression() {
+	if (tok.is(TokenKind.NUMBER)) {
+	    Node lhs = consumeAndMakeNode();
+	    return parseBinaryExpressionRhs(lhs, false);
+	}
+	
+	return null;
+    }
+    
+    Node parseBinaryExpressionRhs(Node lhs, boolean recurse) {
+	
+	while (tok.isBinaryOperator()) {
+	    int prevPreced = tok.opPrecedence();
+	    Node op = consumeAndMakeNode();
+	    if (tok.is(TokenKind.NUMBER)) {
+		Node rhs = consumeAndMakeNode();
+		if (tok.isBinaryOperator()) {
+		    if (prevPreced < tok.opPrecedence()) {
+			rhs = parseBinaryExpressionRhs(rhs, true);
+			lhs = new Node("BinOp", lhs, op, rhs);
+		    } else {
+			lhs = new Node("BinOp", lhs, op, rhs);
+			if (recurse)
+			    return lhs;
+		    }
+		} else {
+		    return new Node("BinOp", lhs, op, rhs);
+		}
+	    } else
+		return null;
+	    
+	}
+	
+	return lhs;	
+    }
 
     Node binaryOpExpression() {
 	Node node = null;
@@ -210,8 +246,6 @@ public class Parser {
 		}
 	    }
 	}
-
-	return null;
     }
 
     Node multiplicativeExpression() {

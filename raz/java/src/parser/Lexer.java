@@ -366,10 +366,9 @@ public class Lexer {
 			if (isCurrChar(ch)) {
 				advance();
 				if (isPosValidAndCharEquals('=')) {
-					advance();
 					makeTokenAndAdvance(shiftAssign);
 				} else
-					makeTokenAndAdvance(shift);
+					makeToken(shift);
 			} else if (isCurrChar('='))
 				makeTokenAndAdvance(orEqual);
 		}
