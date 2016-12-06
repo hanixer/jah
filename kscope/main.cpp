@@ -3,6 +3,28 @@
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
+#include <vector>
+
+/// numberexpr ::= number
+/// parenexpr ::= '(' expression ')'
+/// identifierexpr
+///   ::= identifier
+///   ::= identifier '(' expression* ')'
+/// primary
+///   ::= identifierexpr
+///   ::= numberexpr
+///   ::= parenexpr
+/// binoprhs
+///   ::= ('+' primary)*
+/// expression
+///   ::= primary binoprhs
+/// prototype
+///   ::= id '(' id* ')'
+/// definition ::= 'def' prototype expression
+/// toplevelexpr ::= expression
+
+/// external ::= 'extern' prototype
+/// top ::= definition | external | expression | ';'
 
 enum Token {
   TOK_EOF = -1,
@@ -72,6 +94,17 @@ int getTok()
    return ch;
 }
 
+//-------------------------------------------------------
+// Parsing
+//-------------------------------------------------------
+
+static int curTok;
+
+int consumeTok()
+{
+   return curTok = getTok();
+}
+
 class ExprAst
 {
 public:
@@ -106,12 +139,94 @@ public:
     ExprAstPtr rhs;
 };
 
+class CallExprAst : public ExprAst
+{
+public:
+   std::string name;
+   std::vector<ExprAstPtr> args;
+   CallExprAst(std::string s, std::vector<ExprAstPtr> a)
+      : name(s), args(std::move(a))
+   {
+   }
+};
+
+
+
+ExprAstPtr logError(const char* str)
+{
+   fprintf(stderr, str);
+   return nullptr;
+}
+
+ExprAstPtr parseExpr();
+
 ExprAstPtr parseNumExpr()
 {
    if (getTok() == TOK_NUMBER)
       return std::make_unique<NumExpr>(doubleVal);
    else
       return nullptr;
+}
+
+ExprAstPtr parseParenExpr()
+{
+   consumeTok();
+   ExprAstPtr expr = parseExpr();
+   if (!expr)
+      return nullptr;
+
+   if (curTok != ')')
+      return logError("Expected ')'");
+
+   consumeTok();
+
+   return expr;
+}
+
+ExprAstPtr parseIdentifierExpr()
+{
+   if (curTok == TOK_IDENTIFIER)
+   {
+      std::string savedStr = stringVal;
+      consumeTok();
+      if (curTok == '(')
+      {
+         std::vector<ExprAstPtr> args;
+         ExprAstPtr expr;
+         while (true)
+         {
+            expr = parseExpr();
+            if (expr)
+               args.push_back(std::move(expr));
+            else
+               break;
+         }
+
+         if (currTok == ')')
+            return std::make_unique<CallExprAst>(savedStr, args);
+         else
+            return logError("Expected ')'");
+      }
+      else
+         return std::make_unique<VariableExprAst>(savedStr);
+   }
+
+   return nullptr;
+}
+
+ExprAstPtr parsePrimaryExpr()
+{
+   switch (curTok)
+   {
+   case TOK_IDENTIFIER:
+      return parseIdentifierExpr();
+   case TOK_NUMBER:
+      return parseNumExpr();
+   case '(':
+      return parseParenExpr();
+   default:
+      return nullptr;
+   }
 }
 
 
