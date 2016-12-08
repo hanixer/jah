@@ -18,7 +18,7 @@ public abstract class Scanner {
     }
 
     public Token nextToken() throws Exception {
-	extractToken();
+	currentToken = extractToken();
 	return currentToken;
     }
     

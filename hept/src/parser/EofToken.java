@@ -2,7 +2,7 @@ package parser;
 
 public class EofToken extends Token {
 
-    public EofToken(Source source) {
+    public EofToken(Source source) throws Exception {
 	super(source);
     }
 

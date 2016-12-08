@@ -8,8 +8,10 @@ public class Token {
     private int lineNum;
     private int position;
     
-    public Token(Source source) {
+    public Token(Source source) throws Exception {
 	this.source = source;
+	
+	extract();
     }
     
     public void extract() throws Exception {
