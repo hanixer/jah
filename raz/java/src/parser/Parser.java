@@ -1,12 +1,6 @@
 package parser;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Dictionary;
-import java.util.Hashtable;
-import java.util.Stack;
-
-import static parser.TokenKind.*;
 
 /**
  * {@code Parser p = new Parser();}
@@ -166,9 +160,8 @@ public class Parser {
 		while (tok.isBinaryOperator()) {
 			int prevPreced = tok.opPrecedence();
 			SyntaxNode op = consumeAndMakeNode();
-			SyntaxNode primaryExpr = primaryExpression();
-			if (primaryExpr != null) {
-				SyntaxNode rhs = consumeAndMakeNode();
+			SyntaxNode rhs = primaryExpression();
+			if (rhs != null) {
 				if (tok.isBinaryOperator()) {
 					if (prevPreced < tok.opPrecedence()) {
 						rhs = parseBinaryExpressionRhs(rhs, true);
@@ -196,7 +189,8 @@ public class Parser {
 		SyntaxNode binExpr = binaryExpression();
 		if (binExpr != null) {
 			if (isNextToken(TokenKind.QUESTION)) {
-				SyntaxNode qNode = consumeAndMakeNode();
+				consume();
+				
 				SyntaxNode left = assignmentExpression(); // TODO: change to expression
 				if (left == null)
 					return null;
@@ -223,40 +217,25 @@ public class Parser {
 
 	SyntaxNode assignmentExpression() {
 		int sp = p;
+		
+		SyntaxNode binLhs = binaryExpression();
+		if (binLhs != null) {
+			if (tok.kind.name().contains("ASSIGN")) {
+				SyntaxNode op = consumeAndMakeNode();
+				SyntaxNode asgRhs = assignmentExpression();
+				if (asgRhs != null) {
+					return new SyntaxNode(NodeType.ASSIGNMENT_EXPR, binLhs, op, asgRhs);
+				}
+			}
+		}
+		
+		
+		restoreToken(sp);
 		SyntaxNode condExpr = conditionalExpression();
 		if (condExpr != null)
 			return condExpr;
 		
-		restoreToken(sp);
-		SyntaxNode binLhs = binaryExpression();
-		if (binLhs == null) {
-			return null;
-		}
-		
-		if (!tok.kind.name().contains("ASSIGN")) {
-			restoreToken(sp);
-			return null;
-		}
-		
-		
-		
-		SyntaxNode primExpr = primaryExpression();
-		if (primExpr == null)
-			return null;
-
-		if (tok.isNot(TokenKind.ASSIGN))
-			return new SyntaxNode("AssignmentExpression", primExpr);
-
-		int savedPos = p;
-		SyntaxNode opNode = consumeAndMakeNode();
-		SyntaxNode asgnExpr = assignmentExpression();
-		if (asgnExpr == null) {
-			restoreToken(savedPos);
-			return new SyntaxNode("AssignmentExpression", primExpr);
-		}
-
-		return new SyntaxNode("AssignmentExpression", primExpr, opNode, asgnExpr);
-
+		return null;
 	}
 
 	private Token consume() {

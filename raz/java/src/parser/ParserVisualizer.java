@@ -14,7 +14,7 @@ import javafx.stage.Stage;
 public class ParserVisualizer extends Application {
 	TreeView<String> tree;
 	TextField textField;
-	String initialExpression = "1?2:3";
+	String initialExpression = "1+2*3";
 
 	public static void main(String[] args) {
 		launch(args);
@@ -69,7 +69,7 @@ public class ParserVisualizer extends Application {
 
 	private void updateTree() {
 		Parser p = new Parser(textField.getText());
-		SyntaxNode node = p.conditionalExpression();
+		SyntaxNode node = p.assignmentExpression();
 		tree.setRoot(createTreeItem(node));
 	}
 }

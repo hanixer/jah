@@ -141,6 +141,7 @@ x	logical-or-expression || logical-and-expression
 conditional-expression:
 x	logical-or-expression
 	logical-or-expression ? expression : assignment-expression
+	logical-or-expression ? assignment-expression : assignment-expression
 	
 assignment-expression:
 	conditional-expression
