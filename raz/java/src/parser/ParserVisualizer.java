@@ -14,23 +14,23 @@ import javafx.stage.Stage;
 public class ParserVisualizer extends Application {
 	TreeView<String> tree;
 	TextField textField;
-	String initialExpression = "1<<2*3+3 > 555";
+	String initialExpression = "1?2:3";
 
 	public static void main(String[] args) {
 		launch(args);
 	}
 
-	TreeItem<String> createTreeItem(Parser.Node n) {
+	TreeItem<String> createTreeItem(SyntaxNode n) {
 		if (n == null)
 			return null;
-
-		TreeItem<String> ti = new TreeItem<>(n.tag);
+		NodeType type = n.type;
+		TreeItem<String> ti = new TreeItem<>(n.toString());
 
 		if (n.token != null) {
 			ti = new TreeItem<>(n.token.toString());
 		} else {
 
-			for (Parser.Node child : n.childs) {
+			for (SyntaxNode child : n.childs) {
 				TreeItem<String> tiChild = createTreeItem(child);
 				ti.getChildren().add(tiChild);
 			}
@@ -69,7 +69,7 @@ public class ParserVisualizer extends Application {
 
 	private void updateTree() {
 		Parser p = new Parser(textField.getText());
-		Parser.Node node = p.parseBinaryExpression();
+		SyntaxNode node = p.conditionalExpression();
 		tree.setRoot(createTreeItem(node));
 	}
 }

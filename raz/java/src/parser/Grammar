@@ -145,6 +145,7 @@ x	logical-or-expression
 assignment-expression:
 	conditional-expression
 	logical-or-expression assignment-operator initializer-clause
+	logical-or-expression assignment-operator assignment-expression
 	throw-expression
 assignment-operator: one of
 	= *= /= %= += -= >>= <<= &= ˆ= |=
