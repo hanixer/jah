@@ -1,4 +1,5 @@
 package parser;
+
 import static org.junit.Assert.*;
 
 import java.util.Arrays;
@@ -128,15 +129,15 @@ public class LexerTest {
 		eod();
 		eof();
 	}
-	
+
 	@Test
 	public void testShiftOperations() {
 		input("<<");
 		op(TokenKind.SHIFT_LEFT);
-		
+
 		input(">>");
 		op(TokenKind.SHIFT_RIGHT);
-		
+
 		input("1<<2*3");
 		number("1");
 		op(TokenKind.SHIFT_LEFT);
