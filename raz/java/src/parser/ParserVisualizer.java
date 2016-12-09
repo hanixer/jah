@@ -12,64 +12,64 @@ import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
 public class ParserVisualizer extends Application {
-	TreeView<String> tree;
-	TextField textField;
-	String initialExpression = "1+2*3";
+    TreeView<String> tree;
+    TextField textField;
+    String initialExpression = "1+2*3";
 
-	public static void main(String[] args) {
-		launch(args);
+    public static void main(String[] args) {
+	launch(args);
+    }
+
+    TreeItem<String> createTreeItem(SyntaxNode n) {
+	if (n == null)
+	    return null;
+	NodeType type = n.type;
+	TreeItem<String> ti = new TreeItem<>(n.toString());
+
+	if (n.token != null) {
+	    ti = new TreeItem<>(n.token.toString());
+	} else {
+
+	    for (SyntaxNode child : n.childs) {
+		TreeItem<String> tiChild = createTreeItem(child);
+		ti.getChildren().add(tiChild);
+	    }
+	    ti.setExpanded(true);
 	}
 
-	TreeItem<String> createTreeItem(SyntaxNode n) {
-		if (n == null)
-			return null;
-		NodeType type = n.type;
-		TreeItem<String> ti = new TreeItem<>(n.toString());
+	return ti;
+    }
 
-		if (n.token != null) {
-			ti = new TreeItem<>(n.token.toString());
-		} else {
+    @Override
+    public void start(Stage primaryStage) {
+	primaryStage.setTitle("Tree View Sample");
 
-			for (SyntaxNode child : n.childs) {
-				TreeItem<String> tiChild = createTreeItem(child);
-				ti.getChildren().add(tiChild);
-			}
-			ti.setExpanded(true);
-		}
+	tree = new TreeView<>(null);
+	textField = new TextField(initialExpression);
 
-		return ti;
-	}
+	updateTree();
 
-	@Override
-	public void start(Stage primaryStage) {
-		primaryStage.setTitle("Tree View Sample");
+	Button button = new Button("Refresh");
+	BorderPane root = new BorderPane();
+	root.setCenter(tree);
+	root.setTop(textField);
+	root.setLeft(button);
 
-		tree = new TreeView<>(null);
-		textField = new TextField(initialExpression);
+	button.setOnAction(new EventHandler<ActionEvent>() {
 
+	    @Override
+	    public void handle(ActionEvent event) {
 		updateTree();
+	    }
+	});
 
-		Button button = new Button("Refresh");
-		BorderPane root = new BorderPane();
-		root.setCenter(tree);
-		root.setTop(textField);
-		root.setLeft(button);
+	primaryStage.setScene(new Scene(root, 1500, 850));
+	primaryStage.show();
+    }
 
-		button.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent event) {
-				updateTree();
-			}
-		});
-
-		primaryStage.setScene(new Scene(root, 1500, 850));
-		primaryStage.show();
-	}
-
-	private void updateTree() {
-		Parser p = new Parser(textField.getText());
-		SyntaxNode node = p.assignmentExpression();
-		tree.setRoot(createTreeItem(node));
-	}
+    private void updateTree() {
+	Parser p = new Parser(textField.getText());
+	SyntaxNode node = p.assignmentExpression();
+	tree.setRoot(createTreeItem(node));
+    }
 }

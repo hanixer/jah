@@ -14,105 +14,105 @@ import message.Message;
 import message.MessageListener;
 
 public class SmallCpp {
-	private Parser parser;
-	private Source source;
-	private ICode iCode;
-	private SymTab symTab;
-	private Backend backend;
+    private Parser parser;
+    private Source source;
+    private ICode iCode;
+    private SymTab symTab;
+    private Backend backend;
 
-	public SmallCpp(String operation, String filePath, String flags) {
-		try {
-			boolean intermediate = flags.indexOf('i') > -1;
-			boolean xref = flags.indexOf('x') > -1;
+    public SmallCpp(String operation, String filePath, String flags) {
+	try {
+	    boolean intermediate = flags.indexOf('i') > -1;
+	    boolean xref = flags.indexOf('x') > -1;
 
-			source = new Source(new BufferedReader(new FileReader(filePath)));
-			source.addMessageListener(new SourceMessageListener());
+	    source = new Source(new BufferedReader(new FileReader(filePath)));
+	    source.addMessageListener(new SourceMessageListener());
 
-			parser = FrontendFactory.createParser("SmallCpp", source);
-			parser.addMessageListener(new ParserMessageListener());
+	    parser = FrontendFactory.createParser("SmallCpp", source);
+	    parser.addMessageListener(new ParserMessageListener());
 
-			backend = BackendFactory.createBackend(operation);
+	    backend = BackendFactory.createBackend(operation);
 
-			parser.parse();
-			source.close();
+	    parser.parse();
+	    source.close();
 
-			iCode = parser.getICode();
-			symTab = parser.getSymTab();
+	    iCode = parser.getICode();
+	    symTab = parser.getSymTab();
 
-			backend.process(iCode, symTab);
+	    backend.process(iCode, symTab);
 
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+	} catch (Exception e) {
+	    e.printStackTrace();
 	}
+    }
 
-	public static void main(String[] args) {
-		try {
-			String operation = args[0];
+    public static void main(String[] args) {
+	try {
+	    String operation = args[0];
 
-			int i = 0;
-			String flags = "";
+	    int i = 0;
+	    String flags = "";
 
-			while (++i < args.length && args[i].charAt(0) == '-') {
-				flags += args[i].substring(1);
-			}
+	    while (++i < args.length && args[i].charAt(0) == '-') {
+		flags += args[i].substring(1);
+	    }
 
-			if (i < args.length) {
-				String path = args[i];
-				new SmallCpp(operation, path, flags);
-			} else {
-				throw new Exception("No files provided.");
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+	    if (i < args.length) {
+		String path = args[i];
+		new SmallCpp(operation, path, flags);
+	    } else {
+		throw new Exception("No files provided.");
+	    }
+	} catch (Exception e) {
+	    e.printStackTrace();
 	}
+    }
 
-	private class SourceMessageListener implements MessageListener {
+    private class SourceMessageListener implements MessageListener {
 
-		private static final String SOURCE_LINE_FORMAT = "%03d %s";
+	private static final String SOURCE_LINE_FORMAT = "%03d %s";
 
-		@Override
-		public void messageReceived(Message message) {
-			Object[] body = (Object[]) message.getBody();
+	@Override
+	public void messageReceived(Message message) {
+	    Object[] body = (Object[]) message.getBody();
 
-			switch (message.getType()) {
-			case SOURCE_LINE:
-				int lineNumber = (Integer) body[0];
-				String lineText = (String) body[1];
+	    switch (message.getType()) {
+	    case SOURCE_LINE:
+		int lineNumber = (Integer) body[0];
+		String lineText = (String) body[1];
 
-				System.out.println(String.format(SOURCE_LINE_FORMAT, lineNumber, lineText));
+		System.out.println(String.format(SOURCE_LINE_FORMAT, lineNumber, lineText));
 
-				break;
-			default:
-				break;
-			}
+		break;
+	    default:
+		break;
+	    }
 
-		}
 	}
+    }
 
-	private class ParserMessageListener implements MessageListener {
+    private class ParserMessageListener implements MessageListener {
 
-		private static final String PARSER_SUMMARY_FORMAT = "\n%,20d source lines." + "\n%,20d syntax errors."
-				+ "\n%,20l ms seconds total.";
+	private static final String PARSER_SUMMARY_FORMAT = "\n%,20d source lines." + "\n%,20d syntax errors."
+		+ "\n%,20l ms seconds total.";
 
-		@Override
-		public void messageReceived(Message message) {
-			Object[] body = (Object[]) message.getBody();
+	@Override
+	public void messageReceived(Message message) {
+	    Object[] body = (Object[]) message.getBody();
 
-			switch (message.getType()) {
-			case PARSER_SUMMARY:
-				int statementCount = (Integer) body[0];
-				int errorsCount = (Integer) body[1];
-				long elapsed = (Long) body[2];
+	    switch (message.getType()) {
+	    case PARSER_SUMMARY:
+		int statementCount = (Integer) body[0];
+		int errorsCount = (Integer) body[1];
+		long elapsed = (Long) body[2];
 
-				System.out.println(String.format(PARSER_SUMMARY_FORMAT, statementCount, errorsCount, elapsed));
+		System.out.println(String.format(PARSER_SUMMARY_FORMAT, statementCount, errorsCount, elapsed));
 
-				break;
-			default:
-				break;
-			}
+		break;
+	    default:
+		break;
+	    }
 
-		}
 	}
+    }
 }

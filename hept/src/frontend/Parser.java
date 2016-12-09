@@ -12,49 +12,49 @@ import message.MessageProducer;
  * 
  */
 public abstract class Parser implements MessageProducer {
-	protected static MessageHandler messageHandler;
+    protected static MessageHandler messageHandler;
 
-	static {
-		messageHandler = new MessageHandler();
-	}
+    static {
+	messageHandler = new MessageHandler();
+    }
 
-	protected Scanner scanner;
-	protected ICode iCode;
-	private SymTab symTab;
+    protected Scanner scanner;
+    protected ICode iCode;
+    private SymTab symTab;
 
-	protected Parser(Scanner scanner) {
-		this.scanner = scanner;
-	}
+    protected Parser(Scanner scanner) {
+	this.scanner = scanner;
+    }
 
-	public abstract void parse() throws Exception;
+    public abstract void parse() throws Exception;
 
-	public abstract int getErrorCount();
+    public abstract int getErrorCount();
 
-	public ICode getICode() {
-		return iCode;
-	}
+    public ICode getICode() {
+	return iCode;
+    }
 
-	public SymTab getSymTab() {
-		return symTab;
-	}
+    public SymTab getSymTab() {
+	return symTab;
+    }
 
-	public Token currentToken() {
-		return scanner.currentToken();
-	}
+    public Token currentToken() {
+	return scanner.currentToken();
+    }
 
-	public Token nextToken() throws Exception {
-		return scanner.nextToken();
-	}
+    public Token nextToken() throws Exception {
+	return scanner.nextToken();
+    }
 
-	public void addMessageListener(MessageListener listener) {
-		messageHandler.addMessageListener(listener);
-	}
+    public void addMessageListener(MessageListener listener) {
+	messageHandler.addMessageListener(listener);
+    }
 
-	public void removeMessageListener(MessageListener listener) {
-		messageHandler.removeMessageListener(listener);
-	}
+    public void removeMessageListener(MessageListener listener) {
+	messageHandler.removeMessageListener(listener);
+    }
 
-	public void sendMessage(Message message) {
-		messageHandler.sendMessage(message);
-	}
+    public void sendMessage(Message message) {
+	messageHandler.sendMessage(message);
+    }
 }

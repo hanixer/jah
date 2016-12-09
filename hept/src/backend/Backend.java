@@ -8,26 +8,26 @@ import message.MessageListener;
 import message.MessageProducer;
 
 public abstract class Backend implements MessageProducer {
-	static protected MessageHandler messageHandler;
+    static protected MessageHandler messageHandler;
 
-	static {
-		messageHandler = new MessageHandler();
-	}
+    static {
+	messageHandler = new MessageHandler();
+    }
 
-	protected ICode iCode;
-	protected SymTab symTab;
+    protected ICode iCode;
+    protected SymTab symTab;
 
-	public abstract void process(ICode iCode, SymTab symTab) throws Exception;
+    public abstract void process(ICode iCode, SymTab symTab) throws Exception;
 
-	public void addMessageListener(MessageListener listener) {
-		messageHandler.addMessageListener(listener);
-	}
+    public void addMessageListener(MessageListener listener) {
+	messageHandler.addMessageListener(listener);
+    }
 
-	public void removeMessageListener(MessageListener listener) {
-		messageHandler.removeMessageListener(listener);
-	}
+    public void removeMessageListener(MessageListener listener) {
+	messageHandler.removeMessageListener(listener);
+    }
 
-	public void sendMessage(Message message) {
-		messageHandler.sendMessage(message);
-	}
+    public void sendMessage(Message message) {
+	messageHandler.sendMessage(message);
+    }
 }

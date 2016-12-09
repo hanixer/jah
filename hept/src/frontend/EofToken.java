@@ -2,13 +2,13 @@ package frontend;
 
 public class EofToken extends Token {
 
-	public EofToken(Source source) throws Exception {
-		super(source);
-	}
+    public EofToken(Source source) throws Exception {
+	super(source);
+    }
 
-	@Override
-	public void extract() throws Exception {
+    @Override
+    public void extract() throws Exception {
 
-	}
+    }
 
 }

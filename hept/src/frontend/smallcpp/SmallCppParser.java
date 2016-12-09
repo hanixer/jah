@@ -9,29 +9,29 @@ import message.MessageType;
 
 public class SmallCppParser extends Parser {
 
-	public SmallCppParser(Scanner scanner) {
-		super(scanner);
-		// TODO Auto-generated constructor stub
-	}
+    public SmallCppParser(Scanner scanner) {
+	super(scanner);
+	// TODO Auto-generated constructor stub
+    }
 
-	@Override
-	public void parse() throws Exception {
-		Token token;
-		long currentMs = System.currentTimeMillis();
+    @Override
+    public void parse() throws Exception {
+	Token token;
+	long currentMs = System.currentTimeMillis();
 
-		while (!((token = scanner.nextToken()) instanceof EofToken))
-			;
+	while (!((token = scanner.nextToken()) instanceof EofToken))
+	    ;
 
-		long elapsed = System.currentTimeMillis() - currentMs;
+	long elapsed = System.currentTimeMillis() - currentMs;
 
-		sendMessage(new Message(MessageType.PARSER_SUMMARY,
-				new Object[] { token.getLineNumber(), getErrorCount(), elapsed }));
-	}
+	sendMessage(new Message(MessageType.PARSER_SUMMARY,
+		new Object[] { token.getLineNumber(), getErrorCount(), elapsed }));
+    }
 
-	@Override
-	public int getErrorCount() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
+    @Override
+    public int getErrorCount() {
+	// TODO Auto-generated method stub
+	return 0;
+    }
 
 }
