@@ -65,7 +65,14 @@ public enum TokenKind {
     QUOTE_INCLUDE,
 
     SIZEOF("sizeof"),
-
+    IF("if"),
+    ELSE("else"),
+    DO("do"),
+    WHILE("while"),
+    BREAK("break"),
+    CONTINUE("continue"),
+    GOTO("goto"),
+    FOR("for"),
     ;
 
     public final String value;

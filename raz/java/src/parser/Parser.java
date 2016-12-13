@@ -1,5 +1,6 @@
 package parser;
 
+import java.nio.file.NotDirectoryException;
 import java.util.ArrayList;
 
 /**
@@ -14,6 +15,7 @@ public class Parser {
     Token tok;
     int p;
     Context context = new Context();
+    int loopCounter = 0;
 
     public Parser(String source) {
 	lexer = new Lexer(source);
@@ -25,10 +27,6 @@ public class Parser {
 	    tok = tokens[0];
 	else
 	    tok = new Token(TokenKind.EOF);
-    }
-
-    SyntaxNode expression() {
-	return null;
     }
 
     SyntaxNode primaryExpression() {
@@ -236,6 +234,271 @@ public class Parser {
 	    return condExpr;
 
 	return null;
+    }
+
+    SyntaxNode expression() {
+	int sp = p;
+	SyntaxNode asgnExpr = assignmentExpression();
+
+	if (asgnExpr != null) {
+	    do {
+		if (tok.is(TokenKind.COMMA)) {
+		    consume();
+		    SyntaxNode asgnExpr2 = assignmentExpression();
+		    if (asgnExpr2 == null) {
+			restoreToken(sp);
+			return null;
+		    } else {
+			asgnExpr = new SyntaxNode(NodeType.COMMA_EXPR, asgnExpr, asgnExpr2);
+		    }
+		} else {
+		    return asgnExpr;
+		}
+	    } while (true);
+	}
+	
+	restoreToken(p);
+	return null;
+    }
+    
+    SyntaxNode labeledStatement() {
+	int sp = p;
+	if (tok.is(TokenKind.IDENTIFIER)) {
+	    SyntaxNode identNode = consumeAndMakeNode();
+	    if (tok.is(TokenKind.COLON)) {
+		consume();
+		SyntaxNode stmt = statement();
+		if (stmt != null) {
+		    return new SyntaxNode(NodeType.LABELED_STMT, identNode, stmt);
+		}
+	    }
+	}
+	
+	restoreToken(sp);
+	return null;
+    }
+    
+    SyntaxNode expressionStatement() {
+	SyntaxNode expr = expression();
+	if (expr != null && tok.is(TokenKind.SEMICOLON)) {
+	    consume();
+	    return new SyntaxNode(NodeType.EXPRESSION_STMT, expr);
+	}
+	
+	return null;
+    }
+    
+    SyntaxNode compoundStatement() {
+	int sp = p;
+	if (tok.is(TokenKind.L_BRACKET)) {
+	    consume();
+	    ArrayList<SyntaxNode> stmts = new ArrayList<>();
+	    do {
+		SyntaxNode stmt = statement();
+		if (stmt == null) {
+		    break;
+		}
+		stmts.add(stmt);
+	    } while (true);
+	    if (tok.is(TokenKind.R_BRACKET)) {
+		consume();
+		SyntaxNode[] ar = new SyntaxNode[stmts.size()];
+		stmts.toArray(ar);
+		return new SyntaxNode(NodeType.COMPOUND_STMT, ar);
+	    }
+	}
+	restoreToken(sp);
+	return null;
+    }
+    
+    SyntaxNode selectionStatement() {
+	int sp = p;
+	if (tok.is(TokenKind.IF)) {
+	    consume();
+	    if (tok.is(TokenKind.L_PAREN)) {
+		consume();
+		SyntaxNode expr = expression();
+		if (expr != null && tok.is(TokenKind.R_PAREN)) {
+		    consume();
+		    
+		    SyntaxNode stmtThen = statement();
+		    if (stmtThen != null) {
+			int sp2 = p;
+			if (tok.is(TokenKind.ELSE)) {
+			    consume();
+			    SyntaxNode stmtElse = statement();
+			    if (stmtElse != null) {
+				return new SyntaxNode(NodeType.IF_ELSE_STMT, expr, stmtThen, stmtElse);
+			    }
+			}
+			
+			restoreToken(sp2);
+			return new SyntaxNode(NodeType.IF_STMT, expr, stmtThen);
+		    }
+		}
+	    }
+	}
+	
+	restoreToken(sp);
+	return null;
+    }
+    
+    SyntaxNode forStatement() {
+	int sp = p;
+	
+	consume();
+	
+	if (tok.is(TokenKind.L_PAREN)) {
+	    consume();
+	    SyntaxNode expr1 = expression(); // TODO: declaration
+	    if (tok.is(TokenKind.SEMICOLON)) {
+		consume();
+		SyntaxNode expr2 = expression();
+		if (tok.is(TokenKind.SEMICOLON)) {
+		    consume();
+		    SyntaxNode expr3 = expression();
+		    if (tok.is(TokenKind.R_PAREN)) {
+			consume();
+			loopCounter++;
+			SyntaxNode stmt = statement();
+			loopCounter--;
+			if (stmt != null) {
+			    return new SyntaxNode(NodeType.FOR_STMT, expr1, expr2, expr3, stmt);				    
+			}
+		    }
+		}
+	    }
+	}
+	
+	restoreToken(sp);
+	return null;
+    }
+    
+    SyntaxNode whileStatement() {
+	int sp = p;
+	consume();
+	if (tok.is(TokenKind.L_PAREN)) {
+	    consume();
+	    SyntaxNode expr = expression();
+	    if (expr != null && tok.is(TokenKind.R_PAREN)) {
+		consume();
+		loopCounter++;
+		SyntaxNode stmt = statement();
+		loopCounter--;
+		if (stmt != null) {
+		    return new SyntaxNode(NodeType.WHILE_STMT, expr, stmt);
+		}
+	    }
+	}
+	
+	restoreToken(sp);
+	return null;
+    }
+    
+    SyntaxNode doStatement() {
+	int sp = p;
+	consume();
+
+	loopCounter++;
+	SyntaxNode stmt = statement();
+	loopCounter--;
+	
+	if (tok.is(TokenKind.WHILE)) {
+	    consume();
+	    if (tok.is(TokenKind.L_PAREN)) {
+		consume();
+		SyntaxNode expr = expression();
+		if (expr != null && tok.is(TokenKind.R_PAREN)) {
+		    consume();
+		    if (tok.is(TokenKind.SEMICOLON)) {
+			consume();
+			return new SyntaxNode(NodeType.DO_STMT, stmt, expr);
+		    }
+		}
+	    }
+	}
+	
+	restoreToken(sp);
+	return null;
+    }
+    
+    SyntaxNode gotoStatement() {
+	int sp = p;
+	consume();
+	if (tok.is(TokenKind.IDENTIFIER)) {
+	    consume();
+	    String ident = tok.text;
+	    if (tok.is(TokenKind.SEMICOLON)) {
+		consume();
+		return new SyntaxNode(NodeType.GOTO_STMT, new SyntaxNode(ident));
+	    }
+	}
+	
+	restoreToken(sp);
+	return null;
+    }
+    
+    @SuppressWarnings("incomplete-switch")
+    SyntaxNode statement() {
+	switch (tok.kind) {
+	case L_BRACKET:
+	    return compoundStatement();
+	case IF:
+	    return selectionStatement();
+	case FOR:
+	    return forStatement();
+	case WHILE:
+	    return whileStatement();
+	case DO:
+	    return doStatement();
+	case BREAK:
+	    return breakStatement();
+	case CONTINUE:
+	    return continueStatement();
+	case GOTO:
+	    return gotoStatement();
+	}
+	
+	SyntaxNode node = null;
+	node = labeledStatement();
+	if (node != null) {
+	    return node;
+	}
+	
+	node = expressionStatement();
+	if (node != null) {
+	    return node;		    
+	}
+	
+	return node;
+    }
+
+    public SyntaxNode continueStatement() {
+	if (loopCounter > 0) {
+	consume();
+	if (tok.is(TokenKind.SEMICOLON)) {
+	    consume();
+	    return new SyntaxNode(NodeType.CONTINUE_STMT);
+	} else {
+	    return null;
+	}
+	} else {
+	return null;
+	}
+    }
+
+    public SyntaxNode breakStatement() {
+	if (loopCounter > 0) {
+	consume();
+	if (tok.is(TokenKind.SEMICOLON)) {
+	    consume();
+	    return new SyntaxNode(NodeType.BREAK_STMT);
+	} else {
+	    return null;
+	}
+	} else {
+	return null;
+	}
     }
 
     private Token consume() {

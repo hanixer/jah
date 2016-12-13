@@ -1,20 +1,26 @@
 package parser;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
 import javafx.stage.Stage;
 
 public class ParserVisualizer extends Application {
     TreeView<String> tree;
-    TextField textField;
-    String initialExpression = "1+2*3";
+    TextArea textArea;
+    String initialExpression = "1,2,3";
+    String filename = "some.cpp";
 
     public static void main(String[] args) {
 	launch(args);
@@ -23,7 +29,6 @@ public class ParserVisualizer extends Application {
     TreeItem<String> createTreeItem(SyntaxNode n) {
 	if (n == null)
 	    return null;
-	NodeType type = n.type;
 	TreeItem<String> ti = new TreeItem<>(n.toString());
 
 	if (n.token != null) {
@@ -31,8 +36,10 @@ public class ParserVisualizer extends Application {
 	} else {
 
 	    for (SyntaxNode child : n.childs) {
-		TreeItem<String> tiChild = createTreeItem(child);
-		ti.getChildren().add(tiChild);
+		if (child != null) {
+		    TreeItem<String> tiChild = createTreeItem(child);
+		    ti.getChildren().add(tiChild);
+		}
 	    }
 	    ti.setExpanded(true);
 	}
@@ -43,23 +50,44 @@ public class ParserVisualizer extends Application {
     @Override
     public void start(Stage primaryStage) {
 	primaryStage.setTitle("Tree View Sample");
+	
+	String contents = readFile();
 
 	tree = new TreeView<>(null);
-	textField = new TextField(initialExpression);
-
-	updateTree();
+	textArea = new TextArea(contents);
+	
+	updateStatement();
 
 	Button button = new Button("Refresh");
+	Button exprButton = new Button("Expression");
+	Button stmtButton = new Button("Statement");
+	FlowPane stackPane = new FlowPane();
+	stackPane.getChildren().add(exprButton);
+	stackPane.getChildren().add(stmtButton);
+	
 	BorderPane root = new BorderPane();
 	root.setCenter(tree);
-	root.setTop(textField);
-	root.setLeft(button);
+	root.setTop(textArea);
+	root.setLeft(stackPane);
 
 	button.setOnAction(new EventHandler<ActionEvent>() {
-
 	    @Override
 	    public void handle(ActionEvent event) {
 		updateTree();
+	    }
+	});
+
+	exprButton.setOnAction(new EventHandler<ActionEvent>() {
+	    @Override
+	    public void handle(ActionEvent event) {
+		updateExpression();
+	    }
+	});
+
+	stmtButton.setOnAction(new EventHandler<ActionEvent>() {
+	    @Override
+	    public void handle(ActionEvent event) {
+		updateStatement();
 	    }
 	});
 
@@ -67,9 +95,31 @@ public class ParserVisualizer extends Application {
 	primaryStage.show();
     }
 
+    public String readFile() {
+	String contents = "";
+	try {
+	    contents = new String(Files.readAllBytes(Paths.get(filename)));
+	} catch (IOException e) {
+	    e.printStackTrace();
+	}
+	return contents;
+    }
+
     private void updateTree() {
-	Parser p = new Parser(textField.getText());
-	SyntaxNode node = p.assignmentExpression();
+	Parser p = new Parser(textArea.getText());
+	SyntaxNode node = p.expression();
+	tree.setRoot(createTreeItem(node));
+    }
+
+    private void updateExpression() {
+	Parser p = new Parser(textArea.getText());
+	SyntaxNode node = p.expression();
+	tree.setRoot(createTreeItem(node));
+    }
+
+    private void updateStatement() {
+	Parser p = new Parser(textArea.getText());
+	SyntaxNode node = p.statement();
 	tree.setRoot(createTreeItem(node));
     }
 }

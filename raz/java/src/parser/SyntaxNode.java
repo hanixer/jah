@@ -47,6 +47,8 @@ class SyntaxNode {
 	    return type.name().toLowerCase();
 	else if (tkind != null)
 	    return tkind.name();
+	else if (tag != null)
+	    return tag;
 	else
 	    return "!NONAME_NODE!";
     }

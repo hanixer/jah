@@ -29,8 +29,11 @@ public class Token {
 	this.endPos = endPos;
 
 	if (kind == TokenKind.IDENTIFIER) {
-	    if (TokenKind.SIZEOF.value.compareTo(text) == 0) {
-		this.kind = TokenKind.SIZEOF;
+	    for (int i = TokenKind.SIZEOF.ordinal(); i < TokenKind.values().length; ++i) {
+		if (TokenKind.values()[i].value.equals(text)) {
+		    this.kind = TokenKind.values()[i];
+		    break;
+		}
 	    }
 	}
     }
