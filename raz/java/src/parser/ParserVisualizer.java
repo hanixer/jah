@@ -50,12 +50,12 @@ public class ParserVisualizer extends Application {
     @Override
     public void start(Stage primaryStage) {
 	primaryStage.setTitle("Tree View Sample");
-	
+
 	String contents = readFile();
 
 	tree = new TreeView<>(null);
 	textArea = new TextArea(contents);
-	
+
 	updateStatement();
 
 	Button button = new Button("Refresh");
@@ -64,7 +64,7 @@ public class ParserVisualizer extends Application {
 	FlowPane stackPane = new FlowPane();
 	stackPane.getChildren().add(exprButton);
 	stackPane.getChildren().add(stmtButton);
-	
+
 	BorderPane root = new BorderPane();
 	root.setCenter(tree);
 	root.setTop(textArea);
