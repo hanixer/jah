@@ -4,6 +4,9 @@ public enum ErrorType {
     WRONG_CHAR("Wrong char literal"),
     INVALID_STRING_LITERAL("Invalid string literal, it must end with '\"'"),
     INVALID_INTEGER("Invalid integer literal"),
+    INVALID_REAL("Invalid real literal"),
+    INVALID_SPECIAL_SYMB("Invalid special symbol"),
+    INVALID_COMMENT("Comment must be closed"),
     ;
     
     private String text;

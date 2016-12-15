@@ -26,6 +26,10 @@ public class Token {
     protected char nextChar() throws Exception {
 	return source.nextChar();
     }
+    
+    protected char peekChar() throws Exception {
+	return source.peekChar();
+    }
 
     public TokenType getType() {
         return type;

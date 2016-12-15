@@ -98,7 +98,7 @@ public class Clike {
 	private static final String PARSER_SUMMARY_FORMAT = "\n%,20d source lines." + "\n%,20d syntax errors."
 		+ "\n%,20d ms seconds total.";
 	
-	private static final String TOKEN_FORMAT = ">>> line %d, position %d, type %s, text %s, value %s";
+	private static final String TOKEN_FORMAT = ">>> %-20s line %d, position %d, text %s, value %s";
 
 	@Override
 	public void messageReceived(Message message) {
@@ -121,7 +121,7 @@ public class Clike {
 		Object value = (Object) body[4];
 
 		if (type != null) {
-		    System.out.println(String.format(TOKEN_FORMAT, lineNum, position, type, text, value));
+		    System.out.println(String.format(TOKEN_FORMAT, type, lineNum, position, text, value));
 		}
 		
 		break;
