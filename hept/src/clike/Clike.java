@@ -21,6 +21,7 @@ public class Clike {
     private SymTab symTab;
     private Backend backend;
 
+    @SuppressWarnings("unused")
     public Clike(String operation, String filePath, String flags) {
 	try {
 	    boolean intermediate = flags.indexOf('i') > -1;
@@ -50,7 +51,7 @@ public class Clike {
     public static void main(String[] args) {
 	try {
 	    String operation = args[0];
-
+	    
 	    int i = 0;
 	    String flags = "";
 

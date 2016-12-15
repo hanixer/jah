@@ -3,7 +3,7 @@ package frontend.clike;
 import frontend.TokenType;
 
 public enum ClikeTokenType implements TokenType {
-    WORD, CHAR, STRING,
+    WORD, CHAR, STRING, INTEGER, REAL,
     
     ERROR,
 }

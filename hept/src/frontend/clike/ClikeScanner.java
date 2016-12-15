@@ -5,6 +5,7 @@ import frontend.Scanner;
 import frontend.Source;
 import frontend.Token;
 import frontend.clike.tokens.CharToken;
+import frontend.clike.tokens.NumberToken;
 import frontend.clike.tokens.StringToken;
 import frontend.clike.tokens.WordToken;
 
@@ -36,6 +37,8 @@ public class ClikeScanner extends Scanner {
 	    token = new CharToken(source);
 	} else if (ch == '"') {
 	    token = new StringToken(source);
+	} else if (Character.isDigit(ch)) {
+	    token = new NumberToken(source);
 	} else {
 	    token = new Token(source);
 	}
