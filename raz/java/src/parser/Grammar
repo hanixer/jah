@@ -155,6 +155,8 @@ expression:
 x   assignment-expression
 x   expression , assignment-expression
 
+----------------------------------------------------------------------------------------
+
 statement:
 +-  labeled-statement
 x   expression-statement
@@ -206,3 +208,72 @@ jump-statement:
 
 declaration-statement:
     block-declaration 
+
+----------------------------------------------------------------------------------------
+
+block-declaration:	 
+ 	simple-declaration
+ 	asm-definition
+ 	namespace-alias-definition
+ 	using-declaration
+ 	using-directive
+ 	static_assert-declaration     C++0x
+ 	alias-declaration     C++0x
+ 	opaque-enum-declaration     C++0x
+ 	
+simple-declaration:	 
+ 	attribute-specifier-seqopt decl-specifier-seqopt init-declarator-listopt ;     C++0x
+
+decl-specifier-seq:	 
+ 	decl-specifier attribute-specifier-seqopt     C++0x
+ 	decl-specifier decl-specifier-seq     C++0x
+ 	
+decl-specifier:	 
+ 	storage-class-specifier
+ 	type-specifier
+ 	function-specifier
+ 	friend
+ 	typedef
+ 	constexpr     C++0x
+ 	
+storage-class-specifier:	 
+ 	auto     Removed in C++0x
+ 	register
+ 	static
+ 	thread_local     C++0x
+ 	extern
+ 	mutable
+ 	
+type-specifier:	 
+ 	trailing-type-specifier
+ 	class-specifier
+ 	enum-specifier
+ 	
+trailing-type-specifier:	 
+ 	simple-type-specifier
+ 	elaborated-type-specifier
+ 	typename-specifier
+ 	cv-qualifier
+ 	
+simple-type-specifier:	 
+ 	::opt nested-name-specifieropt type-name
+ 	::opt nested-name-specifier template simple-template-id
+ 	char
+ 	char16_t     C++0x
+ 	char32_t     C++0x
+ 	wchar_t
+ 	bool
+ 	short
+ 	int
+ 	long
+ 	signed
+ 	unsigned
+ 	float
+ 	double
+ 	void
+ 	auto     C++0x
+ 	decltype-specifier     C++0x
+ 	
+cv-qualifier:	 
+ 	const
+ 	volatile

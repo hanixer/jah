@@ -1,4 +1,4 @@
-package smallcpp;
+package clike;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -13,14 +13,14 @@ import intermediate.SymTab;
 import message.Message;
 import message.MessageListener;
 
-public class SmallCpp {
+public class Clike {
     private Parser parser;
     private Source source;
     private ICode iCode;
     private SymTab symTab;
     private Backend backend;
 
-    public SmallCpp(String operation, String filePath, String flags) {
+    public Clike(String operation, String filePath, String flags) {
 	try {
 	    boolean intermediate = flags.indexOf('i') > -1;
 	    boolean xref = flags.indexOf('x') > -1;
@@ -28,7 +28,7 @@ public class SmallCpp {
 	    source = new Source(new BufferedReader(new FileReader(filePath)));
 	    source.addMessageListener(new SourceMessageListener());
 
-	    parser = FrontendFactory.createParser("SmallCpp", source);
+	    parser = FrontendFactory.createParser("Clike", source);
 	    parser.addMessageListener(new ParserMessageListener());
 
 	    backend = BackendFactory.createBackend(operation);
@@ -59,7 +59,7 @@ public class SmallCpp {
 
 	    if (i < args.length) {
 		String path = args[i];
-		new SmallCpp(operation, path, flags);
+		new Clike(operation, path, flags);
 	    } else {
 		throw new Exception("No files provided.");
 	    }

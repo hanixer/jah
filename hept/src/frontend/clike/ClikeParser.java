@@ -1,4 +1,4 @@
-package frontend.smallcpp;
+package frontend.clike;
 
 import frontend.EofToken;
 import frontend.Parser;
@@ -7,9 +7,9 @@ import frontend.Token;
 import message.Message;
 import message.MessageType;
 
-public class SmallCppParser extends Parser {
+public class ClikeParser extends Parser {
 
-    public SmallCppParser(Scanner scanner) {
+    public ClikeParser(Scanner scanner) {
 	super(scanner);
 	// TODO Auto-generated constructor stub
     }

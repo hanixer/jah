@@ -207,20 +207,8 @@ public class Lexer {
 		skipWhitespaces();
 	    else if (isIdentifierInitial(c))
 		scanIdentifier();
-	    else if (isComment())
-		scanComment();
 	    else if (Character.isDigit(c))
 		scanNumber();
-	    else if (c == '.') {
-		savePos();
-		advance();
-		if (isBeforeEnd() && Character.isDigit(peekChar())) {
-		    consumeFractionalNumberEnd();
-		    makeNumberToken();
-		} else {
-		    restorePos();
-		}
-	    }
 	}
     }
 
@@ -494,11 +482,6 @@ public class Lexer {
 		}
 	    }
 	}
-    }
-
-    private boolean isComment() {
-	return peekChar() == '/' && currPos + 1 < sourceLen
-		&& (source[currPos + 1] == '*' || source[currPos + 1] == '/');
     }
 
     private void scanRawStringLiteral() {
@@ -842,15 +825,6 @@ public class Lexer {
 
     boolean isHexadecimalDigit(char c) {
 	return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F');
-    }
-
-    boolean isCharacterLiteralInitial(char c) {
-	if (c == '\'')
-	    return true;
-	else if ((c == 'u' || c == 'U' || c == 'L') && (currPos + 1 < sourceLen && source[currPos + 1] == '\''))
-	    return true;
-	else
-	    return false;
     }
 
     boolean isSingleEscapeCharacter(char c) {

@@ -1,4 +1,4 @@
-package frontend.smallcpp;
+package frontend.clike;
 
 import frontend.EofToken;
 import frontend.Scanner;
@@ -8,9 +8,9 @@ import frontend.Token;
 import static frontend.Source.EOL;
 import static frontend.Source.EOF;
 
-public class SmallCppScanner extends Scanner {
+public class ClikeScanner extends Scanner {
 
-    public SmallCppScanner(Source source) {
+    public ClikeScanner(Source source) {
 	super(source);
     }
 
