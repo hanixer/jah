@@ -5,31 +5,49 @@ public class Token {
     protected Source source;
     protected String text;
     protected Object value;
-    private int lineNum;
-    private int position;
+    protected int lineNum;
+    protected int position;
 
     public Token(Source source) throws Exception {
 	this.source = source;
+	this.lineNum = source.getLineNum();
+	this.position = source.getCurrentPos();
 
 	extract();
     }
 
-    public void extract() throws Exception {
+    protected void extract() throws Exception {
 	text = Character.toString(currentChar());
 	value = null;
 
 	nextChar();
     }
 
-    private void nextChar() throws Exception {
-	source.nextChar();
+    protected char nextChar() throws Exception {
+	return source.nextChar();
+    }
+
+    public TokenType getType() {
+        return type;
     }
 
     public int getLineNumber() {
 	return lineNum;
     }
 
-    public char currentChar() throws Exception {
+    public int getPosition() {
+        return position;
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public Object getValue() {
+        return value;
+    }
+
+    protected char currentChar() throws Exception {
 	return source.currentChar();
     }
 }

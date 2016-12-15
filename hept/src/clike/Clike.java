@@ -8,6 +8,7 @@ import backend.BackendFactory;
 import frontend.FrontendFactory;
 import frontend.Parser;
 import frontend.Source;
+import frontend.TokenType;
 import intermediate.ICode;
 import intermediate.SymTab;
 import message.Message;
@@ -94,7 +95,9 @@ public class Clike {
     private class ParserMessageListener implements MessageListener {
 
 	private static final String PARSER_SUMMARY_FORMAT = "\n%,20d source lines." + "\n%,20d syntax errors."
-		+ "\n%,20l ms seconds total.";
+		+ "\n%,20d ms seconds total.";
+	
+	private static final String TOKEN_FORMAT = ">>> line %d, position %d, type %s, text %s, value %s";
 
 	@Override
 	public void messageReceived(Message message) {
@@ -108,6 +111,18 @@ public class Clike {
 
 		System.out.println(String.format(PARSER_SUMMARY_FORMAT, statementCount, errorsCount, elapsed));
 
+		break;
+	    case TOKEN:
+		int lineNum = (Integer) body[0];
+		int position = (Integer) body[1];
+		TokenType type = (TokenType) body[2];
+		String text = (String) body[3];
+		Object value = (Object) body[4];
+
+		if (type != null) {
+		    System.out.println(String.format(TOKEN_FORMAT, lineNum, position, type, text, value));
+		}
+		
 		break;
 	    default:
 		break;

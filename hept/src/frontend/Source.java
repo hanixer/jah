@@ -29,9 +29,21 @@ public class Source implements MessageProducer {
 	this.currentPos = -2;
     }
 
+    /**
+     * Advances and return next char
+     * @throws Exception
+     */
     public char nextChar() throws Exception {
 	currentPos++;
 	return currentChar();
+    }
+
+    public int getLineNum() {
+        return lineNum;
+    }
+
+    public int getCurrentPos() {
+        return currentPos;
     }
 
     public char currentChar() throws Exception {

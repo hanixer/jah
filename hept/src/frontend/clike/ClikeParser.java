@@ -19,8 +19,16 @@ public class ClikeParser extends Parser {
 	Token token;
 	long currentMs = System.currentTimeMillis();
 
-	while (!((token = scanner.nextToken()) instanceof EofToken))
-	    ;
+	while (!((token = scanner.nextToken()) instanceof EofToken)) {
+	    sendMessage(new Message(MessageType.TOKEN, 
+		    new Object[] {
+			    token.getLineNumber(),
+			    token.getPosition(),
+			    token.getType(),
+			    token.getText(),
+			    token.getValue()
+		    }));
+	}
 
 	long elapsed = System.currentTimeMillis() - currentMs;
 
