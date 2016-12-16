@@ -1,7 +1,8 @@
 package frontend;
 
 import intermediate.ICode;
-import intermediate.SymTab;
+import intermediate.SymTabFactory;
+import intermediate.SymTabStack;
 import message.Message;
 import message.MessageHandler;
 import message.MessageListener;
@@ -19,11 +20,13 @@ public abstract class Parser implements MessageProducer {
     }
 
     protected Scanner scanner;
+
     protected ICode iCode;
-    private SymTab symTab;
+    protected SymTabStack symTabStack;
 
     protected Parser(Scanner scanner) {
 	this.scanner = scanner;
+	this.symTabStack = SymTabFactory.createSymTabStack();
     }
 
     public abstract void parse() throws Exception;
@@ -32,10 +35,6 @@ public abstract class Parser implements MessageProducer {
 
     public ICode getICode() {
 	return iCode;
-    }
-
-    public SymTab getSymTab() {
-	return symTab;
     }
 
     public Token currentToken() {
@@ -56,5 +55,9 @@ public abstract class Parser implements MessageProducer {
 
     public void sendMessage(Message message) {
 	messageHandler.sendMessage(message);
+    }
+    
+    public SymTabStack getSymTabStack() {
+        return symTabStack;
     }
 }

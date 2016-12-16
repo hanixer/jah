@@ -11,17 +11,16 @@ import frontend.Source;
 import frontend.TokenType;
 import intermediate.ICode;
 import intermediate.SymTab;
+import intermediate.SymTabStack;
 import message.Message;
 import message.MessageListener;
 
 public class Clike {
     private Parser parser;
     private Source source;
-    private ICode iCode;
-    private SymTab symTab;
-    private Backend backend;
+    private SymTabStack symTabStack;
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({ "unused", "unused" })
     public Clike(String operation, String filePath, String flags) {
 	try {
 	    boolean intermediate = flags.indexOf('i') > -1;
@@ -33,16 +32,14 @@ public class Clike {
 	    parser = FrontendFactory.createParser("Clike", source);
 	    parser.addMessageListener(new ParserMessageListener());
 
-	    backend = BackendFactory.createBackend(operation);
-
 	    parser.parse();
 	    source.close();
 
-	    iCode = parser.getICode();
-	    symTab = parser.getSymTab();
-
-	    backend.process(iCode, symTab);
-
+	    symTabStack = parser.getSymTabStack();
+	    
+	    CrossReferencer referencer = new  CrossReferencer();
+	    referencer.print(symTabStack);
+	    
 	} catch (Exception e) {
 	    e.printStackTrace();
 	}

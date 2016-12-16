@@ -1,6 +1,6 @@
 package frontend.clike.tokens;
 
-import static frontend.clike.ClikeTokenType.WORD;
+import static frontend.clike.ClikeTokenType.IDENTIFIER;
 
 import frontend.Source;
 import frontend.Token;
@@ -20,7 +20,7 @@ public class WordToken extends Token {
             currentChar = nextChar();
         }
         
-        type = WORD;
+        type = IDENTIFIER;
         text = builder.toString();
     }
 
