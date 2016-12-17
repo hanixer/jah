@@ -54,4 +54,10 @@ public class Token {
     protected char currentChar() throws Exception {
 	return source.currentChar();
     }
+    
+    @Override
+    public String toString() {
+        // TODO Auto-generated method stub
+        return type.toString();
+    }
 }

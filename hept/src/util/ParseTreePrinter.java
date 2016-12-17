@@ -23,8 +23,11 @@ public class ParseTreePrinter {
     public void print(ICode iCode) {
 	print(iCode.getRootNode(), 0);
     }
+    public void print(ICodeNode rawNode) {
+	print(rawNode, 0);
+    }
     
-    private void print(ICodeNode rawNode, int level) {
+    public void print(ICodeNode rawNode, int level) {
 	ICodeNodeImpl node = (ICodeNodeImpl) rawNode;  
 	for (int i = 0; i < level; ++i) {
 	    stream.print(" ");
@@ -59,8 +62,6 @@ public class ParseTreePrinter {
 	n1.addChild(n2);
 	
 	iCode.setRootNode(n1);
-	
-	
 	
 	ParseTreePrinter printer = new ParseTreePrinter(System.out);
 	printer.print(iCode);

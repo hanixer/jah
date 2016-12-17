@@ -20,7 +20,7 @@ public class Clike {
     private Source source;
     private SymTabStack symTabStack;
 
-    @SuppressWarnings({ "unused", "unused" })
+    @SuppressWarnings({ "unused" })
     public Clike(String operation, String filePath, String flags) {
 	try {
 	    boolean intermediate = flags.indexOf('i') > -1;
