@@ -4,51 +4,47 @@ import frontend.EofToken;
 import frontend.Parser;
 import frontend.Scanner;
 import frontend.Token;
+import frontend.TokenType;
+import frontend.clike.parsers.StatementParser;
+import intermediate.ICodeFactory;
+import intermediate.ICodeNode;
 import intermediate.SymTabEntry;
 import message.Message;
 import message.MessageType;
 
 public class ClikeParser extends Parser {
+    protected static ErrorHandler errorHandler;
+    
     public ClikeParser(Scanner scanner) {
 	super(scanner);
+	iCode = ICodeFactory.createICode();
+	errorHandler = new ErrorHandler();
     }
 
     @Override
     public void parse() throws Exception {
-	Token token;
 	long currentMs = System.currentTimeMillis();
-
-	while (!((token = scanner.nextToken()) instanceof EofToken)) {
-	    
-	    if (token.getType() == ClikeTokenType.IDENTIFIER) {
-		SymTabEntry symTabEntry = symTabStack.lookup(token.getText());
-		
-		if (symTabEntry == null) {
-		    symTabEntry = symTabStack.enterLocal(token.getText());
-		}
-		
-		symTabEntry.appendLineNumber(token.getLineNumber());
-	    }
-	    
-	    sendMessage(new Message(MessageType.TOKEN, 
-		    new Object[] {
-			    token.getLineNumber(),
-			    token.getPosition(),
-			    token.getType(),
-			    token.getText(),
-			    token.getValue()
-		    }));
-	}
-
+	
+	nextToken();
+	StatementParser parser = new StatementParser(scanner);
+	ICodeNode node = parser.parseStatement();
+	iCode.setRootNode(node);
+	
 	long elapsed = System.currentTimeMillis() - currentMs;
 
 	sendMessage(new Message(MessageType.PARSER_SUMMARY,
-		new Object[] { token.getLineNumber(), getErrorCount(), elapsed }));
+		new Object[] { 0, getErrorCount(), elapsed }));
     }
 
     @Override
     public int getErrorCount() {
-	return 0;
+	return errorHandler.getErrorCount();
     }
 
+    public void consumeExpected(TokenType type) throws Exception {
+	if (currentToken().getType() != type) {
+	    errorHandler.flag(currentToken(), ErrorType.NONEXPECTED_TOKEN, this);
+	}
+	nextToken();
+    }
 }

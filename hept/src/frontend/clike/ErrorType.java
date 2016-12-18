@@ -7,6 +7,7 @@ public enum ErrorType {
     INVALID_REAL("Invalid real literal"),
     INVALID_SPECIAL_SYMB("Invalid special symbol"),
     INVALID_COMMENT("Comment must be closed"),
+    NONEXPECTED_TOKEN("Was expected"),
     ;
     
     private String text;

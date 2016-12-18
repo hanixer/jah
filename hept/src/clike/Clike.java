@@ -14,11 +14,11 @@ import intermediate.SymTab;
 import intermediate.SymTabStack;
 import message.Message;
 import message.MessageListener;
+import util.ParseTreePrinter;
 
 public class Clike {
     private Parser parser;
     private Source source;
-    private SymTabStack symTabStack;
 
     @SuppressWarnings({ "unused" })
     public Clike(String operation, String filePath, String flags) {
@@ -35,10 +35,8 @@ public class Clike {
 	    parser.parse();
 	    source.close();
 
-	    symTabStack = parser.getSymTabStack();
-	    
-	    CrossReferencer referencer = new  CrossReferencer();
-	    referencer.print(symTabStack);
+	    ParseTreePrinter printer = new ParseTreePrinter(System.out);
+	    printer.print(parser.getICode());
 	    
 	} catch (Exception e) {
 	    e.printStackTrace();
@@ -96,13 +94,15 @@ public class Clike {
 		+ "\n%,20d ms seconds total.";
 	
 	private static final String TOKEN_FORMAT = ">>> %-20s line %d, position %d, text %s, value %s";
+	
+	private static final String ERROR_FORMAT = "*** %s at line %d, position %d, token %s";
 
 	@Override
 	public void messageReceived(Message message) {
 	    Object[] body = (Object[]) message.getBody();
 
 	    switch (message.getType()) {
-	    case PARSER_SUMMARY:
+	    case PARSER_SUMMARY: {
 		int statementCount = (Integer) body[0];
 		int errorsCount = (Integer) body[1];
 		long elapsed = (Long) body[2];
@@ -110,7 +110,9 @@ public class Clike {
 		System.out.println(String.format(PARSER_SUMMARY_FORMAT, statementCount, errorsCount, elapsed));
 
 		break;
-	    case TOKEN:
+	    }
+		
+	    case TOKEN: {
 		int lineNum = (Integer) body[0];
 		int position = (Integer) body[1];
 		TokenType type = (TokenType) body[2];
@@ -122,6 +124,19 @@ public class Clike {
 		}
 		
 		break;
+	    }
+	    
+	    case SYNTAX_ERROR: {
+		int lineNum = (Integer) body[0];
+		int position = (Integer) body[1];
+		String text = (String) body[2];
+		String errDescr = (String) body[3];
+
+		System.out.println(String.format(ERROR_FORMAT, errDescr, lineNum, position, text));
+		
+		break;
+	    }
+	    
 	    default:
 		break;
 	    }

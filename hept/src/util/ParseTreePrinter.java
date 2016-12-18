@@ -40,17 +40,20 @@ public class ParseTreePrinter {
 		    "=" + "\"" + entry.getValue() + "\"");
 	}
 	
-	stream.println(">");
-	
-	for (ICodeNode child : node.getChildren()) {
-	    print(child, level + 1);
+	if (node.getChildren().isEmpty()) {
+	    stream.println("/>");
+	} else {
+	    stream.println(">");
+
+	    for (ICodeNode child : node.getChildren()) {
+		print(child, level + 1);
+	    }
+
+	    for (int i = 0; i < level; ++i) {
+		stream.print(" ");
+	    }
+	    stream.println("</" + node + ">");
 	}
-	
-	
-	for (int i = 0; i < level; ++i) {
-	    stream.print(" ");
-	}
-	stream.println("</" + node + ">");
     }
     
     public static void main(String[] args) throws FileNotFoundException {
