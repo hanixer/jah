@@ -9,6 +9,13 @@
 ;; Item - pair [r pos], where r is rule of grammar,
 ;; pos - position of dot in this rule.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn drop-nonlazy [n l]
+  (cond
+    (empty? l) ()
+    (> n 0) (drop-list (dec n) (pop l))
+    :else l))
+    
+
 (defn rule [g r]
   (g r))
 
@@ -25,10 +32,31 @@
       (rule pos)
       nil)))
 
+(defn refreshed-syms [g sym-parent]
+  (letfn [(impl [g sym-parent result]
+            (if (result sym-parent) 
+              result
+              (let [result (conj result sym-parent)]
+                (loop [[r & rs :as g-curr] g
+                       result result]
+                  (cond
+                    (empty? g-curr) 
+                    result
+
+                    (= (first r) sym-parent)
+                    (recur rs (impl g (second r) result))
+
+                    :else 
+                    (recur rs result))))))]
+
+    (impl g sym-parent #{})))
+                
+
 (defn refreshed-items [g item]
   (if-let [sym (next-symbol g item)]
     (do 
-    (filter (fn [[r _]] (= (first (rule g r)) sym))
+      (filter (fn [[r _]] 
+                ((refreshed-syms g sym) (first (rule g r))))
             (init-state g)))))
 
 (defn next-transitions [g state]
@@ -62,6 +90,77 @@
                       :visited #{init-state}}
                    init-state)))
 
+(defn transition-state [table curr-state sym]
+  (get-in table [curr-state sym]))
+
+(defn find-reducable-item [g state]
+  (some 
+   (fn [[r pos :as item]] (if (= (count (rule g r)) pos) item)) 
+   state))
+
+(defn find-shiftable-item [g state t]
+  (some
+   (fn [item] (if (= (next-symbol g item) t) item))
+   state))
+
+(defn parse-complete? [g state]
+  (some
+   (fn [[r pos]] (and (zero? r)
+                      (= pos (count (rule g r)))))
+   state))
+
+(defn reduce-rule [g trees state]
+  (let [item (find-reducable-item g state)        
+        rhs-count (dec (second item))
+        sym (first (rule g (first item)))
+        reduced {:tag sym :content (vec (reverse (take rhs-count trees)))}]
+    (conj (drop-nonlazy rhs-count trees) reduced)))
+
+(def output true)
+
+(defn lr-parse [g input]
+  (let [table (make-transition-table g)]
+  (loop [states (list (init-state g))
+         trees (list)
+         [t & ts :as input] input]
+    (if output
+      (do '(clojure.pprint/pprint states)
+          '(visualize-state g (peek states))
+          (clojure.pprint/pprint trees)
+          (clojure.pprint/pprint input)
+          (println "***\n")))
+
+    (cond 
+      (parse-complete? g (peek states)) 
+      (first (reduce-rule g trees (peek states)))
+
+      (and (not (empty? input)) 
+           (find-shiftable-item g (peek states) t))
+      (recur (conj states (transition-state table (peek states) t))
+             (conj trees t)
+             ts)
+
+      (find-reducable-item g (peek states))
+      (let [item (find-reducable-item g (peek states))
+            rhs-count (dec (second item))
+            sym (first (rule g (first item)))
+            reduced {:tag sym :content (vec (reverse (take rhs-count trees)))}
+            states (drop-nonlazy rhs-count states)
+            trees (conj (drop-nonlazy rhs-count trees) reduced)]
+        (recur states trees input))
+
+      (= (count states) (count trees))
+      (recur (conj states 
+                   (transition-state 
+                    table (peek states) (:tag (peek trees))))
+             trees input)
+
+      (empty? input) nil
+      
+      
+
+      ))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; For viewing data
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -85,6 +184,9 @@
 (defn print-tt [g]
   (clojure.pprint/pprint (make-transition-table g)))
 
+(defn print-parse [g input]
+  (clojure.pprint/pprint (lr-parse g input)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test data
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
@@ -92,5 +194,33 @@
   [[:S :E :$]
    [:E :E :+ :E]
    [:E :d]])
+
+(def g2
+  [[:S :E :$]
+   [:E :E :+ :d]
+   [:E :d]])
+
+(def g3
+  [[:S :E :$]
+   [:E :E :+ :T]
+   [:E :T]
+   [:T :T :* :P]
+   [:T :P]
+   [:P :lp :E :rp]
+   [:P :d]])
+
+(def g4
+  [[:S :E :$]
+   [:E :E :+ :T]
+   [:E :T]
+   [:T :T :* :d]
+   [:T :d]])
+(def g5
+  [[:S :E \$]
+   [:E :E \+ :T]
+   [:E :T]
+   [:T :T \* \d]
+   [:T \d]])
+   
 
 (def is-g1 (init-state g1))
