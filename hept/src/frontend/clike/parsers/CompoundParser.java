@@ -13,8 +13,9 @@ public class CompoundParser extends StatementParser {
     }
 
     public ICodeNode parseCompound() throws Exception {
+	int line = currentToken().getLineNumber();
 	consumeExpected(ClikeTokenType.L_BRACKET);
-	ICodeNode node = ICodeFactory.createCodeNode(ICodeNodeTypeImpl.COMPOUND);
+	ICodeNode node = ICodeFactory.createCodeNode(ICodeNodeTypeImpl.COMPOUND, line);
 	
 	StatementParser parser = new StatementParser(scanner);
 	while (true) {

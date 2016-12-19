@@ -1,6 +1,5 @@
 package util;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.Map.Entry;
@@ -57,10 +56,14 @@ public class ParseTreePrinter {
     }
     
     public static void main(String[] args) throws FileNotFoundException {
+	int n = 1;
+	String s = null;
+	if (n == 1) System.out.println("***" + s + "***");
+	else {
 	ICode iCode = ICodeFactory.createICode();
 	ICodeNode n1 = ICodeFactory.createCodeNode(IF);
 	n1.setAttribute(LINE, 20);
-	ICodeNode n2 = ICodeFactory.createCodeNode(IDEXPR);
+	ICodeNode n2 = ICodeFactory.createCodeNode(VARIABLE);
 	n2.setAttribute(LINE, 30);
 	n1.addChild(n2);
 	
@@ -68,5 +71,6 @@ public class ParseTreePrinter {
 	
 	ParseTreePrinter printer = new ParseTreePrinter(System.out);
 	printer.print(iCode);
+	}
     }
 }

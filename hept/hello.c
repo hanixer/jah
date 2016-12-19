@@ -1,4 +1,4 @@
-{a + b
+{a + b;
 b = c;
 {
     b = llot;

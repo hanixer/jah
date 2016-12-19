@@ -12,8 +12,12 @@
 (defn rule [g r]
   (g r))
 
+(defn is-nonterm [g s]
+  (some (fn [x] (= (first x) s))
+        g))
+
 (defn init-state [g]
-  (zipmap (range (count g)) (repeat (count g) 1)))
+  (set (zipmap (range (count g)) (repeat (count g) 1))))
 
 (defn next-symbol [g [r pos]]
   (let [rule (rule g r)]
@@ -21,14 +25,42 @@
       (rule pos)
       nil)))
 
+(defn refreshed-items [g item]
+  (if-let [sym (next-symbol g item)]
+    (do 
+    (filter (fn [[r _]] (= (first (rule g r)) sym))
+            (init-state g)))))
+
 (defn next-transitions [g state]
   (reduce 
    (fn [acc [r pos :as item]]
      (if-let [s (next-symbol g item)]
-       (merge-with into acc {s [[r (inc pos)]]})
+       (let [next-item [r (inc pos)]]
+         (merge-with into acc 
+                   {s (into #{next-item} (refreshed-items g next-item))}))
        acc))
    {}
    state))
+
+(defn explore-state [g table state]
+  (let [transitions (next-transitions g state)]
+    (let [table (update table state 
+                        #(merge % transitions))
+          table (update table :visited 
+                        #(conj % state))]
+      (reduce
+       (fn [acc [_ state]]
+         (if (not ((:visited acc) state))
+           (explore-state g acc state)
+           acc))
+       table
+       transitions))))
+
+(defn make-transition-table [g]
+  (let [init-state (init-state g)]
+    (explore-state g {:start init-state
+                      :visited #{init-state}}
+                   init-state)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; For viewing data
@@ -44,7 +76,15 @@
     (println (name s))
     (visualize-state g state)
     (println)))
-  
+
+(defn first-transitions [g] (next-transitions g (init-state g)))
+
+(defn visualize-first-table-iter [g]
+  (visualize-transitions g (next-transitions g (init-state g))))
+
+(defn print-tt [g]
+  (clojure.pprint/pprint (make-transition-table g)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test data
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  

@@ -8,6 +8,7 @@ import frontend.Token;
 import frontend.clike.ClikeTokenType;
 import intermediate.ICodeFactory;
 import intermediate.ICodeNode;
+import intermediate.ICodeNodeType;
 import intermediate.icodeimpl.ICodeNodeKeyImpl;
 import intermediate.icodeimpl.ICodeNodeTypeImpl;
 
@@ -15,10 +16,25 @@ interface PrefixParslet {
     ICodeNode parse(ExpressionParser parser, Token token) throws Exception;
 }
 
+class ConstantParser implements PrefixParslet {
+    private ICodeNodeType nodeType;
+    
+    ConstantParser(ICodeNodeType nodeType) {
+	this.nodeType = nodeType;
+    }
+    
+    @Override
+    public ICodeNode parse(ExpressionParser parser, Token token) {
+	ICodeNode node = ICodeFactory.createCodeNode(nodeType, token.getLineNumber());
+	node.setAttribute(ICodeNodeKeyImpl.VALUE, token.getValue());
+	return node;
+    }
+}
+
 class NameParser implements PrefixParslet {
     @Override
     public ICodeNode parse(ExpressionParser parser, Token token) {
-	ICodeNode node = ICodeFactory.createCodeNode(ICodeNodeTypeImpl.VARIABLE);
+	ICodeNode node = ICodeFactory.createCodeNode(ICodeNodeTypeImpl.VARIABLE, token.getLineNumber());
 	node.setAttribute(ICodeNodeKeyImpl.ID, token.getText());
 	return node;
     }
@@ -28,7 +44,7 @@ class PrefixOperatorParslet implements PrefixParslet {
     @Override
     public ICodeNode parse(ExpressionParser parser, Token token) throws Exception {
 	ICodeNode expr = parser.parseExpression(0);
-	ICodeNode node = ICodeFactory.createCodeNode(ICodeNodeTypeImpl.PREFIX);
+	ICodeNode node = ICodeFactory.createCodeNode(ICodeNodeTypeImpl.PREFIX, token.getLineNumber());
 	node.setAttribute(ICodeNodeKeyImpl.OP, token.getType());
 	node.addChild(expr);
 	return node;
@@ -64,7 +80,7 @@ class InfixOperatorParslet implements InfixParslet {
     @Override
     public ICodeNode parse(ExpressionParser parser, ICodeNode left, Token token) throws Exception {
 	ICodeNode right = parser.parseExpression(isRightAssoc ? precedence - 1 : precedence);
-	ICodeNode node = ICodeFactory.createCodeNode(ICodeNodeTypeImpl.BINARY);
+	ICodeNode node = ICodeFactory.createCodeNode(token.getType() == ClikeTokenType.ASSIGN ? ICodeNodeTypeImpl.ASSIGNMENT : ICodeNodeTypeImpl.BINARY, token.getLineNumber());
 	node.setAttribute(ICodeNodeKeyImpl.OP, token.getType());
 	node.addChild(left);
 	node.addChild(right);
@@ -86,7 +102,7 @@ class PostfixOperatorParslet implements InfixParslet {
 
     @Override
     public ICodeNode parse(ExpressionParser parser, ICodeNode left, Token token) throws Exception {
-	ICodeNode node = ICodeFactory.createCodeNode(ICodeNodeTypeImpl.POSTFIX);
+	ICodeNode node = ICodeFactory.createCodeNode(ICodeNodeTypeImpl.POSTFIX, token.getLineNumber());
 	node.setAttribute(ICodeNodeKeyImpl.OP, token.getType());
 	node.addChild(left);
 	return node;
@@ -99,13 +115,13 @@ class PostfixOperatorParslet implements InfixParslet {
 }
 
 public class ExpressionParser extends frontend.clike.ClikeParser {
-    private Token ct;
-    private Token lt;
     private Map<ClikeTokenType, PrefixParslet> prefixParslets = new HashMap<>();
     private Map<ClikeTokenType, InfixParslet> infixParslets = new HashMap<>();
 
     public ExpressionParser(Scanner scanner) throws Exception {
 	super(scanner);
+	prefixParslets.put(ClikeTokenType.INTEGER, new ConstantParser(ICodeNodeTypeImpl.INTEGER_CONSTANT));
+	prefixParslets.put(ClikeTokenType.REAL, new ConstantParser(ICodeNodeTypeImpl.REAL_CONSTANT));
 	prefixParslets.put(ClikeTokenType.IDENTIFIER, new NameParser());
 	prefixParslets.put(ClikeTokenType.PLUS_PLUS, new PrefixOperatorParslet());
 	prefixParslets.put(ClikeTokenType.MINUS_MINUS, new PrefixOperatorParslet());

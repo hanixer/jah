@@ -19,6 +19,7 @@ import util.ParseTreePrinter;
 public class Clike {
     private Parser parser;
     private Source source;
+    private Backend backend;
 
     @SuppressWarnings({ "unused" })
     public Clike(String operation, String filePath, String flags) {
@@ -34,10 +35,11 @@ public class Clike {
 
 	    parser.parse();
 	    source.close();
-
-	    ParseTreePrinter printer = new ParseTreePrinter(System.out);
-	    printer.print(parser.getICode());
 	    
+	    backend = BackendFactory.createBackend(operation);
+	    backend.addMessageListener(new InterpreterMessageListener());
+	    backend.process(parser.getICode(), parser.getSymTabStack().getLocalSymTab());
+
 	} catch (Exception e) {
 	    e.printStackTrace();
 	}
@@ -81,6 +83,41 @@ public class Clike {
 		System.out.println(String.format(SOURCE_LINE_FORMAT, lineNumber, lineText));
 
 		break;
+	    default:
+		break;
+	    }
+
+	}
+    }
+
+    private class InterpreterMessageListener implements MessageListener {
+
+	private static final String SOURCE_LINE_FORMAT = "!!! Runtime error at %d: %s";
+	private static final String ASSIGN_FORMAT = "--- Assignment %s <- %s";
+
+	@Override
+	public void messageReceived(Message message) {
+	    Object[] body = (Object[]) message.getBody();
+
+	    switch (message.getType()) {
+	    case ASSIGN: {
+		String varName = (String) body[0];
+		String varValue = (String) body[1];
+		
+		System.out.println(String.format(ASSIGN_FORMAT, varName, varValue));
+		
+		break;
+	    }
+		
+	    case RUNTIME_ERROR: {
+		int lineNumber = (Integer) body[0];
+		String errMsg = (String) body[1];
+
+		System.out.println(String.format(SOURCE_LINE_FORMAT, lineNumber, errMsg));
+
+		break;
+	    }
+	    
 	    default:
 		break;
 	    }
