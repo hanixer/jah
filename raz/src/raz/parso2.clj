@@ -12,7 +12,7 @@
 (defn drop-nonlazy [n l]
   (cond
     (empty? l) ()
-    (> n 0) (drop-list (dec n) (pop l))
+    (> n 0) (drop-nonlazy (dec n) (pop l))
     :else l))
     
 
@@ -182,7 +182,10 @@
   (visualize-transitions g (next-transitions g (init-state g))))
 
 (defn print-tt [g]
-  (clojure.pprint/pprint (make-transition-table g)))
+  (let [result (make-transition-table g)]
+    (clojure.pprint/pprint (:start result))
+    (println)
+    (clojure.pprint/pprint (apply dissoc result [:start :visited]))))
 
 (defn print-parse [g input]
   (clojure.pprint/pprint (lr-parse g input)))
@@ -221,6 +224,74 @@
    [:E :T]
    [:T :T \* \d]
    [:T \d]])
+
+(def g6
+  [[:S :E :$]
+   [:E :E :- :T]
+   [:E :T]
+   [:T :n]
+   [:T :lp :E :rp]])
    
 
 (def is-g1 (init-state g1))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Actions table
+;;
+;; It has the following structure
+;; {state1 {symbol1 shift-entry
+;;          symbol2 shift-entry
+;;          :reductions [reduce-entry] ;; <<-- optional
+;;  state2 {}}
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn shift-entry [state]
+  {:type :shift :state state})
+
+(defn reduce-entry [sym length]
+  {:type :reduce :sym sym :length length})
+
+(defn reduction-item? [g [r pos]]
+  (= (count (rule g r)) pos))
+
+(defn add-reductions [g state]
+  {:reductions 
+   (reduce 
+    (fn [acc [r pos :as item]]
+      (if (reduction-item? g item)
+        (let [rule (rule g r)]
+          (conj acc 
+                (reduce-entry (first rule)
+                              (dec (count rule)))))
+        acc))
+    []
+    state)})
+
+(defn make-action-table [g]
+  (let [tran-table (apply dissoc (make-transition-table g) [:start :visited])]
+    (reduce 
+     (fn [acc [state transitions]]
+       (merge acc
+              {state (merge transitions 
+                            (add-reductions g state))}))
+     {}
+     tran-table)))
+
+(defn print-at [g]
+  (let [at (make-action-table g)]
+    (doseq [[state x] at]
+      (println "State:")
+      (visualize-state g state)
+      (println "Transitions:")
+      (visualize-transitions g (dissoc x :reductions))
+      (println "Reductions:")
+      (clojure.pprint/pprint (:reductions x))
+      (println "====================\n\n"))))
+     
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Stack
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn mk-nd [name links]
+  {:name name :links links})
+
+
