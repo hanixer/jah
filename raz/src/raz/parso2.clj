@@ -14,7 +14,7 @@
     (empty? l) ()
     (> n 0) (drop-nonlazy (dec n) (pop l))
     :else l))
-    
+
 
 (defn rule [g r]
   (g r))
@@ -50,14 +50,14 @@
                     (recur rs result))))))]
 
     (impl g sym-parent #{})))
-                
+
 
 (defn refreshed-items [g item]
   (if-let [sym (next-symbol g item)]
     (do 
       (filter (fn [[r _]] 
                 ((refreshed-syms g sym) (first (rule g r))))
-            (init-state g)))))
+              (init-state g)))))
 
 (defn next-transitions [g state]
   (reduce 
@@ -65,7 +65,7 @@
      (if-let [s (next-symbol g item)]
        (let [next-item [r (inc pos)]]
          (merge-with into acc 
-                   {s (into #{next-item} (refreshed-items g next-item))}))
+                     {s (into #{next-item} (refreshed-items g next-item))}))
        acc))
    {}
    state))
@@ -120,46 +120,46 @@
 
 (defn lr-parse [g input]
   (let [table (make-transition-table g)]
-  (loop [states (list (init-state g))
-         trees (list)
-         [t & ts :as input] input]
-    (if output
-      (do '(clojure.pprint/pprint states)
-          '(visualize-state g (peek states))
-          (clojure.pprint/pprint trees)
-          (clojure.pprint/pprint input)
-          (println "***\n")))
+    (loop [states (list (init-state g))
+           trees (list)
+           [t & ts :as input] input]
+      (if output
+        (do '(clojure.pprint/pprint states)
+            '(visualize-state g (peek states))
+            (clojure.pprint/pprint trees)
+            (clojure.pprint/pprint input)
+            (println "***\n")))
 
-    (cond 
-      (parse-complete? g (peek states)) 
-      (first (reduce-rule g trees (peek states)))
+      (cond 
+        (parse-complete? g (peek states)) 
+        (first (reduce-rule g trees (peek states)))
 
-      (and (not (empty? input)) 
-           (find-shiftable-item g (peek states) t))
-      (recur (conj states (transition-state table (peek states) t))
-             (conj trees t)
-             ts)
+        (and (not (empty? input)) 
+             (find-shiftable-item g (peek states) t))
+        (recur (conj states (transition-state table (peek states) t))
+               (conj trees t)
+               ts)
 
-      (find-reducable-item g (peek states))
-      (let [item (find-reducable-item g (peek states))
-            rhs-count (dec (second item))
-            sym (first (rule g (first item)))
-            reduced {:tag sym :content (vec (reverse (take rhs-count trees)))}
-            states (drop-nonlazy rhs-count states)
-            trees (conj (drop-nonlazy rhs-count trees) reduced)]
-        (recur states trees input))
+        (find-reducable-item g (peek states))
+        (let [item (find-reducable-item g (peek states))
+              rhs-count (dec (second item))
+              sym (first (rule g (first item)))
+              reduced {:tag sym :content (vec (reverse (take rhs-count trees)))}
+              states (drop-nonlazy rhs-count states)
+              trees (conj (drop-nonlazy rhs-count trees) reduced)]
+          (recur states trees input))
 
-      (= (count states) (count trees))
-      (recur (conj states 
-                   (transition-state 
-                    table (peek states) (:tag (peek trees))))
-             trees input)
+        (= (count states) (count trees))
+        (recur (conj states 
+                     (transition-state 
+                      table (peek states) (:tag (peek trees))))
+               trees input)
 
-      (empty? input) nil
-      
-      
+        (empty? input) nil
+        
+        
 
-      ))))
+        ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; For viewing data
@@ -231,7 +231,7 @@
    [:E :T]
    [:T :n]
    [:T :lp :E :rp]])
-   
+
 
 (def is-g1 (init-state g1))
 
@@ -268,16 +268,24 @@
 
 (defn make-action-table [g]
   (let [tran-table (apply dissoc (make-transition-table g) [:start :visited])]
-    (reduce 
-     (fn [acc [state transitions]]
-       (merge acc
-              {state (merge transitions 
-                            (add-reductions g state))}))
-     {}
-     tran-table)))
+    (assoc (reduce 
+            (fn [acc [state transitions]]
+              (merge acc
+                     {state (merge transitions 
+                                   (add-reductions g state))}))
+            {}
+            tran-table)
+           :start (:start tran-table))))
+
+(defn shift-state [at state sym]
+  (let [entry (get-in at [state sym])]
+    (if (= (:type entry) entry)
+      (:state entry)
+      nil)))
+
 
 (defn print-at [g]
-  (let [at (make-action-table g)]
+  (let [at (dissoc (make-action-table g) :start)]
     (doseq [[state x] at]
       (println "State:")
       (visualize-state g state)
@@ -286,7 +294,26 @@
       (println "Reductions:")
       (clojure.pprint/pprint (:reductions x))
       (println "====================\n\n"))))
-     
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; GLR
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn gss-entry [state parent link]
+  {:state state 
+   :parent (if parent [parent] []) 
+   :link link})
+
+#_
+(defn glr-parse [g input]
+  (let [act-table (make-action-table g)]
+    (loop [[t & ts :as input] input
+           gss [(gss-entry (:start act-table) nil nil)]]
+      (let [top (peek gss)]
+        (cond
+          (empty? input) gss
+          
+          (if-let [state (shift-state act table
+)]))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Stack
