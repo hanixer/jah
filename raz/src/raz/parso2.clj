@@ -235,6 +235,25 @@
 
 (def is-g1 (init-state g1))
 
+(def ambignode
+  [:S
+   [:ambignode
+    [:E
+     [:E
+      [:E [:d]]
+      :+
+      [:E [:d]]]
+     :+
+     [:E [:d]]]
+    
+    [:E
+     [:E [:d]]
+     :+
+     [:E
+      [:E [:d]]
+      :+
+      [:E [:d]]]]]])
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Actions table
 ;;
@@ -244,11 +263,8 @@
 ;;          :reductions [reduce-entry] ;; <<-- optional
 ;;  state2 {}}
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn shift-entry [state]
-  {:type :shift :state state})
-
 (defn reduce-entry [sym length]
-  {:type :reduce :sym sym :length length})
+  {:sym sym :length length})
 
 (defn reduction-item? [g [r pos]]
   (= (count (rule g r)) pos))
@@ -278,11 +294,7 @@
            :start (:start tran-table))))
 
 (defn shift-state [at state sym]
-  (let [entry (get-in at [state sym])]
-    (if (= (:type entry) entry)
-      (:state entry)
-      nil)))
-
+  (get-in at [state sym]))
 
 (defn print-at [g]
   (let [at (dissoc (make-action-table g) :start)]
@@ -298,10 +310,58 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; GLR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn gss-entry [state parent link]
+(defn gss-node [state parent link]
   {:state state 
-   :parent (if parent [parent] []) 
-   :link link})
+   :links (if parent #{{:parent parent :link link}} #{})})
+
+(defn single-parent? [gss-node]
+  (= (count (:links gss-node)) 1))
+
+(defn link [gss-node]
+  (:link (first (:links gss-node))))
+
+(defn parent [gss-node]
+  (:parent (first (:links gss-node))))
+
+(defn update-node [next-nodes state parent link]
+  (let [old-node (some #(if (= (:state %) state) %) next-nodes)]
+    (let [new-node (if old-node
+                     (update old-node :links #(conj % {:parent parent :link link}))
+                     (gss-node state parent link))]
+      (conj (disj next-nodes old-node) new-node))))
+
+(defn glr-shift [act-table curr-nodes sym]
+  (reduce
+   (fn [next-nodes node]
+     (if-let [state (shift-state act-table (:state node) sym)]
+       (update-node next-nodes state node sym)
+       next-nodes))
+   #{}
+   curr-nodes))
+
+(declare fork)
+
+#_
+(defn traverse-back [node length]
+  (loop [curr node
+         n length
+         trees (list)]
+    (if (zero? n)
+      trees
+      (if (single-parent? curr)
+        (recur (parent node)
+               (dec n)
+               (conj trees (link node)))
+        (fork 
+  )))))    
+    
+
+(defn glr-reduce [act-table gss top]
+  (reduce
+   (fn [acc x]
+     (conj acc x))
+   #{}
+   top))
 
 #_
 (defn glr-parse [g input]
