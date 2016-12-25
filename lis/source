@@ -1,0 +1,8 @@
+if (i == 2) a = 2 else a = 3
+if (i == 2) {
+
+a = (10 
++ 2) /3
+b = a
+a = b
+} else if (a == 2) a = 3
