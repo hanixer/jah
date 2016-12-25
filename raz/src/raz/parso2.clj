@@ -275,15 +275,16 @@
     (fn [acc [r pos :as item]]
       (if (reduction-item? g item)
         (let [rule (rule g r)]
-          (conj acc 
-                (reduce-entry (first rule)
-                              (dec (count rule)))))
+          (conj acc rule))
         acc))
     []
     state)})
 
 (defn make-action-table [g]
-  (let [tran-table (apply dissoc (make-transition-table g) [:start :visited])]
+  (let [tran-table (make-transition-table g)
+        start (:start tran-table)
+        tran-table 
+        (apply dissoc (make-transition-table g) [:start :visited])]
     (assoc (reduce 
             (fn [acc [state transitions]]
               (merge acc
@@ -291,7 +292,7 @@
                                    (add-reductions g state))}))
             {}
             tran-table)
-           :start (:start tran-table))))
+           :start start)))
 
 (defn shift-state [at state sym]
   (get-in at [state sym]))
@@ -314,6 +315,12 @@
   {:state state 
    :links (if parent #{{:parent parent :link link}} #{})})
 
+(defn link-sym [link]
+  (let [link (:link link)]
+    (if (vector? link)
+      (first link)
+      link)))
+
 (defn single-parent? [gss-node]
   (= (count (:links gss-node)) 1))
 
@@ -334,51 +341,121 @@
   (reduce
    (fn [next-nodes node]
      (if-let [state (shift-state act-table (:state node) sym)]
-       (update-node next-nodes state node sym)
+       (conj next-nodes (gss-node state node sym))
        next-nodes))
    #{}
    curr-nodes))
 
 (declare fork)
 
-#_
-(defn traverse-back [node length]
-  (loop [curr node
-         n length
-         trees (list)]
-    (if (zero? n)
-      trees
-      (if (single-parent? curr)
-        (recur (parent node)
-               (dec n)
-               (conj trees (link node)))
-        (fork 
-  )))))    
-    
+(defn traverse-back [act-table node rule]
+  (letfn [(impl [node rule-rhs]
+            (loop [node node
+                   [sym & syms :as rule-rhs] rule-rhs]
+              (let [links (filter #(= (link-sym %) sym) (:links node))]
+                (cond
+                  (empty? rule-rhs)
+                  #{(gss-node 
+                     (shift-state act-table (:state node) (first rule))
+                     node rule)}
 
-(defn glr-reduce [act-table gss top]
+                  (> (count links) 1)
+                  (apply clojure.set/union
+                         (map #(impl
+                                (:parent %) syms) links))
+                  
+                  (= (count links) 1)
+                  (recur (parent node) syms)
+
+                  :else 
+                  #{}))))]
+    (if (nil? rule)
+      #{}
+      (let [res (impl node (reverse (next rule)))]
+        res))))
+
+
+(defn merge-nodes [nodes]
   (reduce
-   (fn [acc x]
-     (conj acc x))
+   (fn [acc node]
+     (if-let [found (some #(if (= (:state %) (:state node)) %) acc)]
+       (conj (disj acc found)
+             {:state (:state node) 
+              :links (into (:links found) (:links node))})
+       (conj acc node)))
    #{}
-   top))
+   nodes))
 
-#_
+(defn glr-reduce [act-table top]
+  (loop [unseen top
+         seen #{}]
+    (if (empty? unseen)
+      (merge-nodes seen)
+      (let [node (first unseen)]
+        (let [reduced-nodes
+              (map (fn [rule]
+                     (traverse-back
+                      act-table node rule))
+                   (:reductions (act-table (:state node))))
+              reduced-nodes
+              (apply clojure.set/union reduced-nodes)]
+          (recur (into (disj unseen node) reduced-nodes)
+                 (conj seen node)))))))
+
+(defn accept? [g nodes]
+  (let [accept-item [0 (count (rule g 0))]]
+    (some #((:state %) accept-item) nodes)))
+
 (defn glr-parse [g input]
   (let [act-table (make-action-table g)]
     (loop [[t & ts :as input] input
-           gss [(gss-entry (:start act-table) nil nil)]]
+           gss [#{(gss-node (:start act-table) nil nil)}]]
       (let [top (peek gss)]
-        (cond
-          (empty? input) gss
-          
-          (if-let [state (shift-state act table
-)]))))))
+        (if (empty? input) 
+          gss
+          (let [shifted (glr-shift act-table top t)]
+            (if (accept? g shifted)
+              (conj gss shifted)
+              (let [reduced (glr-reduce act-table shifted)]
+                (cond
+                  (empty? reduced) nil
+
+                  (accept? g reduced) (conj gss reduced)
+
+                  :else
+                  (recur ts (conj gss reduced)))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Stack
+;; Test data
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn mk-nd [name links]
-  {:name name :links links})
+(def g1-at (make-action-table g1))
+(def s3 (gss-node #{[0 2] [1 2]} 'j 'i))
+(def s5 (gss-node #{[1 4] [1 2]} 'k 'ee))
+(def s3_ (gss-node (:state s3) 'ki 'jj))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
