@@ -3,6 +3,7 @@ package backend.interpreter;
 import backend.Backend;
 import backend.interpreter.executors.StatementExecutor;
 import intermediate.ICode;
+import intermediate.ICodeNode;
 import intermediate.SymTab;
 import message.Message;
 import message.MessageType;
@@ -16,7 +17,7 @@ public class Executor extends Backend {
 	Executor.symTab = symTab;
 	
 	long curMs = System.currentTimeMillis();
-	
+
 	new StatementExecutor().execute(iCode.getRootNode());
 	
 	long elapsed = curMs - curMs;
@@ -27,4 +28,7 @@ public class Executor extends Backend {
 
     }
 
+    protected void flag(ICodeNode node, RuntimeErrorType errorType) {
+	errorHandler.flag(node, errorType, this);
+    }
 }

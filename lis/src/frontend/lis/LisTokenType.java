@@ -18,6 +18,8 @@ public enum LisTokenType implements TokenType {
     FOR("for"),
     DO("do"),
     WHILE("while"),
+    TRUE("true"),
+    FALSE("false"),
     RETURN("return"),
     ;
     

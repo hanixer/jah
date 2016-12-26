@@ -28,7 +28,7 @@ public class ExpressionStatementExecutor extends StatementExecutor {
 	    sendMessage(new Message(MessageType.ASSIGN,
 		    new Object[] {
 			    lhsName,
-			    value.toString()
+			    value == null ? "" : value.toString()
 		    }));
 	}
     }

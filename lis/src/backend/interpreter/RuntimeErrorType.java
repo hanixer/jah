@@ -6,6 +6,7 @@ public enum RuntimeErrorType {
     DIV_BY_ZERO,
     INVALID_STD_FUNCTION_ARGUMENT,
     INVALID_INPUT,
-    STACK_OVERFLOW,
+    STACK_OVERFLOW, 
+    BAD_TEST_EXPRESSION,
     
 }

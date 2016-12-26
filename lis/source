@@ -1,5 +1,4 @@
-do
-while (true) {
-a = b;
-b = 3
-} while(false);
+ {
+ i = 0
+ while (i < 5) { j = i; i = i + 1}
+ }

@@ -43,6 +43,15 @@ class NameParser implements PrefixParslet {
     }
 }
 
+class BooleanParser implements PrefixParslet {
+    @Override
+    public ICodeNode parse(ExpressionParser parser, Token token) {
+	ICodeNode node = ICodeFactory.createCodeNode(ICodeNodeTypeImpl.BOOL_CONSTANT, token.getLineNumber());
+	node.setAttribute(ICodeNodeKeyImpl.VALUE, token.getText().equals("true"));
+	return node;
+    }
+}
+
 class PrefixOperatorParslet implements PrefixParslet {
     @Override
     public ICodeNode parse(ExpressionParser parser, Token token) throws Exception {
@@ -126,6 +135,8 @@ public class ExpressionParser extends frontend.lis.LisParser {
 	prefixParslets.put(LisTokenType.INTEGER, new ConstantParser(ICodeNodeTypeImpl.INTEGER_CONSTANT));
 	prefixParslets.put(LisTokenType.REAL, new ConstantParser(ICodeNodeTypeImpl.REAL_CONSTANT));
 	prefixParslets.put(LisTokenType.IDENTIFIER, new NameParser());
+	prefixParslets.put(LisTokenType.TRUE, new BooleanParser());
+	prefixParslets.put(LisTokenType.FALSE, new BooleanParser());
 	prefixParslets.put(LisTokenType.PLUS_PLUS, new PrefixOperatorParslet());
 	prefixParslets.put(LisTokenType.MINUS_MINUS, new PrefixOperatorParslet());
 	prefixParslets.put(LisTokenType.PLUS, new PrefixOperatorParslet());
@@ -135,13 +146,20 @@ public class ExpressionParser extends frontend.lis.LisParser {
 	prefixParslets.put(LisTokenType.L_PAREN, new ParenParslet());
 
 	registerInfixRightAssoc(LisTokenType.ASSIGN, 1);
-	registerInfix(LisTokenType.EQUAL, 2);
-	registerInfix(LisTokenType.PLUS, 3);
-	registerInfix(LisTokenType.MINUS, 3);
-	registerInfix(LisTokenType.STAR, 4);
-	registerInfix(LisTokenType.SLASH, 4);
-	infixParslets.put(LisTokenType.PLUS_PLUS, new PostfixOperatorParslet(4));
-	infixParslets.put(LisTokenType.MINUS_MINUS, new PostfixOperatorParslet(4));
+	registerInfix(LisTokenType.BAR_BAR, 2);
+	registerInfix(LisTokenType.AMPER_AMPER, 3);
+	registerInfix(LisTokenType.EQUAL, 4);
+	registerInfix(LisTokenType.NOT_EQUAL, 4);
+	registerInfix(LisTokenType.LESS_THEN, 5);
+	registerInfix(LisTokenType.LESS_EQ, 5);
+	registerInfix(LisTokenType.GREATER_THEN, 5);
+	registerInfix(LisTokenType.GREATER_EQ, 5);
+	registerInfix(LisTokenType.PLUS, 6);
+	registerInfix(LisTokenType.MINUS, 6);
+	registerInfix(LisTokenType.STAR, 7);
+	registerInfix(LisTokenType.SLASH, 7);
+	infixParslets.put(LisTokenType.PLUS_PLUS, new PostfixOperatorParslet(8));
+	infixParslets.put(LisTokenType.MINUS_MINUS, new PostfixOperatorParslet(8));
 	
 	if (currentToken() == null) 
 	    nextToken();
@@ -187,7 +205,7 @@ public class ExpressionParser extends frontend.lis.LisParser {
     }
     
     public static void main(String[] args) throws Exception {
-	Scanner s = FrontendFactory.createScanner("1 = 2 = 3");
+	Scanner s = FrontendFactory.createScanner("d = c <= b");
 	ExpressionParser p = new ExpressionParser(s);
 	ParseTreePrinter printer = new ParseTreePrinter(System.out);
 	printer.print(p.parseExpression());

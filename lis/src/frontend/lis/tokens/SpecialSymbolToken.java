@@ -122,7 +122,7 @@ public class SpecialSymbolToken extends Token {
     }
 
     public void readAngleBracket(LisTokenType doubleOp, LisTokenType doubleAssign, LisTokenType singleOp,
-	    LisTokenType singleAsign) throws Exception {
+	    LisTokenType singleAssign) throws Exception {
 	char ch = currentChar();
 	nextChar();
 	if (currentChar() == ch) {
@@ -132,7 +132,7 @@ public class SpecialSymbolToken extends Token {
 		type = doubleOp;
 	    }
 	} else if (currentChar() == '=') {
-	    makeTokenAndAdvance(doubleAssign);
+	    makeTokenAndAdvance(singleAssign);
 	} else {
 	    type = singleOp;
 	}

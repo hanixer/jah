@@ -55,6 +55,18 @@ public class LisParser extends Parser {
 	nextToken();
     }
     
+    public Token nextTokenDisable() throws Exception {
+	Token token = super.nextToken();
+        sendMessage(new Message(MessageType.TOKEN, new Object[]{
+        	token.getLineNumber(),
+        	token.getPosition(),
+        	token.getType(),
+        	token.getText(),
+        	token.getValue(),
+        }));
+        return token;
+    }
+    
     protected void flag(Token token, ErrorType error) {
 	errorHandler.flag(token, error, this);
     }
