@@ -50,4 +50,28 @@ public class SymTabStackImpl extends ArrayList<SymTab> implements SymTabStack {
 	return null;
     }
 
+    @Override
+    public SymTab push() {
+	SymTab symTab = SymTabFactory.createSymTab(++nestingLevel);
+	add(symTab);
+	
+	return symTab;
+    }
+
+    @Override
+    public SymTab push(SymTab symTab) {
+	++nestingLevel;
+	add(symTab);
+	return symTab;
+    }
+
+    @Override
+    public SymTab pop() {
+	SymTab symTab = get(nestingLevel);
+	remove(nestingLevel);
+	nestingLevel--;
+	
+	return symTab;
+    }
+
 }

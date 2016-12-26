@@ -6,4 +6,8 @@ public interface SymTabStack {
     SymTabEntry enterLocal(String name);
     SymTabEntry lookupLocal(String name);
     SymTabEntry lookup(String name);
+    
+    SymTab push();
+    SymTab push(SymTab symTab);
+    SymTab pop();
 }
