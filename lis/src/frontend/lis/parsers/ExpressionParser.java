@@ -6,6 +6,7 @@ import java.util.Map;
 import frontend.FrontendFactory;
 import frontend.Scanner;
 import frontend.Token;
+import frontend.lis.ErrorType;
 import frontend.lis.LisTokenType;
 import intermediate.ICodeFactory;
 import intermediate.ICodeNode;
@@ -58,7 +59,7 @@ class ParenParslet implements PrefixParslet {
     @Override
     public ICodeNode parse(ExpressionParser parser, Token token) throws Exception {
 	ICodeNode expr = parser.parseExpression(0);
-	parser.consumeExpected(LisTokenType.R_PAREN);
+	parser.consumeExpected(LisTokenType.R_PAREN, ErrorType.MISSING_RPAREN);
 	return expr;
     }
 

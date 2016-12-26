@@ -8,6 +8,13 @@ public enum ErrorType {
     INVALID_SPECIAL_SYMB("Invalid special symbol"),
     INVALID_COMMENT("Comment must be closed"),
     NONEXPECTED_TOKEN("Was expected"),
+    MISSING_LPAREN("'(' is missing"),
+    MISSING_RPAREN("')' is missing"),
+    MISSING_LBRACKET("'{' is missing"),
+    MISSING_RBRACKET("'}' is missing"),
+    MISSING_STMT_SEPAR("';' or new line is missing after statement"),
+    MISSING_STMT("Statement (list) is missing"),
+    MISSING_WHILE("'while' is missing in 'do' statement"), MISSING_CONDITION("Condition is missing"),
     ;
     
     private String text;

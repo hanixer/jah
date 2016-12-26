@@ -1,6 +1,7 @@
 package frontend.lis.parsers;
 
 import frontend.Scanner;
+import frontend.lis.ErrorType;
 import frontend.lis.LisTokenType;
 import intermediate.ICodeFactory;
 import intermediate.ICodeNode;
@@ -12,9 +13,9 @@ public class CompoundParser extends StatementParser {
 	super(scanner);
     }
 
-    public ICodeNode parseCompound() throws Exception {
+    public ICodeNode parseStatement() throws Exception {
 	int line = currentToken().getLineNumber();
-	consumeExpected(LisTokenType.L_BRACKET);
+	consumeExpected(LisTokenType.L_BRACKET, ErrorType.MISSING_LBRACKET);
 	ICodeNode node = ICodeFactory.createCodeNode(ICodeNodeTypeImpl.COMPOUND, line);
 	
 	StatementParser parser = new StatementParser(scanner);
@@ -27,7 +28,7 @@ public class CompoundParser extends StatementParser {
 	    }
 	}
 	
-	consumeExpected(LisTokenType.R_BRACKET);
+	consumeExpected(LisTokenType.R_BRACKET, ErrorType.MISSING_RBRACKET);
 	
 	return node;
     }

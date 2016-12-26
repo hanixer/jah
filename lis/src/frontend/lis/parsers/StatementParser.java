@@ -3,6 +3,8 @@ package frontend.lis.parsers;
 import java.util.EnumSet;
 
 import frontend.Scanner;
+import frontend.TokenType;
+import frontend.lis.ErrorType;
 import frontend.lis.LisParser;
 import frontend.lis.LisTokenType;
 import intermediate.ICodeFactory;
@@ -22,17 +24,21 @@ public class StatementParser extends LisParser {
     }
     
     public ICodeNode parseStatement() throws Exception {
-	while (currentToken().getType() == LisTokenType.LINE) {
-	    nextToken();
-	}
+	skipSemi();
 	
-	if (currentToken().getType() == LisTokenType.L_BRACKET) {
-	    CompoundParser parser = new CompoundParser(scanner);
-	    return parser.parseCompound();
-	} else if (currentToken().getType() == LisTokenType.IF) {
+	switch ((LisTokenType) currTokenType()) {
+	case L_BRACKET:
+	    return new CompoundParser(scanner).parseStatement();
+	case IF:
 	    return new IfStatementParser(scanner).parseStatement();
+	case WHILE:
+	    return new WhileStatementParser(scanner).parseStatement();
+	case DO:
+	    return new DoWhileStatement(scanner).parseStatement();
+	default:		
 	}
 	
+	// Try to parse expression statement
 	ExpressionParser exprParser = new ExpressionParser(scanner);
 	ICodeNode expr = exprParser.parseExpression();
 	ICodeNode node = null; 
@@ -43,10 +49,31 @@ public class StatementParser extends LisParser {
 	    node.addChild(expr);
 	} 
 	
-	while (currentToken().getType() == LisTokenType.LINE) {
-	    nextToken();
-	}
+	skipSemi();
 	
 	return node;
     }
+
+    private void skipSemi() throws Exception {
+	while (currTokenType() == LisTokenType.LINE || currTokenType() == LisTokenType.SEMICOLON) {
+	    nextToken();
+	}
+    }
+
+    protected TokenType currTokenType() {
+	return currentToken().getType();
+    }
+    
+    protected ICodeNode parseTest(EnumSet<?> end) throws Exception {
+	consumeExpected(LisTokenType.L_PAREN, ErrorType.MISSING_LPAREN);
+	
+	ICodeNode cond = new ExpressionParser(scanner).parseExpression();
+	
+	if (cond == null) {
+	    synchronize(end);
+	}
+	consumeExpected(LisTokenType.R_PAREN, ErrorType.MISSING_RPAREN);
+	return cond;
+    }
+
 }

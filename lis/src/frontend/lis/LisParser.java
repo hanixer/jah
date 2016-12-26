@@ -41,18 +41,22 @@ public class LisParser extends Parser {
 	return errorHandler.getErrorCount();
     }
 
-    public void consumeExpected(TokenType type) throws Exception {
+    public void consumeExpected(TokenType type, ErrorType error) throws Exception {
 	if (currentToken().getType() != type) {
-	    errorHandler.flag(currentToken(), ErrorType.NONEXPECTED_TOKEN, this);
+	    errorHandler.flag(currentToken(), error, this);
 	}
 	nextToken();
     }
 
     public void semiExpected() throws Exception {
 	if (currentToken().getType() != LisTokenType.LINE && currentToken().getType() != LisTokenType.SEMICOLON) {
-	    errorHandler.flag(currentToken(), ErrorType.NONEXPECTED_TOKEN, this);
+	    errorHandler.flag(currentToken(), ErrorType.MISSING_STMT_SEPAR, this);
 	}
 	nextToken();
+    }
+    
+    protected void flag(Token token, ErrorType error) {
+	errorHandler.flag(token, error, this);
     }
 
     protected Token synchronize(EnumSet<?> syncSet) throws Exception {
