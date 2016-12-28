@@ -1,8 +1,3 @@
- {
- i = 0
- while (i < 5) { j = i; i = i + 1}
- }
- 
  var r:Int = 1
  var d: Double = 5
  var f:Int = 10

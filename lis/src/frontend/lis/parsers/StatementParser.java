@@ -53,16 +53,6 @@ public class StatementParser extends LisParser {
 	
 	return node;
     }
-
-    private void skipSemi() throws Exception {
-	while (currTokenType() == LisTokenType.LINE || currTokenType() == LisTokenType.SEMICOLON) {
-	    nextToken();
-	}
-    }
-
-    protected TokenType currTokenType() {
-	return currentToken().getType();
-    }
     
     protected ICodeNode parseTest(EnumSet<?> end) throws Exception {
 	consumeExpected(LisTokenType.L_PAREN, ErrorType.MISSING_LPAREN);

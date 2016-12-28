@@ -3,13 +3,16 @@ package frontend.lis;
 import java.util.EnumSet;
 
 import frontend.TokenType;
-import frontend.EofToken;
 import frontend.Parser;
 import frontend.Scanner;
 import frontend.Token;
+import frontend.lis.parsers.DeclarationParser;
 import frontend.lis.parsers.StatementParser;
+import frontend.lis.tokens.EofToken;
 import intermediate.ICodeFactory;
 import intermediate.ICodeNode;
+import intermediate.icodeimpl.ICodeNodeTypeImpl;
+import intermediate.symtabimpl.Predefined;
 import message.Message;
 import message.MessageType;
 
@@ -21,15 +24,34 @@ public class LisParser extends Parser {
 	iCode = ICodeFactory.createICode();
 	errorHandler = new ErrorHandler();
     }
+    
+    public LisParser(LisParser parser) {
+	super(parser.scanner);
+	this.symTabStack = parser.symTabStack; 
+    }
 
     @Override
     public void parse() throws Exception {
 	long currentMs = System.currentTimeMillis();
+	
+	Predefined.initialize(symTabStack);
+	symTabStack.push();
 
 	nextToken();
-	StatementParser parser = new StatementParser(scanner);
-	ICodeNode node = parser.parseStatement();
-	iCode.setRootNode(node);
+	
+	ICodeNode progNode = ICodeFactory.createNode(ICodeNodeTypeImpl.PROGRAM);
+	
+	while (currentToken().getType() != LisTokenType.EOF) {
+	    DeclarationParser declParser = new DeclarationParser(this);
+	    if (declParser.isDeclarationToken(currentToken())) {
+		declParser.parse(currentToken().getType());
+	    } else {
+		StatementParser parser = new StatementParser(scanner);
+		progNode.addChild(parser.parseStatement());
+	    }
+	}
+	
+	iCode.setRootNode(progNode);
 
 	long elapsed = System.currentTimeMillis() - currentMs;
 
@@ -55,7 +77,7 @@ public class LisParser extends Parser {
 	nextToken();
     }
     
-    public Token nextTokenDisable() throws Exception {
+    public Token nextToken() throws Exception {
 	Token token = super.nextToken();
         sendMessage(new Message(MessageType.TOKEN, new Object[]{
         	token.getLineNumber(),
@@ -77,9 +99,19 @@ public class LisParser extends Parser {
 	if (!syncSet.contains(token.getType())) {
 	    do {
 		nextToken();
-	    } while (!(currentToken() instanceof EofToken) && !syncSet.contains(token.getType()));
+	    } while ((currentToken().getType() != LisTokenType.EOF) && !syncSet.contains(token.getType()));
 	}
 
 	return token;
+    }
+    
+    protected void skipSemi() throws Exception {
+	while (currTokenType() == LisTokenType.LINE || currTokenType() == LisTokenType.SEMICOLON) {
+	    nextToken();
+	}
+    }
+
+    protected TokenType currTokenType() {
+	return currentToken().getType();
     }
 }

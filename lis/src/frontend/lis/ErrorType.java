@@ -14,7 +14,10 @@ public enum ErrorType {
     MISSING_RBRACKET("'}' is missing"),
     MISSING_STMT_SEPAR("';' or new line is missing after statement"),
     MISSING_STMT("Statement (list) is missing"),
-    MISSING_WHILE("'while' is missing in 'do' statement"), MISSING_CONDITION("Condition is missing"),
+    MISSING_WHILE("'while' is missing in 'do' statement"), 
+    MISSING_CONDITION("Condition is missing"),
+    MISSING_ID_VAR("Missing identifier after 'var'"), 
+    NAME_REDEFINITION("Redefinition of name"), MISSING_COLON, MISSING_TYPENAME, UNDEFINED_TYPE,
     ;
     
     private String text;

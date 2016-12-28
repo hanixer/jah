@@ -1,10 +1,10 @@
 package frontend.lis;
 
-import frontend.EofToken;
 import frontend.Scanner;
 import frontend.Source;
 import frontend.Token;
 import frontend.lis.tokens.CharToken;
+import frontend.lis.tokens.EofToken;
 import frontend.lis.tokens.NumberToken;
 import frontend.lis.tokens.SpecialSymbolToken;
 import frontend.lis.tokens.StringToken;

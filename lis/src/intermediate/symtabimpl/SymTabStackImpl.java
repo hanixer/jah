@@ -41,7 +41,7 @@ public class SymTabStackImpl extends ArrayList<SymTab> implements SymTabStack {
     @Override
     public SymTabEntry lookup(String name) {
 	for (int i = nestingLevel; i >= 0; --i) {
-	    SymTabEntry entry =  get(nestingLevel).lookup(name);
+	    SymTabEntry entry =  get(i).lookup(name);
 	    if (entry != null) {
 		return entry;
 	    }

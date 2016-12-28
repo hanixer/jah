@@ -8,5 +8,6 @@ public enum SymTabKeyImpl implements SymTabKey {
     FUNCTION_CODE, FUNCTION_SYMTAB, FUNCTION_ICODE,
     FUNCTION_PARAMS, FUNCTION_FUNCTIONS,
     
-    DATA_VALUE,
+    DATA_VALUE, 
+    INIT_EXPRESSION,
 }

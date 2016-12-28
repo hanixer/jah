@@ -45,5 +45,7 @@ public class Predefined {
 	charType.setIdentifier(charId);
 	charId.setDefinition(Definition.TYPE);
 	charId.setTypeSpec(charType);
+	
+	undefinedType = TypeFactory.createType(TypeForm.SCALAR);
     }
 }
