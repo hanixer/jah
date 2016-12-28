@@ -17,16 +17,11 @@ symbol a (b:bs) = if a == b then [(b, bs)] else []
 symbol a [] = []
 
 (<|>) :: Parser a -> Parser a -> Parser a
-(p <|> q) input = case p input of
-  [] -> q input
-  result -> result
+(p <|> q) input = p input ++ q input
 
 (<*>) :: Parser (b -> a) -> Parser b -> Parser a
-(p <*> q) input = case  p input of
-  [] -> []
-  [(f, qinput)] -> case q qinput of
-    [] -> []
-    [(v, qoutput)] -> [(f v, qoutput)]
+(p <*> q) input = 
+  [(pv qv, rest) | (pv, qinput) <- p input, (qv, rest) <- q qinput]
 
 infixl 3 <$>
 (<$>) :: (b -> a) -> Parser b -> Parser a
@@ -37,3 +32,7 @@ parser :: Parser a -> Input -> Result a
 parser p s = case p s of
   [] -> Right "Erroneous input"
   ((res, rest):rs) -> Left res
+
+p = ((symbol 3) <|> (((+) <$> symbol 3) <*> (symbol 4)))
+
+
