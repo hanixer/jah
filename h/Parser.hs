@@ -82,3 +82,16 @@ num = do x <- digit
 number = token num
 
 strTok s = token (string s)
+
+binaryOp :: Parser a -> String -> (a -> a -> a) -> Parser a
+binaryOp p op combiner = 
+  do strTok op
+     strTok "("
+     x <- p
+     strTok ","
+     y <- p
+     strTok ")"
+     return (combiner x y)
+
+gluglu = do cs <- many (char 'c')
+            return cs  

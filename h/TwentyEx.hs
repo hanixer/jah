@@ -106,20 +106,31 @@ sausage (x:xs) =
 -- Exercise 16
 -- Relative Difficulty: 6
 -- (bonus: use apple + furry')
+-- apple :: (Misty m) => m a -> m (a -> b) -> m b
+-- furry' :: (a -> b) -> m a -> m b
 banana2 :: (Misty m) => (a -> b -> c) -> m a -> m b -> m c
-banana2 = error "todo"
+banana2 f mx my = 
+  banana (\x -> 
+    banana (\y -> 
+      unicorn (f x y)) my) mx
+
+banana2' :: (Misty m) => (a -> b -> c) -> m a -> m b -> m c
+banana2' f mx my =
+  apple my (furry' f mx)
+         
 
 -- Exercise 17
 -- Relative Difficulty: 6
 -- (bonus: use apple + banana2)
 banana3 :: (Misty m) => (a -> b -> c -> d) -> m a -> m b -> m c -> m d
-banana3 = error "todo"
+banana3 f mx my mz = 
+  apple mz (banana2' f mx my)
 
 -- Exercise 18
 -- Relative Difficulty: 6
 -- (bonus: use apple + banana3)
 banana4 :: (Misty m) => (a -> b -> c -> d -> e) -> m a -> m b -> m c -> m d -> m e
-banana4 = error "todo"
+banana4 f mx my mz mw = apple mw (banana3 f mx my mz)
 
 newtype State s a = State {
   state :: (s -> (s, a))
@@ -128,10 +139,15 @@ newtype State s a = State {
 -- Exercise 19
 -- Relative Difficulty: 9
 instance Fluffy (State s) where
-  furry = error "todo"
-
+  furry f x = State (\s -> (s, f (snd ((state x) s))))
+    
 -- Exercise 20
 -- Relative Difficulty: 10
 instance Misty (State s) where
-  banana = error "todo"
-  unicorn = error "todo"
+  banana f x =  State (\s0 -> let stosa = state x
+                                  (s1, a) = stosa s0
+                                  stosbwrapped = f a
+                                  stosb = state stosbwrapped
+                                  (s2, b) = stosb s0
+                              in (s0, b))    
+  unicorn x = State (\s -> (s, x))
