@@ -1,0 +1,8 @@
+let makemult = 
+ proc(maker)
+  proc(x)
+   if zero?(x)
+    then 0
+    else 2
+in 
+1

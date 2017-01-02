@@ -70,7 +70,7 @@ token p = do space
              return v
 
 ident = do x <- lower
-           xs <- (many lower)
+           xs <- (many (lower <|> digit))
            return (x:xs)
 
 identifier = token ident
@@ -79,7 +79,14 @@ num = do x <- digit
          xs <- (many digit)
          return (read (x:xs) :: Int)
 
-number = token num
+signednum = do 
+  do char '-'
+     n <- num
+     return (- n)
+ <|>
+  num
+
+number = token signednum
 
 strTok s = token (string s)
 
@@ -95,3 +102,8 @@ binaryOp p op combiner =
 
 gluglu = do cs <- many (char 'c')
             return cs  
+
+oneAndMore p combiner = do
+  x <- p
+  xs <- ((oneAndMore p combiner) <|> return [])
+  return (combiner (x:xs))

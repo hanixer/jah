@@ -12,6 +12,8 @@ data Exp = NumExp Int
           | IfExp Exp Exp Exp
           | VarExp String
           | LetExp String Exp Exp
+          | ProcExp String Exp
+          | CallExp Exp Exp
           -- Arithmetic
           | DiffExp Exp Exp
           | MinusExp Exp
@@ -29,6 +31,8 @@ data Exp = NumExp Int
           | EmptyExp
           | ListExp [Exp]
           | CondExp [(Exp, Exp)]
+          -- Other
+          | PrintExp Exp
           deriving (Show)
 
 numExp :: Parser Exp
@@ -86,12 +90,23 @@ letExp = do strTok "let"
             e2 <- expr
             return (LetExp v e1 e2)
 
+procExp = do strTok "proc"
+             strTok "("
+             var <- identifier
+             strTok ")"
+             e <- expr
+             return (ProcExp var e)
+
+callExp = do strTok "("
+             e1 <- expr
+             e2 <- expr
+             strTok ")"
+             return (CallExp e1 e2)
+
 minusExp = unaryOp "minus" MinusExp
 
 emptyExp = do strTok "empty"
               return (EmptyExp)
-
---addExp = binary
 
 commaSeparExpList :: Parser [Exp]
 commaSeparExpList = 
@@ -112,6 +127,8 @@ listExp = do strTok "list"
 expr = numExp <|> 
   letExp <|> 
   ifExp <|> 
+  procExp <|>
+  callExp <|>
   isZeroExp <|> 
   minusExp <|>
   diffExp <|> 
@@ -127,6 +144,8 @@ expr = numExp <|>
   (unaryOp "empty?" IsEmptyExp) <|>
   emptyExp <|>
   listExp <|>
+  condExp <|>
+  (unaryOp "print" PrintExp) <|>
   varExp
 
 program = do e <- expr
@@ -137,6 +156,7 @@ data ExpVal = IntVal Int
             | BoolVal Bool
             | ConsVal ExpVal ExpVal
             | EmptyVal
+            | ProcVal String Exp Env
   deriving (Show)
 
 expValToNum :: ExpVal -> Int
@@ -181,10 +201,11 @@ extendEnv var val env = ((var,val):env)
 
 applyEnv :: Env -> String -> ExpVal
 applyEnv env searchVar = case (lookup searchVar env) of
-  Nothing -> error ("variable is not found" ++ searchVar)
+  Nothing -> error ("variable is not found: " ++ searchVar)
   Just val -> val
 
 
+-- Evaluation
 valueOf :: Exp -> Env -> ExpVal
 
 valueOf (NumExp n) env = (IntVal n)
@@ -228,6 +249,24 @@ valueOf (ListExp exps) env =
            (ConsVal (valueOf exp env) conses)) 
         EmptyVal (reverse exps)
 
+valueOf (CondExp exps) env = eval exps
+  where eval [] = error "no valid cond clause found"
+        eval ((cond,body):exps) = 
+          if (unboxBool (valueOf cond env)) 
+          then valueOf body env
+          else eval exps
+
+valueOf (ProcExp var body) env = (ProcVal var body env)
+valueOf (CallExp rator rand) envOuter =  
+  case valueOf rator envOuter of 
+    (ProcVal var body envInner) -> 
+      let randVal = valueOf rand envOuter
+      in valueOf body (extendEnv var randVal envInner) 
+    _ -> error "operator must be procedure value"
+
+valueOf _ _ = error "not implemented for this syntax"
+
+-- Test helpers
 valueOf' :: String -> Env -> ExpVal
 valueOf' inp env = case (parse expr inp) of
                      [] -> error "parse error"
@@ -236,3 +275,16 @@ valueOf' inp env = case (parse expr inp) of
 sampleEnv = (extendEnv "x" (IntVal 10) (extendEnv "v" (IntVal 5) (extendEnv "i" (IntVal 1) emptyEnv)))
 
 eval s = valueOf' s sampleEnv
+
+s1 = "let x = 200 in let f = proc (z) -(z,x) in let x = 100 in let g = proc (z) -(z,x) in -((f 1), (g 1))"
+multi = "line1\
+\line2\
+\line3"
+{-
+s2 = "\
+let a = 1 in\\n\
+let b = +(a,1) in\\n\
+let f = proc(x) *(a,b) in\\n\
+f(100)"
+
+-}
