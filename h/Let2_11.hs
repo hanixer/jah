@@ -1,12 +1,11 @@
-module Proc3_26 where 
+module Let2_11 where 
 
 import Parser 
 import Control.Applicative ((<|>), many)
-import System.IO
-import qualified Data.List as L
+import Data.List (find)
 
--- LET: a simple language
--- trimmed representation of procedures
+-- LET: a simple language with /unpack/ construction
+-- added ribcage representation of environment
 -- AST             
 data Program = Program Exp
   deriving (Show)
@@ -34,6 +33,7 @@ data Exp = NumExp Int
           | EmptyExp
           | ListExp [Exp]
           | CondExp [(Exp, Exp)]
+          | UnpackExp [String] Exp Exp
           -- Other
           | PrintExp Exp
           deriving (Show)
@@ -127,6 +127,15 @@ listExp = do strTok "list"
              strTok ")"
              return (ListExp es)
 
+unpackExp = 
+  do strTok "unpack"
+     vs <- (oneAndMore identifier id)
+     strTok "="
+     e1 <- expr
+     strTok "in"
+     e2 <- expr
+     return (UnpackExp vs e1 e2)
+
 expr = numExp <|> 
   letExp <|> 
   ifExp <|> 
@@ -147,6 +156,7 @@ expr = numExp <|>
   (unaryOp "empty?" IsEmptyExp) <|>
   emptyExp <|>
   listExp <|>
+  unpackExp <|>
   condExp <|>
   (unaryOp "print" PrintExp) <|>
   varExp
@@ -194,27 +204,29 @@ relOpImpl = binOpImpl unboxInt unboxInt BoolVal
   
 
 -- Environment
-type Env = [(String,ExpVal)]
+type Env = [([String],[ExpVal])]
 
 emptyEnv :: Env
 emptyEnv = []
 
 extendEnv :: String -> ExpVal -> Env -> Env
-extendEnv var val env = ((var,val):env)
+extendEnv var val env = (([var],[val]):env)
+
+extendEnv' :: [String] -> [ExpVal] -> Env -> Env
+extendEnv' vars vals env = ((vars,vals):env)
 
 applyEnv :: Env -> String -> ExpVal
-applyEnv env searchVar = case (lookup searchVar env) of
-  Nothing -> error ("variable is not found: " ++ searchVar)
-  Just val -> val
+applyEnv [] _ = error "variable not found"
+applyEnv ((vars,vals):xs) searchVar =
+  case find (\(var,val) -> var == searchVar) (zip vars vals) of 
+    (Just (var,val)) -> val
+    Nothing -> applyEnv xs searchVar
 
-filterFreeVars :: Env -> [String] -> Env
-filterFreeVars env freeVars =
-  snd $ foldl (\acc@(done, env) (k,v) -> 
-                 if not (elem k done) && (elem k freeVars)
-                 then ((k:done), extendEnv k v env)
-                 else acc)
-  ([], emptyEnv) env 
-        
+extendEnvUnpack :: [String] -> ExpVal -> Env -> Env
+extendEnvUnpack [] _ env = env
+extendEnvUnpack (x:_) EmptyVal env = error "not enough cons cells for unpack"
+extendEnvUnpack (x:xs) (ConsVal e rest) env = extendEnvUnpack xs rest (extendEnv x e env)
+extendEnvUnpack (x:_) _ _ = error "cons value is expected"
 
 
 -- Evaluation
@@ -260,6 +272,8 @@ valueOf (ListExp exps) env =
   foldl (\conses exp -> 
            (ConsVal (valueOf exp env) conses)) 
         EmptyVal (reverse exps)
+valueOf (UnpackExp vs rhs body) env = 
+  valueOf body (extendEnvUnpack vs (valueOf rhs env) env)
 
 valueOf (CondExp exps) env = eval exps
   where eval [] = error "no valid cond clause found"
@@ -268,8 +282,7 @@ valueOf (CondExp exps) env = eval exps
           then valueOf body env
           else eval exps
 
-valueOf e@(ProcExp var body) env =
-  (ProcVal var body (filterFreeVars env (freeVars e [])))
+valueOf (ProcExp var body) env = (ProcVal var body env)
 valueOf (CallExp rator rand) envOuter =  
   case valueOf rator envOuter of 
     (ProcVal var body envInner) -> 
@@ -278,17 +291,6 @@ valueOf (CallExp rator rand) envOuter =
     _ -> error "operator must be procedure value"
 
 valueOf _ _ = error "not implemented for this syntax"
-
-
-freeVars :: Exp -> [String] -> [String]
-freeVars (ProcExp var body) bound = freeVars body (L.union [var] bound) 
-freeVars (IsZeroExp exp) bound = freeVars exp bound
-freeVars (IfExp e1 e2 e3) bound = 
-  foldl L.union [] (map (\e -> freeVars e bound) [e1,e2,e3])
-freeVars (LetExp var e1 e2) bound = 
-  L.union (freeVars e1 bound) (freeVars e2 (L.union [var] bound))
-freeVars (VarExp var) bound = if elem var bound then [] else [var]
-freeVars _ bound = []
 
 -- Test helpers
 valueOf' :: String -> Env -> ExpVal
@@ -299,11 +301,6 @@ valueOf' inp env = case (parse expr inp) of
 sampleEnv = (extendEnv "x" (IntVal 10) (extendEnv "v" (IntVal 5) (extendEnv "i" (IntVal 1) emptyEnv)))
 
 eval s = valueOf' s sampleEnv
-
-evalFile file = do
-  handle <- openFile file ReadMode
-  contents <- hGetContents handle
-  print $ eval contents
 
 s1 = "let x = 200 in let f = proc (z) -(z,x) in let x = 100 in let g = proc (z) -(z,x) in -((f 1), (g 1))"
 multi = "line1\

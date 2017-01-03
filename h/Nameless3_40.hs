@@ -29,6 +29,7 @@ data Exp = NumExp Int
           | NamelessVarExp Lexaddr
           | NamelessLetExp Exp Exp
           | NamelessProcExp Exp
+          | NamelessLetRecExp Exp Exp
           -- Arithmetic
           | DiffExp Exp Exp
           | MinusExp Exp
@@ -236,7 +237,10 @@ relOpImpl = binOpImpl unboxInt unboxInt BoolVal
 
 -- Environment
 newtype Env = Env {envFunc :: String -> Lexaddr -> (ExpVal, Lexaddr)}
-type NamelessEnv = [ExpVal]
+data NamelessEnvEntry = SimpleEnvEntry ExpVal
+                      | RecEnvEntry ExpVal
+                      deriving (Show)
+type NamelessEnv = [NamelessEnvEntry]
 type Lexaddr = Int
 
 instance Show Env where
@@ -245,10 +249,10 @@ instance Show Env where
 emptyEnv :: Env
 emptyEnv = Env (\_ _ -> error "variable not found")
 
-extendEnv :: String -> ExpVal -> Env -> Env
-extendEnv var val env = Env (\v addr ->
+extendEnv :: String -> Env -> Env
+extendEnv var env = Env (\v addr ->
   if v == var 
-  then (val, addr) 
+  then (EmptyVal, addr) 
   else envFunc env v (addr + 1))
 
 extendEnvRec :: String -> String -> Exp -> Env -> Env
@@ -259,7 +263,7 @@ extendEnvRec name arg body env = Env (\v addr ->
 
 extendEnvMany [] env = env
 extendEnvMany ((var,val):rest) env = 
-  extendEnvMany rest $ extendEnv var val env
+  extendEnvMany rest $ extendEnv var env
 
 applyEnv :: Env -> String -> ExpVal
 applyEnv env searchVar = fst $ envFunc env searchVar 0
@@ -271,39 +275,56 @@ emptyNamelessEnv :: NamelessEnv
 emptyNamelessEnv = []
 
 extendNamelessEnv :: ExpVal -> NamelessEnv -> NamelessEnv
-extendNamelessEnv val env  = (val:env)
+extendNamelessEnv val env  = (SimpleEnvEntry val:env)
+extendNamelessEnvRec val env = (RecEnvEntry val:env)
 
 applyNamelessEnv :: NamelessEnv -> Lexaddr -> ExpVal
-applyNamelessEnv env num = env !! num
-
-extendEnvUnpack :: [String] -> ExpVal -> Env -> Env
-extendEnvUnpack [] _ env = env
-extendEnvUnpack (x:_) EmptyVal env = error "not enough cons cells for unpack"
-extendEnvUnpack (x:xs) (ConsVal e rest) env = extendEnvUnpack xs rest (extendEnv x e env)
-extendEnvUnpack (x:_) _ _ = error "cons value is expected"
+applyNamelessEnv env num = case env !! num of
+  (SimpleEnvEntry val) -> val
+  (RecEnvEntry pval@(NamelessProcVal body env)) -> 
+    NamelessProcVal body $ extendNamelessEnvRec pval env
+  _ -> error "recursive procedure value expected"
 
 extendNamelessEnvUnpack :: [String] -> ExpVal -> NamelessEnv -> NamelessEnv
 extendNamelessEnvUnpack [] _ env = env
-extendNamelessEnvUnpack (x:_) EmptyVal env = error "not enough cons cells for unpack"
+extendNamelessEnvUnpack (x:_) EmptyVal env = 
+  error "not enough cons cells for unpack"
 extendNamelessEnvUnpack (x:xs) (ConsVal e rest) env = 
   extendNamelessEnvUnpack xs rest (extendNamelessEnv e env)
 extendNamelessEnvUnpack (x:_) _ _ = error "cons value is expected"
 
 -- Translation to nameless AST
-translationOf :: Exp -> Env -> Exp
-translationOf (VarExp var) env = NamelessVarExp (lexaddr env var)
-translationOf (LetExp var init body) env = 
-  NamelessLetExp (translationOf init env) (translationOf body (extendEnv var (IntVal 1) env ))
-translationOf (ProcExp arg body) env = NamelessProcExp (translationOf body (extendEnv arg (IntVal 1) env ))
-translationOf (IsZeroExp e) env = IsZeroExp $ translationOf e env
-translationOf (MinusExp e) env = MinusExp $ translationOf e env
-translationOf (DiffExp e1 e2) env = DiffExp (translationOf e1 env) (translationOf e2 env)
-translationOf (CallExp e1 e2) env = CallExp (translationOf e1 env) (translationOf e2 env)
-translationOf (CondExp clauses) env = 
-  CondExp $ map (\(a,b) -> ((translationOf a env), translationOf b env)) clauses
-translationOf (ConsExp e1 e2) env = ConsExp (translationOf e1 env) (translationOf e2 env)
-translationOf (UnpackExp names rhs body) env = translationOf (unpackToLet names rhs body) env
-translationOf exp _ = exp
+trans :: Exp -> Env -> Exp
+trans (VarExp var) env = 
+  NamelessVarExp (lexaddr env var)
+trans (LetExp var init body) env = 
+  NamelessLetExp 
+  (trans init env) 
+  (trans body (extendEnv var env ))
+trans (ProcExp arg body) env = 
+  NamelessProcExp (trans body (extendEnv arg env))
+trans (LetRecExp name arg pbody lbody) env = 
+  NamelessLetRecExp 
+  (trans pbody (extendEnv arg (extendEnv name env)))
+  (trans lbody (extendEnv name env))
+trans (IfExp e1 e2 e3) env = 
+  IfExp (trans e1 env) (trans e2 env) (trans e3 env)
+trans (IsZeroExp e) env = 
+  IsZeroExp $ trans e env
+trans (MinusExp e) env = 
+  MinusExp $ trans e env
+trans (DiffExp e1 e2) env = 
+  DiffExp (trans e1 env) (trans e2 env)
+trans (CallExp e1 e2) env = 
+  CallExp (trans e1 env) (trans e2 env)
+trans (CondExp clauses) env = 
+  CondExp $ map (\(a,b) -> 
+                   ((trans a env), trans b env)) clauses
+trans (ConsExp e1 e2) env = 
+  ConsExp (trans e1 env) (trans e2 env)
+trans (UnpackExp names rhs body) env = 
+  trans (unpackToLet names rhs body) env
+trans exp _ = exp
 
 unpackToLet (x:xs) (ConsExp car cdr) body =
   LetExp x car (unpackToLet xs cdr body)
@@ -318,6 +339,20 @@ valueOf :: Exp -> NamelessEnv -> ExpVal
 valueOf (NumExp n) _ = (IntVal n)
 
 valueOf (NamelessVarExp addr) env = applyNamelessEnv env addr
+
+valueOf (NamelessProcExp body) env = (NamelessProcVal body env)
+valueOf (NamelessLetRecExp pbody lbody) env = 
+  valueOf lbody
+  (extendNamelessEnvRec (NamelessProcVal pbody env) env)  
+--valueOf (LetRecExp name arg pbody lbody) env = 
+--  valueOf lbody $ (extendEnvRec name arg pbody env)
+valueOf (CallExp rator rand) envOuter =  
+  case valueOf rator envOuter of 
+    (NamelessProcVal body envInner) -> 
+      let randVal = valueOf rand envOuter
+      in valueOf body (extendNamelessEnv randVal envInner) 
+--      error (show body)
+    _ -> error "operator must be procedure value"
 
 valueOf (IsZeroExp e) env = if num == 0 then (BoolVal True) else (BoolVal False)
   where num = (expValToNum (valueOf e env))
@@ -367,17 +402,6 @@ valueOf (CondExp exps) env = eval exps
           if (unboxBool (valueOf cond env)) 
           then valueOf body env
           else eval exps
-
-valueOf (NamelessProcExp body) env = (NamelessProcVal body env)
---valueOf (LetRecExp name arg pbody lbody) env = 
---  valueOf lbody $ (extendEnvRec name arg pbody env)
-valueOf (CallExp rator rand) envOuter =  
-  case valueOf rator envOuter of 
-    (NamelessProcVal body envInner) -> 
-      let randVal = valueOf rand envOuter
-      in valueOf body (extendNamelessEnv randVal envInner) 
-    _ -> error "operator must be procedure value"
-
 valueOf _ _ = error "not implemented for this syntax"
 
 -- Test helpers
@@ -386,18 +410,18 @@ valueOf' inp env = case (parse expr inp) of
                      [] -> error "parse error"
                      [(exp, rest)] -> valueOf exp emptyNamelessEnv
 
-sampleEnv = (extendEnv "x" (IntVal 10) (extendEnv "v" (IntVal 5) (extendEnv "i" (IntVal 1) emptyEnv)))
+--sampleEnv = (extendEnv "x" (IntVal 10) (extendEnv "v" (IntVal 5) (extendEnv "i" (IntVal 1) emptyEnv)))
 
-eval s = valueOf' s sampleEnv
+eval s = valueOf' s emptyEnv
 
-evalNl s = valueOf (translationOf (fst . head $ parse expr s) emptyEnv) emptyNamelessEnv
+evalNl s = valueOf (trans (fst . head $ parse expr s) emptyEnv) emptyNamelessEnv
 
 evalFile file = do
   handle <- openFile file ReadMode
   contents <- hGetContents handle
   print $ evalNl contents
 
-trlt s = (translationOf (fst . head $ parse expr s) emptyEnv)
+trlt s = (trans (fst . head $ parse expr s) emptyEnv)
 
 s1 = "let x = 200 in let f = proc (z) -(z,x) in let x = 100 in let g = proc (z) -(z,x) in -((f 1), (g 1))"
 multi = "line1\
