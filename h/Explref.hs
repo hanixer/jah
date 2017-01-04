@@ -1,13 +1,11 @@
 {-# LANGUAGE TypeSynonymInstances #-}
-module Letrec2 where 
+module Explref where 
 
 import Parser 
 import Control.Applicative ((<|>), many)
 import System.IO
 
--- LETREC: This is a variant that uses procedural representation
--- of environment, so there was no need to create additional 
--- syntax rule for call of recursive procedure
+-- Explref - language with reference, location, store
 
 -- AST             
 data Program = Program Exp
