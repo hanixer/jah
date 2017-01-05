@@ -33,7 +33,7 @@ playGame (x:xs) = do
  
 startState = (False, 0)
  
-main = print $ evalState (playGame "abcaaacbbcabbab") startState
+main = print $ execState (playGame "abcaaacbbcabbab") startState
 
 f :: State Int Bool
 f = do

@@ -1,0 +1,13 @@
+let x = newref(0) in
+let f = proc(y)
+    setref(x,y) in
+{
+newref(50);
+newref(100);
+newref(10000);
+(f 255);
+setref(x, -(deref(x), 100500))
+
+}
+
+    
