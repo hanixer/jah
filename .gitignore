@@ -7,3 +7,5 @@ Release
 *.suo
 ipch
 build*
+h/sandbox.hi
+h/sandbox.o
