@@ -8,7 +8,7 @@ import qualified Data.IntMap as IM
 import Control.Monad.State
 import Data.Maybe (fromMaybe)
 
--- Explref - language with reference, location, store
+-- Explref - language with reference, location, store, history of storage operations
 
 -- AST             
 data Program = Program Exp

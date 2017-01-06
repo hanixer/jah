@@ -8,7 +8,7 @@ import qualified Data.IntMap as IM
 import Control.Monad.State
 import Data.Maybe (fromMaybe)
 
--- Explref - language with reference, location, store
+-- Implicit references - variables can store only references to locations with values, but not values
 
 -- AST             
 data Program = Program Exp
@@ -43,6 +43,7 @@ data Exp = NumExp Int
           | NewRefExp Exp
           | SetRefExp Exp Exp
           | DerefExp Exp
+          | AssignExp String Exp
           -- Other
           | PrintExp Exp
           deriving (Show)
@@ -154,6 +155,13 @@ letrec = do strTok "letrec"
             lbody <- expr
             return (LetRecExp name arg pbody lbody)
 
+assignExp = do
+  strTok "set"
+  var <- identifier
+  strTok "="
+  exp <- expr
+  return (AssignExp var exp)
+
 expr = numExp <|> 
   letExp <|> 
   ifExp <|> 
@@ -181,6 +189,7 @@ expr = numExp <|>
   (unaryOp "newref" NewRefExp) <|>
   (binOp "setref" SetRefExp) <|>
   (unaryOp "deref" DerefExp) <|>
+  assignExp <|>
   varExp
 
 program = do e <- expr
@@ -205,26 +214,6 @@ expValToBool (BoolVal v) = v
 expValToBool _ = error "bool expected"
 unboxBool = expValToBool
 
-valueOfAndToNum :: Exp -> Env -> Int
-valueOfAndToNum e env = expValToNum (valueOf e env)
-
-extractAndApply e1 e2 env f =   IntVal (f (valueOfAndToNum e1 env)
-           (valueOfAndToNum e2 env))
-
-binOpImpl :: (ExpVal -> a) -> 
-             (ExpVal -> b) ->
-             (c -> ExpVal) ->
-             Exp -> Exp -> Env ->                           
-             (a -> b -> c) -> 
-             ExpVal 
-binOpImpl unbox1 unbox2 box exp1 exp2 env f =
-  box (f (unbox1 val1) (unbox2 val2))
-  where
-    val1 = valueOf exp1 env
-    val2 = valueOf exp2 env
-binOpImplInt = binOpImpl unboxInt unboxInt IntVal
-relOpImpl = binOpImpl unboxInt unboxInt BoolVal
-  
 
 -- Environment
 data EnvEntry = SimpleEnvEntry String ExpVal
@@ -238,9 +227,8 @@ emptyEnv = []
 extendEnv :: String -> ExpVal -> Env -> Env
 extendEnv var val env = (SimpleEnvEntry var val:env)
 
-extendEnvRec :: String -> String -> Exp -> Env -> Env
-extendEnvRec name arg body env = 
-  (RecEnvEntry name (ProcVal arg body env):env)
+extendEnvRec name val env = 
+  (RecEnvEntry name val :env)
 
 extendEnvMany [] env = env
 extendEnvMany ((var,val):rest) env = 
@@ -248,150 +236,103 @@ extendEnvMany ((var,val):rest) env =
 
 applyEnv :: Env -> String -> ExpVal
 applyEnv (SimpleEnvEntry var val:env) svar = 
-  if var == svar then val else applyEnv env svar
+  if var == svar 
+  then val 
+  else applyEnv env svar
 applyEnv (RecEnvEntry var val@(ProcVal arg body penv):env) svar =
   if var == svar 
-  then (ProcVal arg body (extendEnvRec var arg body env))
+  then (ProcVal arg body (extendEnvRec var val env))
   else applyEnv env svar
 applyEnv [] var = error ("variable " ++ (show var) ++ " not found")
 
 
 -- Evaluation
-valueOf :: Exp -> Env -> ExpVal
-
-valueOf (NumExp n) env = (IntVal n)
-
-valueOf (VarExp var) env = (applyEnv env var)
-
-valueOf (IsZeroExp e) env = if num == 0 then (BoolVal True) else (BoolVal False)
-  where num = (expValToNum (valueOf e env))
-
-valueOf (IfExp e1 e2 e3) env = if val1 then (valueOf e2 env) else (valueOf e3 env)
-  where val1 = (expValToBool (valueOf e1 env))
-
-valueOf (LetExp var e1 e2) env = (valueOf e2 (extendEnv var initVal env))
-  where initVal = valueOf e1 env
-
-valueOf (MinusExp e) env = (IntVal (-(expValToNum (valueOf e env))))
-valueOf (DiffExp e1 e2) env = extractAndApply e1 e2 env (-)
-valueOf (AddExp e1 e2) env = extractAndApply e1 e2 env (+)
-valueOf (MultExp e1 e2) env = extractAndApply e1 e2 env (*)
-valueOf (ModExp e1 e2) env = binOpImplInt e1 e2 env mod 
-valueOf (EqExp e1 e2) env = relOpImpl e1 e2 env (==) 
-valueOf (GreaterExp e1 e2) env = relOpImpl e1 e2 env (>) 
-valueOf (LessExp e1 e2) env = relOpImpl e1 e2 env (<) 
-
-valueOf (ConsExp e1 e2) env = ConsVal val1 val2
-  where val1 = valueOf e1 env
-        val2 = valueOf e2 env
-valueOf (CarExp e) env = case (valueOf e env) of
-  (ConsVal val1 val2) -> val1
-  _ -> error "cons cell expected"
-valueOf (CdrExp e) env = case (valueOf e env) of
-  (ConsVal val1 val2) -> val2
-  _ -> error "consCellExpected"
-valueOf (IsEmptyExp e) env = case (valueOf e env) of
-  EmptyVal -> (BoolVal True)
-  (ConsVal _ _) -> (BoolVal False)
-  _ -> error "cons cell or empty is expected"
-valueOf EmptyExp _ = EmptyVal 
-valueOf (ListExp exps) env = 
-  foldl (\conses exp -> 
-           (ConsVal (valueOf exp env) conses)) 
-        EmptyVal (reverse exps)
-
-valueOf (CondExp exps) env = eval exps
-  where eval [] = error "no valid cond clause found"
-        eval ((cond,body):exps) = 
-          if (unboxBool (valueOf cond env)) 
-          then valueOf body env
-          else eval exps
-
-valueOf (ProcExp var body) env = (ProcVal var body env)
-valueOf (LetRecExp name arg pbody lbody) env = 
-  valueOf lbody $ (extendEnvRec name arg pbody env)
-valueOf (CallExp rator rand) envOuter =  
-  case valueOf rator envOuter of 
-    (ProcVal var body envInner) -> 
-      let randVal = valueOf rand envOuter
-      in valueOf body (extendEnv var randVal envInner) 
-    _ -> error "operator must be procedure value"
-
-valueOf _ _ = error "not implemented for this syntax"
-
 eval :: Exp -> Env -> State StoreState ExpVal
 eval (NumExp n) env = return (IntVal n)
-eval (VarExp name) env = return (applyEnv env name)
+eval (VarExp name) env = deref (applyEnv env name)
 eval (DiffExp e1 e2) env = do
   val1 <- eval e1 env
   val2 <- eval e2 env
   return $ IntVal $ (unboxInt val1) - (unboxInt val2)
 eval (LetExp var e1 e2) env = do 
   rhs <- eval e1 env
-  val <- eval e2 (extendEnv var rhs env)
+  loc <- getNewLoc
+  setLocVal loc rhs
+  val <- eval e2 (extendEnv var (RefVal loc) env)
   return val
+eval (LetRecExp name arg pbody body) env = do
+  let procVal = (ProcVal arg pbody env)
+  loc <- getNewLoc
+  setLocVal loc procVal
+  val <- eval body (extendEnvRec name arg pbody env)
+  return val  
 eval (ProcExp var body) env = return $ ProcVal var body env
 eval (CallExp rator rand) envOuter = do
   randVal <- eval rand envOuter
   ratorVal <- eval rator envOuter
   case ratorVal of
     (ProcVal var body envInner) -> do
-      bodyVal <- eval body $ extendEnv var randVal envInner
+      loc <- getNewLoc
+      setLocVal loc randVal
+      bodyVal <- eval body $ extendEnv var (RefVal loc) envInner
       return bodyVal
     d -> error ("proc val is expected but was " ++ (show d))
-eval (NewRefExp exp) env = do
+eval (NewRefExp exp) env = error "newref is not available in this language"
+eval (SetRefExp exp1 exp2) env = error "setref is not available in this language"
+eval (DerefExp exp) env = error "deref is not available in this language"
+eval (AssignExp var exp) env = do
   val <- eval exp env
-  loc <- getNewLoc
-  setLocVal loc val
-  return (RefVal loc)
-eval (SetRefExp exp1 exp2) env = do
-  (RefVal loc) <- eval exp1 env
-  val <- eval exp2 env
-  setLocVal loc val 
-  return val
-eval (DerefExp exp) env = do
-  val1 <- eval exp env
-  val2 <- deref val1
-  return val2
+  let ref = applyEnv env var
+  case ref of
+    (RefVal loc) -> do
+      setLocVal loc val
+      return val
+    v -> error ("RefVal is expected but got " ++ (show v))
 eval (CompoundExp exps) env = do
   vals <- mapM (\exp -> eval exp env) exps
   return (head (reverse vals))
 
 -- Storage
+data HistItem = NewRefItem Loc
+              | SetRefItem Loc ExpVal
+              | DerefItem Loc ExpVal
+
+instance Show HistItem where
+  show (NewRefItem n) = "[" ++ (show n) ++ "] new" 
+  show (SetRefItem n val) = "[" ++ (show n) ++ "] <- " ++ (show val)
+  show (DerefItem n val) = "[" ++ (show n) ++ "] => " ++ (show val)
+
+type Hist = [HistItem]
 type Store = IM.IntMap ExpVal
-type StoreState = (Int, Store)
+type StoreState = (Int, Store, Hist)
 type Loc = Int
 
 getNewLoc :: State StoreState Loc
 getNewLoc = do
-  (n, store) <- get
-  put (n+1, store)
+  (n, store, hst) <- get
+  put (n+1, store, (NewRefItem (n + 1)):hst)
   return (n + 1)
 
 setLocVal :: Loc -> ExpVal -> State StoreState ExpVal
 setLocVal loc val = do
-  (n, store) <- get
-  put (n, IM.insert loc val store)
+  (n, store, hst) <- get
+  put (n, IM.insert loc val store, (SetRefItem loc val):hst)
   return val
 
 deref :: ExpVal -> State StoreState ExpVal
 deref (RefVal loc) = do
-  (n, store) <- get
+  (n, store, hst) <- get
   case IM.lookup loc store of 
-    Just val -> return val
+    Just val -> do
+        put (n, store, (DerefItem loc val):hst)
+        return val
     Nothing -> error "no value for this location "
 deref _ = error "RefVal expected at deref"
 
-emptyState = (0 :: Int, IM.empty)
+emptyState = (0 :: Int, IM.empty, [])
 -- Test helpers
-valueOf' :: String -> Env -> ExpVal
-valueOf' inp env = case (parse expr inp) of
-                     [] -> error "parse error"
-                     [(exp, rest)] -> valueOf exp env
 
 sampleEnv = (extendEnv "x" (IntVal 10) (extendEnv "v" (IntVal 5) (extendEnv "i" (IntVal 1) emptyEnv)))
-
-eval' s = valueOf' s sampleEnv
 
 evall s = runState (eval (fst $ head $ parse expr s) sampleEnv) emptyState
 
@@ -400,10 +341,23 @@ evalFile file = do
   contents <- hGetContents handle
   print $ evall contents
 
+fileContents file = do
+  handle <- openFile file ReadMode
+  contents <- hGetContents handle
+  return contents
+
+showHistoryFile file = do
+  contents <- fileContents file
+  let (_, (_, stor, hst)) = evall contents
+  print "Storage:\n" 
+  print stor
+  mapM (\item -> print item)
+    (reverse hst)
 
 parseFile file = do
   handle <- openFile file ReadMode
   contents <- hGetContents handle
+  print contents
   print $ fst $ head $ parse expr contents
 
 s1 = "let x = 200 in let f = proc (z) -(z,x) in let x = 100 in let g = proc (z) -(z,x) in -((f 1), (g 1))"
