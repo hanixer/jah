@@ -74,13 +74,13 @@ memoize eLabel parser = \pos -> do
   where iLabel = fromEnum eLabel
 
 -- Input
-input = ["c", "b", "a"]
+input = ["c"]
 inputL = length input
 
 parse p = p 0
 
 -- Test grammar
---sA = term "a" *> term "b" <+> term "c"
+sA = term "a" *> term "b" <+> term "c"
 
 data MyLabels = A|B|C deriving (Show, Enum)
 
@@ -88,9 +88,9 @@ bet = do
   m <- get
   return (IM.insert 1 (IM.singleton 2 3))
   
-testft pos = fst $ runState (term "a" pos) IM.empty
+testft pos = fst $ runState (sA pos) IM.empty
 
 exampleTable = IM.singleton 1 (IM.fromList [(1,(S.singleton 2)), (2,S.singleton 3)])
 
-labeledTerm = memoize A (term "a")
+labeledTerm = memoize A sA
 testlt pos = runState (labeledTerm pos) IM.empty

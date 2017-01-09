@@ -17,3 +17,8 @@ E = 'a'"))
      div = mul-div <'/'> term
      <term> = number | <'('> add-sub <')'>
      number = #'[0-9]+'"))
+
+(def other
+  (insta/parser
+   "S = S 'a'
+S = 'b'"))
