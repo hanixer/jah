@@ -1,11 +1,11 @@
 (ns raz.combi)
 
-(def input "abc")
+(def input "aaaa")
 (def inp-length (count input))
 
 (defn term [x]
   (fn [lr-ctxt pos]
-    (if (= (nth input pos) x)
+    (if (= (get input pos) x)
       [nil #{(inc pos)}]
       [nil #{}])))
 
@@ -52,8 +52,9 @@
   (let [counter (or (get-in lr-ctxt [pos id]) 0)]
     (assoc-in lr-ctxt [pos id] (inc counter) )))
 
-(let [memo (atom {})]
+
   (defn memoparser [id p]
+(let [memo (atom {})]
     (fn [lr-ctxt pos]
       (let [[lr-ctxt-stored result :as stored] (get-in @memo [id pos])]
       (cond 
@@ -77,10 +78,31 @@
 
 (declare A)
 
-(def S (memoparser 1 (<+> A
-                          (term \a))))
+(def S (fn [& x] (apply (memoparser 1 (<+> (*> S (term \a)) (term \a))) x)))
 
-(def A (memoparser 2 (*> S (term \a))))
+;;(def A (memoparser 2 (*> S (term \a))))
+
+`(def G 
+  (fn [& x] 
+    (apply 
+     (memoparser 
+      2
+      (<+> 
+       (term \a)
+        (*> G G))) x)))
+
+(defmacro defparser [name body]
+  (list 'def name 
+  (list 'fn '[& x]
+        (list 'apply
+        body 'x))))
+        
+                 
+                       
+                                   
 
 (defn parse [p]
   (p {} 0))
+
+
+(defparser G (memoparser 2 (<+> (term \a) (*> G G))))
