@@ -5,4 +5,7 @@
   [x]
   (println x "Hello, World!"))
 
-(def agi (atom 10))
+(def rcr 
+  (fn [x]
+    (if (zero? x) x
+        (rcr (dec x)))))
