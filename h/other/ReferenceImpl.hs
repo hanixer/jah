@@ -191,8 +191,8 @@ test p i = snd (unState (p [] i) I.empty)
 -- sample input and grammar
 --
 input :: [String]
---input = replicate 4 "a"
-input = ["1","+","1","+","1"]
+input = replicate 4 "a"
+--input = ["1","+","1","+","1"]
 data L = A | B | C deriving (Show, Eq, Ord, Enum, Bounded)
 instance MemoLabel L where
 instance PP L where pp l = text $ show l
@@ -216,7 +216,7 @@ sExpr = memoize A $ sExpr *> term "+" *> sExpr <+> term "1"
 -- 
 -- "qt" shows all memo results starting from the given input position
 qt :: Int -> IO ()
-qt n = putStrLn $ render $ format format_result toEnum $ test sExpr n
+qt n = putStrLn $ render $ format format_result toEnum $ test sI n
 class PP a where
       pp :: a -> Doc
 format_table toEnum s@(Stored (cs,E sn) ct rs)

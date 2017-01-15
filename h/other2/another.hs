@@ -1,9 +1,12 @@
+{-# LANGUAGE FlexibleContexts #-}
 import qualified Data.Map as Map
 import Data.IORef
 import System.IO.Unsafe
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Char8 as C
 import qualified Data.Hashable as HS
+import qualified Data.IntMap as IM
+import Data.IntMap ((!))
 import Control.Monad.State
 
 --------------------------------------------------
@@ -79,7 +82,7 @@ bind' p fn str cont = p str myCont
 sequ' p q = 
   bind' p (\v1 -> bind' q (\v2 -> succeed' v2))
 
-alt' p q = \str cont -> (p str cont, q str cont)
+alt' p q = \str cont -> [p str cont, q str cont]
 
 data ParseEq = PEStr Int
              | PEAlt ParseEq ParseEq
@@ -151,9 +154,6 @@ altM (_, p1) (_, p2) = do
   return (n, p)
   where p str cont = (p1 str cont, p2 str cont)
 
-altMS s1 s2 = do
-  
-
 p1 = do
   a <- stringM "a"
   b <- stringM "b"
@@ -161,7 +161,48 @@ p1 = do
   cc <- stringM ""
   altM a1 cc
 
+
+--p2 = do altM (stringM "a") (stringM "b")
+
+--mp1 <||> mp2 = do
+--  (_, p1) <- 
+
+
+data Da a = Da a
+type Ff a = Int -> Da a
+
+f1 :: Int -> Da Int
+f1 x = Da x
+
+f2 :: Int -> Da String
+f2 x = Da (show x)  
+
 getParser m = evalState m 0
+
+type MemoTbl contType resType = 
+  IM.IntMap (Map.Map String ([contType], [resType]))
+
+data ParserData parseFunc contType resType  = 
+  PD { parserTable :: IM.IntMap parseFunc,
+       callStack :: [Int],
+       memoTable :: MemoTbl contType resType }
+
+pushParse = undefined
+
+addParser p = do
+  (tbl, n) <- get
+  let m = n + 1
+  put (IM.insert m p tbl, m)
+  return m
+
+p1 <||> p2 = do
+  n1 <- addParser p1
+  n2 <- addParser p2
+  return 0 -- continue from here on
+
+  
+  
+       
 --------------------------------------------------
 -- Examples
 -------------------------------------------------
@@ -173,3 +214,6 @@ verbPhrase = sequ verb nounPhrase
 sentence = sequ nounPhrase verbPhrase
 
 
+jjj = IM.fromList [(1,\x -> x + 1),(2,\y -> y * 2)]
+
+x <::= y = x + y

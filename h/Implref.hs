@@ -117,10 +117,10 @@ callExp = do strTok "("
              return (CallExp e1 e2)
 
 compoundExp = do
-  strTok "{"
+  (strTok "{") <|> (strTok "begin")
   e <- expr
   es <- many (do { strTok ";"; expr })
-  strTok "}"
+  (strTok "}") <|> (strTok "end")
   return (CompoundExp (e:es))
 
 minusExp = unaryOp "minus" MinusExp
@@ -224,24 +224,23 @@ type Env = [EnvEntry]
 emptyEnv :: Env
 emptyEnv = []
 
-extendEnv :: String -> ExpVal -> Env -> Env
-extendEnv var val env = (SimpleEnvEntry var val:env)
+extendEnv :: String -> ExpVal -> Env -> State StoreState Env
+extendEnv var val env = return (SimpleEnvEntry var val:env)
 
 extendEnvRec name val env = 
   (RecEnvEntry name val :env)
 
-extendEnvMany [] env = env
-extendEnvMany ((var,val):rest) env = 
-  extendEnvMany rest $ extendEnv var val env
-
-applyEnv :: Env -> String -> ExpVal
+applyEnv :: Env -> String -> State StoreState ExpVal
 applyEnv (SimpleEnvEntry var val:env) svar = 
   if var == svar 
-  then val 
+  then return val 
   else applyEnv env svar
 applyEnv (RecEnvEntry var val@(ProcVal arg body penv):env) svar =
   if var == svar 
-  then (ProcVal arg body (extendEnvRec var val env))
+  then do
+    let  newEnv = extendEnvRec var val env
+    loc <- newrefAndInit (ProcVal arg body newEnv)
+    return (RefVal loc)
   else applyEnv env svar
 applyEnv [] var = error ("variable " ++ (show var) ++ " not found")
 
@@ -249,7 +248,9 @@ applyEnv [] var = error ("variable " ++ (show var) ++ " not found")
 -- Evaluation
 eval :: Exp -> Env -> State StoreState ExpVal
 eval (NumExp n) env = return (IntVal n)
-eval (VarExp name) env = deref (applyEnv env name)
+eval (VarExp name) env = do
+  val <- applyEnv env name
+  deref val
 eval (DiffExp e1 e2) env = do
   val1 <- eval e1 env
   val2 <- eval e2 env
@@ -258,13 +259,14 @@ eval (LetExp var e1 e2) env = do
   rhs <- eval e1 env
   loc <- getNewLoc
   setLocVal loc rhs
-  val <- eval e2 (extendEnv var (RefVal loc) env)
+  newEnv <- extendEnv var (RefVal loc) env
+  val <- eval e2 newEnv
   return val
 eval (LetRecExp name arg pbody body) env = do
   let procVal = (ProcVal arg pbody env)
   loc <- getNewLoc
   setLocVal loc procVal
-  val <- eval body (extendEnvRec name arg pbody env)
+  val <- eval body (extendEnvRec name (ProcVal arg pbody env)  env)
   return val  
 eval (ProcExp var body) env = return $ ProcVal var body env
 eval (CallExp rator rand) envOuter = do
@@ -274,7 +276,8 @@ eval (CallExp rator rand) envOuter = do
     (ProcVal var body envInner) -> do
       loc <- getNewLoc
       setLocVal loc randVal
-      bodyVal <- eval body $ extendEnv var (RefVal loc) envInner
+      extEnv <- extendEnv var (RefVal loc) envInner
+      bodyVal <- eval body extEnv
       return bodyVal
     d -> error ("proc val is expected but was " ++ (show d))
 eval (NewRefExp exp) env = error "newref is not available in this language"
@@ -282,7 +285,7 @@ eval (SetRefExp exp1 exp2) env = error "setref is not available in this language
 eval (DerefExp exp) env = error "deref is not available in this language"
 eval (AssignExp var exp) env = do
   val <- eval exp env
-  let ref = applyEnv env var
+  ref <- applyEnv env var
   case ref of
     (RefVal loc) -> do
       setLocVal loc val
@@ -291,6 +294,18 @@ eval (AssignExp var exp) env = do
 eval (CompoundExp exps) env = do
   vals <- mapM (\exp -> eval exp env) exps
   return (head (reverse vals))
+eval (IsZeroExp exp) env = do
+  val <- eval exp env
+  resVal <- if (unboxInt val) == 0
+            then return (BoolVal True) 
+            else return (BoolVal False)
+  return resVal
+eval (IfExp e1 e2 e3) env = do
+  val1 <- eval e1 env
+  if unboxBool val1 
+  then eval e2 env
+  else eval e3 env
+eval val _ = error ("not available for " ++ (show val))
 
 -- Storage
 data HistItem = NewRefItem Loc
@@ -329,17 +344,23 @@ deref (RefVal loc) = do
     Nothing -> error "no value for this location "
 deref _ = error "RefVal expected at deref"
 
+newrefAndInit val = do
+  loc <- getNewLoc
+  setLocVal loc val
+  return loc
+
 emptyState = (0 :: Int, IM.empty, [])
 -- Test helpers
 
-sampleEnv = (extendEnv "x" (IntVal 10) (extendEnv "v" (IntVal 5) (extendEnv "i" (IntVal 1) emptyEnv)))
+--sampleEnv = (extendEnv "x" (IntVal 10) (extendEnv "v" (IntVal 5) (extendEnv "i" (IntVal 1) emptyEnv)))
 
-evall s = runState (eval (fst $ head $ parse expr s) sampleEnv) emptyState
+evall s = runState (eval (fst $ head $ parse expr s) emptyEnv) emptyState
+
 
 evalFile file = do
   handle <- openFile file ReadMode
   contents <- hGetContents handle
-  print $ evall contents
+  print $ fst $ evall contents
 
 fileContents file = do
   handle <- openFile file ReadMode
