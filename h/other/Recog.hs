@@ -5,21 +5,20 @@ import qualified Data.IntMap as IM
 import qualified Data.List as L
 import Control.Monad (foldM)
 import Prelude hiding ((*>))
-
-
-
+import Data.Maybe (fromJust)
 
 type Pos = Int
 type PosSet = IS.IntSet
 type ILabel = Int -- identifies recognizer in memotable
 type LeftRecCtxt = [(Pos,[(ILabel,Int)])]
 
- -- memotable : (recognizer label) -> start position -> result set
-type State nodeName = IM.IntMap (IM.IntMap PosSet)
-data StateM s t = StateM {runState :: s -> (t, s)} 
 type NontermCuts = [(ILabel, Pos)]
 type UpResult = (NontermCuts, PosSet)
-type R memoLabel = LeftRecCtxt -> Pos -> StateM (State memoLabel) UpResult
+type Stored = (LeftRecCtxt, UpResult)
+type State nodeName = IM.IntMap (IM.IntMap Stored)
+data StateM s t = StateM {runState :: s -> (t, s)} 
+type R memoLabel = LeftRecCtxt -> Pos -> 
+                   StateM (State memoLabel) UpResult
 
 instance Functor (StateM s) where
   fmap g m = StateM $ \s -> let (a, s2) = runState m s 
@@ -38,6 +37,7 @@ instance Monad (StateM s) where
                           in runState mb s2)
 
 get = StateM $ \s -> (s, s)
+put s      = StateM $ \_ -> ((),s)
 
 term :: String -> R l
 term x _ pos 
@@ -64,63 +64,102 @@ p1 *> p2 = p
 memoize :: Enum l => l -> R l -> R l
 memoize lbl p = \lrCtxt pos -> do
   memo <- get
-  let isExists = isStoreExists memo pos
-  return ([], IS.empty)
+  if canReuse memo intLbl pos lrCtxt
+  then return $ snd $ fromJust $ lookupMemo memo intLbl pos
+  else if shouldCut lrCtxt pos intLbl
+       then return ([(intLbl, pos)], IS.empty)
+       else do
+        let lrCtxt' = incCounter lrCtxt pos intLbl
+        result@(cuts, posSet) <- p lrCtxt' pos
+        memo <- get
+        saveResults memo result lrCtxt' pos intLbl
+        return result
   where intLbl = fromEnum lbl 
         isStoreExists memo pos = 
           if IM.member intLbl memo
           then IM.member intLbl (memo IM.! intLbl)
           else False
-          
-{-
-lookupMT :: ILabel -> Pos -> State l -> Maybe PosSet
-lookupMT lab pos table = do
-  posMap <- IM.lookup lab table
-  res <- IM.lookup pos posMap
-  return res
 
-updateMT :: ILabel -> Pos -> PosSet -> State l -> State l
-updateMT lab pos value table = 
-  IM.alter updateSubtable lab table
-  where updateSubtable Nothing = return $ IM.singleton pos value
-        updateSubtable (Just subtable) = 
-          return $ IM.insertWith (\old new -> S.union old new)
-            pos value subtable
+canReuse memo lbl pos ctxtCurr = 
+  case lookupMemo memo lbl pos of
+    (Just (ctxtStored, _)) -> canReuseCtxt ctxtStored ctxtCurr
+    Nothing -> False
 
-memoize :: Enum l => l -> RM l -> RM l
-memoize eLabel parser = \pos -> do
-  memTable <- get
-  case lookupMT iLabel pos memTable of
-    (Just res) -> return res
-    Nothing -> 
-      parser pos >>= \res ->
-      StateM $ \_ -> (res, updateMT iLabel pos res memTable)
-  where iLabel = fromEnum eLabel
+canReuseCtxt :: LeftRecCtxt -> LeftRecCtxt -> Bool
+canReuseCtxt stored current = 
+  all (\(p1,labels1) ->
+          case L.lookup p1 current of
+            (Just labels2) -> 
+              compareLabels labels1 labels2
+            Nothing -> True)  stored
+  where compareLabels labels1 labels2 = 
+          all (\(lbl1, count1) ->
+                  case L.lookup lbl1 labels2 of
+                    (Just count2) -> count1 <= count2
+                    Nothing -> True) labels1
 
-parse p = p 0
-
--- Test grammar
-sA = term "a" *> term "b" <+> term "c"
-
-data MyLabels = A|B|C deriving (Show, Enum)
-
-bet = do
-  m <- get
-  return (IM.insert 1 (IM.singleton 2 3))
+shouldCut :: LeftRecCtxt -> Pos -> ILabel -> Bool
+shouldCut lrCtxt pos lbl = case should of
+  (Just count) -> count > (inputL - pos) + 1
+  Nothing -> False
+  where should = do
+          labels <- L.lookup pos lrCtxt
+          L.lookup lbl labels
   
-testft pos = fst $ runState (sA pos) IM.empty
+lookupMemo :: State l -> ILabel -> Pos -> Maybe Stored
+lookupMemo memo lbl pos = do
+  posMap <- IM.lookup lbl memo
+  IM.lookup pos posMap
 
-exampleTable = IM.singleton 1 (IM.fromList [(1,(S.singleton 2)), (2,S.singleton 3)])
+incCounter :: LeftRecCtxt -> Pos -> ILabel -> LeftRecCtxt
+incCounter lrCtxt pos lbl = updateCtxt lrCtxt pos lbl (+1) 1
 
-labeledTerm = memoize A sA
-testlt pos = runState (labeledTerm pos) IM.empty
--}
+updateCtxt :: LeftRecCtxt -> Pos -> ILabel -> (Int -> Int) -> Int -> 
+              LeftRecCtxt
+updateCtxt lrCtxt pos lbl f init = go1 lrCtxt
+  where go1 (x@(pos1, ys):xs) 
+          | pos == pos1 = (pos, go2 ys):xs
+          | otherwise = x : go1 xs
+        go1 [] = [(pos, [(lbl, init)])]
+        go2 (y@(lbl1, count):ys)
+          | lbl1 == lbl = (lbl, f count):ys
+          | otherwise = y : go2 ys
+        go2 [] = [(lbl, init)]
+
+saveResults :: State l -> UpResult -> LeftRecCtxt -> Pos -> ILabel -> 
+               StateM (State l) ()
+saveResults memo upres@(cuts, posSet) lrCtxt pos lbl = do
+  put updateMemo
+  where ctxtToStore = filterCtxt lrCtxt cuts
+        updateMemo = IM.alter posMap lbl memo
+        posMap (Just pmap) = 
+          Just $ IM.insert pos (ctxtToStore, upres) pmap
+        posMap Nothing = Just $ IM.singleton pos (ctxtToStore, upres)
+  
+
+filterCtxt :: LeftRecCtxt -> NontermCuts -> LeftRecCtxt
+filterCtxt lrCtxt cuts = 
+  foldl (\newCtxt (pos,lbl) ->
+           case lookupCtxt lrCtxt pos lbl of
+             (Just count) -> updateCtxt newCtxt pos lbl id count
+             Nothing -> newCtxt) [] cuts
+            
+
+lookupCtxt :: LeftRecCtxt -> Pos -> ILabel -> Maybe Int
+lookupCtxt ctxt pos lbl = do
+  labels <- L.lookup pos  ctxt
+  L.lookup lbl labels
+
 -- Input
-input = ["a","b","c","b"]
+input = replicate 4 "a"
 inputL = length input
 
 test rec = do
      putStrLn ("LeftRec: " ++ (show lrCtxt))
      putStrLn ("PosSet: " ++ (show posSet))
-     putStrLn ("Memo: " ++ (show memo))
+     putStrLn ("Memo: " ++ (IM.showTree memo))
   where ((lrCtxt, posSet), memo) = runState (rec [] 0) IM.empty 
+
+-- Test Grammar
+data L = A | B | C deriving (Show, Eq, Ord, Enum, Bounded)
+sS = memoize A $ sS *> sS <+> term "a"
