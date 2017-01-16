@@ -17,3 +17,7 @@ memoFn f = unsafePerformIO $ do
     
 fib n = if n <= 1 then n else (fib (n-1)) + (fib (n-2))
 mfib = memoFn (\n -> if n <= 1 then n else (mfib (n-1)) + (mfib (n-2)))
+
+f z = g (z - 2*z)
+  where g v = v + 1 * h
+        h = z + 5
