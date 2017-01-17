@@ -99,13 +99,10 @@ canReuseCtxt stored current =
                     Nothing -> True) labels1
 
 shouldCut :: LeftRecCtxt -> Pos -> ILabel -> Bool
-shouldCut lrCtxt pos lbl = case should of
+shouldCut lrCtxt pos lbl = case lookupCtxt lrCtxt pos lbl of
   (Just count) -> count > (inputL - pos) + 1
   Nothing -> False
-  where should = do
-          labels <- L.lookup pos lrCtxt
-          L.lookup lbl labels
-  
+    
 lookupMemo :: State l -> ILabel -> Pos -> Maybe Stored
 lookupMemo memo lbl pos = do
   posMap <- IM.lookup lbl memo
@@ -143,7 +140,6 @@ filterCtxt lrCtxt cuts =
            case lookupCtxt lrCtxt pos lbl of
              (Just count) -> updateCtxt newCtxt pos lbl id count
              Nothing -> newCtxt) [] cuts
-            
 
 lookupCtxt :: LeftRecCtxt -> Pos -> ILabel -> Maybe Int
 lookupCtxt ctxt pos lbl = do
