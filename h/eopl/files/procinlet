@@ -1,0 +1,6 @@
+let a = 1 in
+let b = 2 in
+let x = 4 in 
+let c = 55 in
+let f = proc(y) -(y,x) in
+(f 240)

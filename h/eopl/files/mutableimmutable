@@ -1,0 +1,6 @@
+let x = 20 in
+letmutable y = 10 in
+{
+ set y = -(x,y);
+ y
+}
