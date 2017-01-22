@@ -107,3 +107,7 @@ oneAndMore p combiner = do
   x <- p
   xs <- ((oneAndMore p combiner) <|> return [])
   return (combiner (x:xs))
+
+concatp p1 p2 = do
+  p1
+  p2
