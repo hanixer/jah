@@ -4,11 +4,13 @@ import Parser
 import Control.Applicative ((<|>), many)
 import qualified Data.IntMap as IM
 import qualified Data.List as L
-import Control.Monad (forM)
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Except
 import Control.Monad.Trans.Except (throwE)
+
+-- Read added
+-- Initiliazation is possible in declaration
 
 type Name = String
 
@@ -17,10 +19,11 @@ newtype Prog = Prog Stmt
             deriving (Show)
 data Stmt = AssignStmt Name Exp
           | PrintStmt Exp
+          | ReadStmt Name
           | CompoundStmt [Stmt]
           | IfStmt Exp Stmt Stmt
           | WhileStmt Exp Stmt
-          | DeclStmt [Name] Stmt
+          | DeclStmt [(Name, Maybe Exp)] Stmt
   deriving (Show)          
 data Exp = NumExp Int
          | IsZeroExp Exp
@@ -42,6 +45,7 @@ stmt :: Parser Stmt
 stmt = 
   assignStmt <|>
   printStmt <|>
+  readStmt <|>
   compoundStmt <|> 
   ifStmt <|>
   whileStmt <|>
@@ -50,59 +54,73 @@ stmt =
 assignStmt :: Parser Stmt
 assignStmt = do
   v <- identifier
-  strTok "="
+  _ <- strTok "="
   e <- expr
   return (AssignStmt v e)
 
 printStmt :: Parser Stmt
 printStmt = do
-  strTok "print"
+  _ <- strTok "print"
   e <- expr
   return (PrintStmt e)
 
+readStmt :: Parser Stmt
+readStmt = do
+  _ <- strTok "read"
+  v <- identifier
+  return (ReadStmt v)
+
 compoundStmt :: Parser Stmt
 compoundStmt = do
-  strTok "{" 
+  _ <- strTok "{" 
   stmts <- do
     s <- stmt 
     ss <- (many (concatp (strTok ";") stmt))
     return (s:ss)
-  strTok "}"
+  _ <- strTok "}"
   return (CompoundStmt stmts)
 
 ifStmt :: Parser Stmt
 ifStmt = do
-  strTok "if"
+  _ <- strTok "if"
   e <- expr
   s1 <- stmt
   s2 <- stmt
   return (IfStmt e s1 s2)
 
 whileStmt = do
-  strTok "while"
+  _ <- strTok "while"
   e <- expr
   s <- stmt
   return (WhileStmt e s)
 
 declStmt = do
-  strTok "var"
+  _ <- strTok "var"
   vars <- do
-    v <- identifier
-    vs <- many (concatp (strTok ",") identifier)
+    v <- readClause
+    vs <- many (concatp (strTok ",") readClause)
     return (v:vs)
-  strTok ";"
+  _ <- strTok ";"
   s <- stmt
   return (DeclStmt vars s)
+  where readClause = do
+          v <- identifier
+          do _ <- strTok "="
+             e <- expr
+             return (v, Just e)
+           <|> return (v, Nothing)
+
+
 
 numExp :: Parser Exp
 numExp = do n <- number
             return (NumExp n)
 
 binOp = binaryOp expr
-unaryOp name combine = do strTok name
-                          strTok "("
+unaryOp name combine = do _ <- strTok name
+                          _ <- strTok "("
                           e <- expr
-                          strTok ")"
+                          _ <- strTok ")"
                           return (combine e)
 
 diffExp :: Parser Exp
@@ -110,7 +128,7 @@ diffExp = binOp "-" DiffExp
 
 isZeroExp :: Parser Exp
 isZeroExp = do space
-               strTok "zero?"
+               _ <- strTok "zero?"
                space
                char '('
                e <- expr
@@ -120,35 +138,35 @@ isZeroExp = do space
 varExp = do v <- identifier
             return (VarExp v)
 
-letExp = do strTok "let"
+letExp = do _ <- strTok "let"
             v <- identifier
-            strTok "="
+            _ <- strTok "="
             e1 <- expr
-            strTok "in"
+            _ <- strTok "in"
             e2 <- expr
             return (LetExp v e1 e2)
 
-procExp = do strTok "proc"
-             strTok "("
+procExp = do _ <- strTok "proc"
+             _ <- strTok "("
              var <- identifier
-             strTok ")"
+             _ <- strTok ")"
              e <- expr
              return (ProcExp var e)
 
-callExp = do strTok "("
+callExp = do _ <- strTok "("
              e1 <- expr
              e2 <- expr
-             strTok ")"
+             _ <- strTok ")"
              return (CallExp e1 e2)
 
-letrec = do strTok "letrec"
+letrec = do _ <- strTok "letrec"
             name <- identifier
-            strTok "("
+            _ <- strTok "("
             arg <- identifier
-            strTok ")"
-            strTok "="
+            _ <- strTok ")"
+            _ <- strTok "="
             pbody <- expr
-            strTok "in"
+            _ <- strTok "in"
             lbody <- expr
             return (LetRecExp name arg pbody lbody)
 
@@ -159,9 +177,10 @@ expr = numExp <|>
   callExp <|>
   isZeroExp <|> 
   diffExp <|> 
-  (binOp "+" AddExp) <|>
-  (binOp "*" MultExp) <|>
-  (unaryOp "not" NotExp) <|>
+  binOp "+" AddExp <|>
+  binOp "*" MultExp <|>
+  unaryOp "not" NotExp <|>
+  unaryOp "iszero" IsZeroExp <|>
   varExp
 
 -- Environment
@@ -207,41 +226,48 @@ type InterpM a = StateT StoreData (WriterT [HistItem] (ExceptT ErrorData IO)) a
 
 evalStmt :: Stmt -> Env -> InterpM ()
 evalStmt (AssignStmt var exp) env = do
-  case applyEnv env var of
-    Just (RefVal loc) -> do 
-      val <- evalExp exp env
-      setLocVal loc val
-      return ()
-    Just _ -> throwErr (ErrorData "RefVal expected")
-    Nothing -> throwErr (ErrorData "Cannot resolve variable")
+  val <- evalExp exp env
+  setVariableVal var val env
 evalStmt (PrintStmt exp) env = do
   val <- evalExp exp env
-  liftIO (putStrLn (show val))
+  liftIO (print val)
+evalStmt (ReadStmt var) env = do 
+  n <- liftIO readLn
+  setVariableVal var (IntVal n) env
+  return ()
 evalStmt (CompoundStmt stmts) env = do
-  forM stmts (\s -> evalStmt s env)
+  forM_ stmts (`evalStmt` env)
   return ()
 evalStmt (IfStmt exp thenS elseS) env = do
   val <- evalExp exp env
   processBoolean val (evalStmt thenS env) (evalStmt elseS env)
 evalStmt w@(WhileStmt exp stmt) env = do
   val <- evalExp exp env
-  liftIO $ putStrLn (show val)
+  liftIO $ print val
   processBoolean val (do 
     evalStmt stmt env
     evalStmt w env) 
     (return ())
 evalStmt (DeclStmt vars stmt) env = do
-  new <- forM vars (\v -> do
-    loc <- getNewLoc
-    return (v, RefVal loc))
-  let newEnv = extendEnvMult new env
-  evalStmt stmt newEnv
+  env' <- extendMultipleDecl vars env
+  evalStmt stmt env'
 
 processBoolean val tbranch fbranch =
   case val of
     (BoolVal True) -> tbranch
     (BoolVal False) -> fbranch
     _ -> throwErr (ErrorData "Bool value expected")
+
+extendMultipleDecl :: [(Name, Maybe Exp)] -> Env -> InterpM Env
+extendMultipleDecl clauses env' =
+  foldM g env' clauses  
+  where g env (var, Nothing) = do          
+          loc <- getNewLoc
+          return $ extendEnv var (RefVal loc) env
+        g env (var, Just exp) = do
+          val <- evalExp exp env
+          loc <- newrefAndInit val
+          return $ extendEnv var (RefVal loc) env
 
 evalExp :: Exp -> Env -> InterpM ExpVal
 evalExp (NumExp num) env = 
@@ -251,17 +277,17 @@ evalExp (VarExp var) env =
 evalExp (DiffExp e1 e2) env = do
   val1 <- evalExp e1 env
   val2 <- evalExp e2 env
-  return $ IntVal $ (unboxInt val1) - (unboxInt val2)
+  return $ IntVal $ (unboxInt val1) - unboxInt val2
 evalExp (MultExp e1 e2) env = do
   val1 <- evalExp e1 env
   val2 <- evalExp e2 env
-  return $ IntVal $ (unboxInt val1) * (unboxInt val2)
+  return $ IntVal $ unboxInt val1 * unboxInt val2
 evalExp (NotExp e) env = do
   val <- evalExp e env
   return (BoolVal (unboxBool val))
 evalExp (IsZeroExp e) env = do
   val <- evalExp e env
-  if (unboxInt val) == 0
+  if unboxInt val == 0
     then return (BoolVal False)
     else return (BoolVal True)
 evalExp e _ = error (show e)
@@ -273,8 +299,7 @@ resolveVar var env =
       mval <- deref loc
       case mval of
         Just val -> return val
-        Nothing -> do
-          throwErr (ErrorData "location not found")
+        Nothing -> throwErr (ErrorData "location not found")
     Nothing -> throwErr (ErrorData "variable not found")
 
 -- Errors
@@ -294,10 +319,11 @@ data HistItem = NewRefItem Loc
               | DerefItem Loc ExpVal
 
 instance Show HistItem where
-  show (NewRefItem n) = "[" ++ (show n) ++ "] new" 
-  show (SetRefItem n val) = "[" ++ (show n) ++ "] <- " ++ (show val)
-  show (DerefItem n val) = "[" ++ (show n) ++ "] => " ++ (show val)
+  show (NewRefItem n) = "[" ++ show n ++ "] new" 
+  show (SetRefItem n val) = "[" ++ show n ++ "] <- " ++ show val
+  show (DerefItem n val) = "[" ++ show n ++ "] => " ++ show val
 
+emptyStor :: StoreData
 emptyStor = (0, IM.empty)
 
 getNewLoc :: InterpM Loc
@@ -314,6 +340,13 @@ setLocVal loc val = do
   put (n, IM.insert loc val store)
   tell [SetRefItem loc val]
   return val
+
+setVariableVal :: Name -> ExpVal -> Env -> InterpM ()
+setVariableVal var val env = case applyEnv env var of
+    Just (RefVal loc) -> do setLocVal loc val
+                            return ()
+    Just _ -> throwErr (ErrorData "RefVal expected")
+    Nothing -> throwErr (ErrorData "Cannot resolve variable")
 
 deref :: Int -> InterpM (Maybe ExpVal)
 deref loc = do
@@ -371,3 +404,4 @@ ts1 = "\
 \print z}"
 
 ex3 = "var x; {x = 3; print x; var x; {x = 4; print x}; print x}"
+ex4 = "var x; {read x; while not(zero?(x)) {x = -(x,1); print x}}"
