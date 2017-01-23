@@ -2,21 +2,19 @@ module Statements where
 
 import Parser
 import Control.Applicative ((<|>), many)
-import System.IO
 import qualified Data.IntMap as IM
 import qualified Data.List as L
+import Control.Monad (forM)
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Except
 import Control.Monad.Trans.Except (throwE)
-import Control.Exception.Base (throw)
-import Data.Maybe (fromMaybe)
 
 type Name = String
 
 -- Syntax
-data Prog = Prog Stmt
-  deriving (Show)
+newtype Prog = Prog Stmt
+            deriving (Show)
 data Stmt = AssignStmt Name Exp
           | PrintStmt Exp
           | CompoundStmt [Stmt]
@@ -35,10 +33,12 @@ data Exp = NumExp Int
          | DiffExp Exp Exp
          | AddExp Exp Exp
          | MultExp Exp Exp
+         | NotExp Exp
   deriving (Show)
 
 prog = stmt
 
+stmt :: Parser Stmt
 stmt = 
   assignStmt <|>
   printStmt <|>
@@ -47,19 +47,20 @@ stmt =
   whileStmt <|>
   declStmt
 
+assignStmt :: Parser Stmt
 assignStmt = do
   v <- identifier
   strTok "="
   e <- expr
   return (AssignStmt v e)
 
+printStmt :: Parser Stmt
 printStmt = do
   strTok "print"
-  strTok "("
   e <- expr
-  strTok ")"
   return (PrintStmt e)
 
+compoundStmt :: Parser Stmt
 compoundStmt = do
   strTok "{" 
   stmts <- do
@@ -69,6 +70,7 @@ compoundStmt = do
   strTok "}"
   return (CompoundStmt stmts)
 
+ifStmt :: Parser Stmt
 ifStmt = do
   strTok "if"
   e <- expr
@@ -88,6 +90,7 @@ declStmt = do
     v <- identifier
     vs <- many (concatp (strTok ",") identifier)
     return (v:vs)
+  strTok ";"
   s <- stmt
   return (DeclStmt vars s)
 
@@ -158,13 +161,20 @@ expr = numExp <|>
   diffExp <|> 
   (binOp "+" AddExp) <|>
   (binOp "*" MultExp) <|>
+  (unaryOp "not" NotExp) <|>
   varExp
 
 -- Environment
 type Env = [(String, ExpVal)]
 
+emptyEnv :: Env
+emptyEnv = []
+
 extendEnv :: Name -> ExpVal -> Env -> Env
 extendEnv var val env = (var, val):env
+
+extendEnvMult :: [(Name, ExpVal)] -> Env -> Env
+extendEnvMult = (++)
 
 applyEnv :: Env -> Name -> Maybe ExpVal
 applyEnv env var = L.lookup var env
@@ -174,7 +184,12 @@ data ExpVal = IntVal Int
             | BoolVal Bool
             | ProcVal String Exp Env
             | RefVal Loc
-  deriving (Show)
+
+instance Show ExpVal where
+  show (IntVal n) = show n
+  show (BoolVal b) = show b
+  show (ProcVal name _ _) = "procedure#" ++ name
+  show (RefVal loc) = "location#" ++ show loc
 
 expValToNum :: ExpVal -> Int
 expValToNum (IntVal n) = n
@@ -186,10 +201,47 @@ expValToBool (BoolVal v) = v
 expValToBool _ = error "bool expected"
 unboxBool = expValToBool
 
--- Expressions
-type Loc = Int
+-- Evaluation
 
 type InterpM a = StateT StoreData (WriterT [HistItem] (ExceptT ErrorData IO)) a
+
+evalStmt :: Stmt -> Env -> InterpM ()
+evalStmt (AssignStmt var exp) env = do
+  case applyEnv env var of
+    Just (RefVal loc) -> do 
+      val <- evalExp exp env
+      setLocVal loc val
+      return ()
+    Just _ -> throwErr (ErrorData "RefVal expected")
+    Nothing -> throwErr (ErrorData "Cannot resolve variable")
+evalStmt (PrintStmt exp) env = do
+  val <- evalExp exp env
+  liftIO (putStrLn (show val))
+evalStmt (CompoundStmt stmts) env = do
+  forM stmts (\s -> evalStmt s env)
+  return ()
+evalStmt (IfStmt exp thenS elseS) env = do
+  val <- evalExp exp env
+  processBoolean val (evalStmt thenS env) (evalStmt elseS env)
+evalStmt w@(WhileStmt exp stmt) env = do
+  val <- evalExp exp env
+  liftIO $ putStrLn (show val)
+  processBoolean val (do 
+    evalStmt stmt env
+    evalStmt w env) 
+    (return ())
+evalStmt (DeclStmt vars stmt) env = do
+  new <- forM vars (\v -> do
+    loc <- getNewLoc
+    return (v, RefVal loc))
+  let newEnv = extendEnvMult new env
+  evalStmt stmt newEnv
+
+processBoolean val tbranch fbranch =
+  case val of
+    (BoolVal True) -> tbranch
+    (BoolVal False) -> fbranch
+    _ -> throwErr (ErrorData "Bool value expected")
 
 evalExp :: Exp -> Env -> InterpM ExpVal
 evalExp (NumExp num) env = 
@@ -200,8 +252,21 @@ evalExp (DiffExp e1 e2) env = do
   val1 <- evalExp e1 env
   val2 <- evalExp e2 env
   return $ IntVal $ (unboxInt val1) - (unboxInt val2)
+evalExp (MultExp e1 e2) env = do
+  val1 <- evalExp e1 env
+  val2 <- evalExp e2 env
+  return $ IntVal $ (unboxInt val1) * (unboxInt val2)
+evalExp (NotExp e) env = do
+  val <- evalExp e env
+  return (BoolVal (unboxBool val))
+evalExp (IsZeroExp e) env = do
+  val <- evalExp e env
+  if (unboxInt val) == 0
+    then return (BoolVal False)
+    else return (BoolVal True)
 evalExp e _ = error (show e)
 
+resolveVar :: Name -> Env -> InterpM ExpVal
 resolveVar var env = 
   case applyEnv env var of
     Just (RefVal loc) -> do
@@ -220,6 +285,7 @@ throwErr :: ErrorData -> InterpM a
 throwErr edat = lift $ lift $ throwE edat
 
 -- Storage
+type Loc = Int
 type Store = IM.IntMap ExpVal
 type StoreData = (Int, Store)
 
@@ -266,7 +332,6 @@ newrefAndInit val = do
   return loc
 
 -- Execution
---pne :: String -> IO (Either ErrorData ExpVal)
 rrrun s = runExceptT $ runWriterT $ evalStateT s emptyStor
 
 getHistory s = do
@@ -280,5 +345,27 @@ pne s = do
   v <- runExceptT $ runWriterT $ evalStateT (evalExp (fst $ head (parse expr s)) [])  emptyStor
   print v
 
+pns s = do
+  res <- rrrun $ evalStmt (fst $ head $ parse stmt s) emptyEnv
+  case res of
+    Left (ErrorData s) -> putStrLn $ "Error: " ++ s
+    Right (_, h) -> do
+      putStrLn "History: "
+      forM h print
+      return ()
 
-main = undefined
+main = putStrLn "Hello"
+
+-- Testin
+abc = "\
+\var f,x; {f = proc(y) *(4,y); \
+\x = 3;\
+\print (f x)}"
+
+ts1 = "\
+\var x,y,z; {x = 6;\
+\y = 4;\
+\z = 0;\
+\while not(zero?(x))\
+\{z = -(z,y); x = -(x,1)};\
+\print z}"

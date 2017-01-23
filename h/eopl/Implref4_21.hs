@@ -258,7 +258,7 @@ extendEnvDynamic var val (env, dyn) = return ((SimpleEnvEntry var val:env), var:
 extendWithDynamic inner (_, []) = return inner
 extendWithDynamic inn@(envInner, _) outt@(_, (name:dyn)) = do
   val <- applyEnv outt name 
-  extendEnv name (RefVal 1) inn
+  extendEnv name val inn
 
 applyEnv :: Env -> String -> State StoreState ExpVal
 applyEnv ((SimpleEnvEntry var val:env), dyn) svar = 
