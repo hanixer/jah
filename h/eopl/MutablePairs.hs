@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
-module ImplrefNew where 
+module MutablePairs where 
 
 import Control.Monad.Except
 import Control.Monad.Trans.Except (throwE)
@@ -11,7 +11,7 @@ import qualified Data.IntMap as IM
 import qualified Data.List as L
 import Control.Monad.State
 
--- Implicit references - variables can store only references to locations with values, but not values
+-- Mutable pairs
 
 type Name = String
 
@@ -49,6 +49,12 @@ data Exp = NumExp Int
           | SetRefExp Exp Exp
           | DerefExp Exp
           | AssignExp String Exp
+          -- Pairs
+          | NewPairExp Exp Exp
+          | LeftExp Exp
+          | RightExp Exp 
+          | SetLeftExp Exp Exp
+          | SetRightExp Exp Exp
           -- Other
           | PrintExp Exp
           deriving (Show)
@@ -215,7 +221,12 @@ expr = numExp <|> letExp <|> ifExp <|> procExp <|> letrec <|> callExp <|>
   <|> unaryOp "print" PrintExp
   <|> unaryOp "newref" NewRefExp
   <|> binOp "setref" SetRefExp
-  <|> unaryOp "deref" DerefExp <|>
+  <|> unaryOp "deref" DerefExp 
+  <|> binOp "pair" NewPairExp
+  <|> unaryOp "left" LeftExp
+  <|> unaryOp "right" RightExp
+  <|> binOp "setleft" SetLeftExp
+  <|> binOp "setright" SetRightExp <|>
   assignExp <|>
   varExp
 
@@ -230,6 +241,7 @@ data ExpVal = IntVal Int
             | EmptyVal
             | ProcVal [String] Exp Env
             | RefVal Loc
+            | MutPair Loc Loc
   deriving (Show)
 
 expValToNum :: ExpVal -> Int
@@ -320,6 +332,26 @@ eval (IfExp e1 e2 e3) env = do
   if unboxBool val1 
   then eval e2 env
   else eval e3 env
+eval (NewPairExp e1 e2) env = do
+  val1 <- eval e1 env
+  val2 <- eval e2 env
+  loc1 <- newrefAndInit val1
+  loc2 <- newrefAndInit val2
+  return (MutPair loc1 loc2)
+eval (LeftExp e) env = 
+  handleMutPairVal e env (\l _ -> return l)
+eval (RightExp e) env = 
+  handleMutPairVal e env (\_ r -> return r)
+eval (SetLeftExp e1 e2) env = do
+  val <- eval e2 env
+  _ <- handleMutPair e1 env (\loc _ ->
+    setLocVal loc val)
+  return (IntVal 0)
+eval (SetRightExp e1 e2) env = do
+  val <- eval e2 env
+  _ <- handleMutPair e1 env (\_ loc ->
+    setLocVal loc val)
+  return (IntVal 0)
 eval val _ = error ("not available for " ++ show val)
 
 resolveVar :: Name -> Env -> InterpM ExpVal
@@ -338,6 +370,23 @@ allocateArgs vars vals env =
   foldM (\e (var, val) -> do
     loc <- newrefAndInit val
     return (extendEnv var (RefVal loc) e)) env (zip vars vals)
+
+handleMutPair :: Exp -> Env -> (Loc -> Loc -> InterpM a) -> InterpM a
+handleMutPair e env f = do
+  val <- eval e env
+  case val of
+    MutPair loc1 loc2 -> 
+      f loc1 loc2
+    _ -> throwErr (ErrorData "mutable pair expected")
+
+handleMutPairVal :: Exp -> Env -> (ExpVal -> ExpVal -> InterpM a) -> InterpM a
+handleMutPairVal e env f =
+  handleMutPair e env (\loc1 loc2 -> do
+    mval1 <- deref loc1
+    mval2 <- deref loc2
+    case (mval1, mval2) of
+      (Just val1, Just val2) -> f val1 val2
+      _ -> throwErr (ErrorData "Mutable pair: wrong locations assigned"))
 
 -- Errors
 data ErrorData = ErrorData String
@@ -436,7 +485,8 @@ run str = do
   res <- unwrapState (eval (fst $ head $ parse expr str) emptyEnv)
   case res of
     Left (ErrorData err) -> putStrLn ("Error: " ++ err)
-    Right (expres, _) ->
+    Right (expres, h) -> do
+      forM_ h print
       print expres
 
 runFile :: FilePath -> IO ()
@@ -448,7 +498,9 @@ exs :: [String]
 exs = [
   "let x = 200 in let f = proc (z) -(z,x) in let x = 100 in let g = proc (z) -(z,x) in -((f 1), (g 1))",
   "let f = proc(x,y) -(x,*(y,-(x,2))) in (f 5 6)",
-  "letrec double(x) = if zero?(x) then 0 else -((double -(x,1)), -2) in (double 22)"
+  "letrec double(x) = if zero?(x) then 0 else -((double -(x,1)), -2) in (double 22)",
+  "let pa = pair(1,2) in left(pa)",
+  "let pa = pair(2,4) in {setleft(pa,22);pa}"
   ]
 
 
