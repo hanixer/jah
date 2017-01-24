@@ -9,3 +9,6 @@ ipch
 build*
 h/sandbox.hi
 h/sandbox.o
+h/eopl/ImplrefNew.hi
+*.hi
+*.o
