@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
-module ImplrefNew where 
+module CallByRef where 
 
 import Control.Monad.Except
 import Control.Monad.Trans.Except (throwE)
@@ -12,6 +12,8 @@ import qualified Data.List as L
 import Control.Monad.State
 
 -- Implicit references - variables can store only references to locations with values, but not values
+-- Call by reference - if variable is passed to the procedure, only location is passed, not the value
+-- that is stored under this location
 
 type Name = String
 
@@ -289,7 +291,7 @@ eval (LetRecExp name args pbody body) env = do
   eval body env'
 eval (ProcExp vars body) env = return $ ProcVal vars body env
 eval (CallExp rator rands) envOuter = do
-  randVals <- mapM (`eval` envOuter) rands
+  randVals <- mapM (`evalOperand` envOuter) rands
   ratorVal <- eval rator envOuter
   case ratorVal of
     ProcVal vars body envInner -> do 
@@ -331,13 +333,25 @@ resolveVar var env =
         Just val -> return val
         Nothing ->
           throwErr (ErrorData "location not found")
-    _ -> throwErr (ErrorData $ "variable not found   "  ++ show env)
+    _ -> throwErr (ErrorData $ "variable " ++ var ++ " not found   "  ++ show env)
+
+evalOperand :: Exp -> Env -> InterpM ExpVal
+evalOperand (VarExp var) env = 
+  case applyEnv env var of
+    Just rv@(RefVal _) -> return rv
+    _ -> throwErr (ErrorData "variable cannot be resolved")
+evalOperand e env = eval e env
 
 allocateArgs :: [Name] -> [ExpVal] -> Env -> InterpM Env
 allocateArgs vars vals env = 
-  foldM (\e (var, val) -> do
-    loc <- newrefAndInit val
-    return (extendEnv var (RefVal loc) e)) env (zip vars vals)
+  foldM process env (zip vars vals)
+  where process e (var, val) =
+          case val of
+            rv@(RefVal _) -> return (extendEnv var rv e)
+            _ -> do
+              loc <- newrefAndInit val
+              return (extendEnv var (RefVal loc) e)
+
 
 -- Errors
 data ErrorData = ErrorData String
@@ -436,7 +450,8 @@ run str = do
   res <- unwrapState (eval (fst $ head $ parse expr str) emptyEnv)
   case res of
     Left (ErrorData err) -> putStrLn ("Error: " ++ err)
-    Right (expres, _) ->
+    Right (expres, h) -> do
+      mapM print h
       print expres
 
 runFile :: FilePath -> IO ()
@@ -449,7 +464,9 @@ exs = [
   "let x = 200 in let f = proc (z) -(z,x) in let x = 100 in let g = proc (z) -(z,x) in -((f 1), (g 1))",
   "let f = proc(x,y) -(x,*(y,-(x,2))) in (f 5 6)",
   "letrec double(x) = if zero?(x) then 0 else -((double -(x,1)), -2) in (double 22)",
-  "let p = proc(x) set x = 4 in let a = 3 in {(p a);a}"
+  "let p = proc(x) set x = 4 in let a = 3 in {(p a);a}",
+  "let swap = proc(x,y) let temp = x in { set x = y; set y = temp} in let a = 33 in let b = 44 in {(swap a b); -(a, b)}",
+  "let swap = proc(x,y) let temp = x in { set x = y; set y = temp} in let a = 33 in let b = 44 in {(swap a -(b,b)); -(a, b)}"
   ]
 
 exl = last exs
