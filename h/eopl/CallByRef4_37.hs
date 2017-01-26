@@ -14,6 +14,7 @@ import Control.Monad.State
 -- Implicit references - variables can store only references to locations with values, but not values
 -- Call by reference - if variable is passed to the procedure, only location is passed, not the value
 -- that is stored under this location
+-- Call by value result -- enable like this '(f inout x)'
 
 type Name = String
 
@@ -24,6 +25,7 @@ data Exp = NumExp Int
           | IsZeroExp Exp
           | IfExp Exp Exp Exp
           | VarExp String
+          | InOutExp String
           | LetExp String Exp Exp
           | ProcExp [String] Exp
           | LetRecExp String [String] Exp Exp
@@ -105,6 +107,12 @@ condExp = do _ <- strTok "cond"
 varExp :: Parser Exp
 varExp = do v <- identifier
             return (VarExp v)
+
+inOutExp :: Parser Exp
+inOutExp = do
+  _ <- strTok "inout"
+  v <- identifier
+  return (InOutExp v)
 
 letExp :: Parser Exp
 letExp = do _ <- strTok "let"
@@ -219,6 +227,7 @@ expr = numExp <|> letExp <|> ifExp <|> procExp <|> letrec <|> callExp <|>
   <|> binOp "setref" SetRefExp
   <|> unaryOp "deref" DerefExp <|>
   assignExp <|>
+  inOutExp <|>
   varExp
 
 program :: Parser Program
@@ -292,11 +301,14 @@ eval (LetRecExp name args pbody body) env = do
 eval (ProcExp vars body) env = return $ ProcVal vars body env
 eval (CallExp rator rands) envOuter = do
   randVals <- mapM (`evalOperand` envOuter) rands
+  let inOutBinds = inOutBindings rands randVals
   ratorVal <- eval rator envOuter
   case ratorVal of
     ProcVal vars body envInner -> do 
       envInner' <- allocateArgs vars randVals envInner
-      eval body envInner'
+      retVal <- eval body envInner'
+      copyInOuts inOutBinds envOuter
+      return retVal
     d -> throwErr (ErrorData $ "proc val is expected but was " ++ show d)
 eval (NewRefExp _) _ = throwErr (ErrorData "newref is not available in this language")
 eval (SetRefExp _ _) _ = throwErr (ErrorData "setref is not available in this language")
@@ -344,7 +356,11 @@ evalOperand :: Exp -> Env -> InterpM ExpVal
 evalOperand (VarExp var) env = 
   case applyEnv env var of
     Just rv@(RefVal _) -> return rv
-    _ -> throwErr (ErrorData "variable cannot be resolved")
+    _ -> throwErr (ErrorData $ "variable '" ++ var ++ "'cannot be resolved")
+evalOperand (InOutExp var) env = do
+  val <- resolveVar var env
+  loc <- newrefAndInit val
+  return $ RefVal loc
 evalOperand e env = eval e env
 
 allocateArgs :: [Name] -> [ExpVal] -> Env -> InterpM Env
@@ -357,6 +373,37 @@ allocateArgs vars vals env =
               loc <- newrefAndInit val
               return (extendEnv var (RefVal loc) e)
 
+retrieveInOuts :: [Exp] -> [Name]
+retrieveInOuts rands =
+  filter (not . null) $ map toName rands
+  where toName (InOutExp var) = var
+        toName _ = ""
+
+inOutBindings :: [Exp] -> [ExpVal] -> [(Name, Loc)]
+inOutBindings es vals = 
+  filter (not . null . fst ) $ zipWith f es vals
+  where f (InOutExp var) (RefVal loc) = (var, loc)
+        f _ _ = ("", 0)
+
+-- copyInOuts :: [Name] -> [Name] -> [ExpVal] -> InterpM ()
+-- copyInOuts inOuts vars vals =
+--   filter ((`elem` inOuts) . fst) (zip vars vals)
+copyInOuts :: [(Name, Loc)] -> Env -> InterpM ()
+copyInOuts bindings env = 
+  forM_ bindings $ \(var, srcLoc) ->
+    case applyEnv env var of
+      Just (RefVal dstLoc) -> do
+        mval <- deref srcLoc
+        case mval of
+          Just val -> do
+            _ <- setLocVal dstLoc val
+            return ()
+          _ -> throwErr (ErrorData "location is empty")
+      _ -> throwErr (ErrorData $ "wrong variable " ++ var)
+
+-- preprocessInouts :: [Exp] -> Env -> InterpM Env
+-- preprocessInouts rands env = undefined
+--   where process (InOutExp var) env 
 
 -- Errors
 data ErrorData = ErrorData String

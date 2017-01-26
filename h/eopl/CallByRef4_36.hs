@@ -14,6 +14,7 @@ import Control.Monad.State
 -- Implicit references - variables can store only references to locations with values, but not values
 -- Call by reference - if variable is passed to the procedure, only location is passed, not the value
 -- that is stored under this location
+-- Results of array refs are also passed by reference
 
 type Name = String
 
@@ -51,6 +52,10 @@ data Exp = NumExp Int
           | SetRefExp Exp Exp
           | DerefExp Exp
           | AssignExp String Exp
+          -- Arrays
+          | NewArrayExp Exp Exp
+          | ArrayRefExp Exp Exp
+          | ArraySetExp Exp Exp Exp
           -- Other
           | PrintExp Exp
           deriving (Show)
@@ -195,6 +200,18 @@ assignExp = do
   e <- expr
   return (AssignExp var e)
 
+arraySetExp :: Parser Exp
+arraySetExp = do
+  _ <- strTok "arrayset"
+  _ <- strTok "("
+  e1 <- expr
+  _ <- strTok ","
+  e2 <- expr
+  _ <- strTok ","
+  e3 <- expr
+  _ <- strTok ")"
+  return (ArraySetExp e1 e2 e3)
+
 expr :: Parser Exp
 expr = numExp <|> letExp <|> ifExp <|> procExp <|> letrec <|> callExp <|>
   compoundExp
@@ -217,9 +234,12 @@ expr = numExp <|> letExp <|> ifExp <|> procExp <|> letrec <|> callExp <|>
   <|> unaryOp "print" PrintExp
   <|> unaryOp "newref" NewRefExp
   <|> binOp "setref" SetRefExp
-  <|> unaryOp "deref" DerefExp <|>
-  assignExp <|>
-  varExp
+  <|> unaryOp "deref" DerefExp 
+  <|> binOp "newarray" NewArrayExp
+  <|> binOp "arrayref" ArrayRefExp
+  <|> arraySetExp
+  <|> assignExp 
+  <|> varExp
 
 program :: Parser Program
 program = do e <- expr
@@ -232,6 +252,7 @@ data ExpVal = IntVal Int
             | EmptyVal
             | ProcVal [String] Exp Env
             | RefVal Loc
+            | ArrayVal [Loc]
   deriving (Show)
 
 expValToNum :: ExpVal -> Int
@@ -307,7 +328,7 @@ eval (AssignExp var e) env = do
     Just (RefVal loc) -> do
       _ <- setLocVal loc val
       return val
-    v -> throwErr (ErrorData ("RefVal is expected for '" ++ var ++ "' but got " ++ show v ++ ", env: " ++ show env))
+    v -> throwErr (ErrorData ("RefVal is expected but got " ++ show v))
 eval (CompoundExp exps) env = do
   vals <- mapM (`eval` env) exps
   return (last vals)
@@ -322,11 +343,24 @@ eval (IfExp e1 e2 e3) env = do
   if unboxBool val1 
   then eval e2 env
   else eval e3 env
-eval (PrintExp e) env = do
-  val <- eval e env
-  liftIO $ putStr "********   "
-  liftIO $ print val
-  return $ IntVal 1
+eval (NewArrayExp e1 e2) env = do
+  countVal <- eval e1 env
+  initVal <- eval e2 env
+  case countVal of
+    IntVal count ->
+      createArray count initVal
+    _ -> throwErr (ErrorData "int value expected")
+eval (ArrayRefExp e1 e2) env =
+  handleArrayElement e1 e2 env $ \loc -> do
+    mval <- deref loc
+    case mval of
+      Just val -> return val
+      _ -> throwErr (ErrorData "location stored in the array is invalid")
+eval (ArraySetExp e1 e2 e3) env = 
+  handleArrayElement e1 e2 env $ \loc -> do
+    val <- eval e3 env
+    _ <- setLocVal loc val
+    return $ IntVal 0
 eval val _ = error ("not available for " ++ show val)
 
 resolveVar :: Name -> Env -> InterpM ExpVal
@@ -345,6 +379,8 @@ evalOperand (VarExp var) env =
   case applyEnv env var of
     Just rv@(RefVal _) -> return rv
     _ -> throwErr (ErrorData "variable cannot be resolved")
+evalOperand (ArrayRefExp e1 e2) env =
+  handleArrayElement e1 e2 env $ \loc -> return $ RefVal loc
 evalOperand e env = eval e env
 
 allocateArgs :: [Name] -> [ExpVal] -> Env -> InterpM Env
@@ -357,6 +393,18 @@ allocateArgs vars vals env =
               loc <- newrefAndInit val
               return (extendEnv var (RefVal loc) e)
 
+createArray :: Int -> ExpVal -> InterpM ExpVal
+createArray count val =
+  ArrayVal <$> replicateM count (newrefAndInit val)
+
+handleArrayElement :: Exp -> Exp -> Env -> (Loc -> InterpM a) -> InterpM a
+handleArrayElement arrExp indexExp env f = do
+  arrVal <- eval arrExp env
+  indexVal <- eval indexExp env
+  case (arrVal, indexVal) of
+    (ArrayVal locs, IntVal index) -> 
+      f (locs !! index)
+    _ -> throwErr (ErrorData "expected array value and int value")
 
 -- Errors
 data ErrorData = ErrorData String
@@ -429,15 +477,6 @@ fileContents file = do
   handle <- openFile file ReadMode
   hGetContents handle
 
--- showHistoryFile :: FilePath -> IO ()
--- showHistoryFile file = do
---   --contents <- fileContents file
---   --let (_, (_, _, _)) = evall contents
---   print "Storage:\n" 
---   -- print stor
---   -- mapM print
---   --   (reverse hst)
-
 parseFile :: FilePath -> IO ()
 parseFile file = do
   handle <- openFile file ReadMode
@@ -456,7 +495,7 @@ run str = do
   case res of
     Left (ErrorData err) -> putStrLn ("Error: " ++ err)
     Right (expres, h) -> do
-      mapM print h
+      mapM_ print h
       print expres
 
 runFile :: FilePath -> IO ()
@@ -471,9 +510,13 @@ exs = [
   "letrec double(x) = if zero?(x) then 0 else -((double -(x,1)), -2) in (double 22)",
   "let p = proc(x) set x = 4 in let a = 3 in {(p a);a}",
   "let swap = proc(x,y) let temp = x in { set x = y; set y = temp} in let a = 33 in let b = 44 in {(swap a b); -(a, b)}",
-  "let swap = proc(x,y) let temp = x in { set x = y; set y = temp} in let a = 33 in let b = 44 in {(swap a -(b,b)); -(a, b)}"
+  "let swap = proc(x,y) let temp = x in { set x = y; set y = temp} in let a = 33 in let b = 44 in {(swap a -(b,b)); -(a, b)}",
+  "let ar = newarray(4, zero?(0)) in arrayref(ar, 4)",
+  "let ar = newarray(4, zero?(0)) in {arrayset(ar,2,5);arrayset(ar,3,-(arrayref(ar,2),55));arrayref(ar, 3)}",
+  "let swap = proc(x,y) let temp = x in { set x = y; set y = temp} in let ar = newarray(5, 1) in {arrayset(ar,2,55);(swap arrayref(ar,0) arrayref(ar,2))}"
   ]
 
+exl :: String
 exl = last exs
 
 

@@ -1,0 +1,15 @@
+let a = 5 in
+let b = 10 in 
+let f = proc(x,y)
+{
+  print(a);print(b);print(x);print(y);
+  set a = -5;
+  set b = 33;
+  set x = 12;
+  set y = 0;
+  print(a);print(b);print(x);print(y)
+} in
+{
+  (f inout a b);
+  print(a);print(b)
+}
