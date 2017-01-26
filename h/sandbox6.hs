@@ -1,19 +1,7 @@
-import Data.Char (ord, chr)
-import Data.Ix (inRange)
- 
-cipher :: Int -> String -> String
-cipher k = map f
-  where
-    f c
-      | inRange ('a','z') c = tr 'a' k c
-      | inRange ('A','Z') c = tr 'A' k c
-      | otherwise = c
- 
-uncipher :: Int -> String -> String
-uncipher k = cipher (-k)
- 
-tr :: Char -> Int -> Char -> Char
-tr base offset char = chr $ ord base + (ord char - ord base + offset) `mod` 26
+import Data.List ((\\))
 
-main :: IO ()
-main = putStrLn $ uncipher 1 "tufqifo.n.ejfim@hnbjm.dpn"
+minfree :: [Int] -> Int
+minfree xs = head ([0..] \\ xs)
+
+--(\\\) :: Eq a => [a] -> [a] -> [a]
+--xs \\\ ys = filter (\x -> not $ elem x ys) xs

@@ -12,6 +12,7 @@ import Data.Maybe (fromMaybe)
 -- In this modification variables can be immutable also. 
 -- Immutable vars are introduced by `let` expression.
 -- Mutable by `letmutable` expression.
+-- Added possibility to pass variables by references - "(f ref x)"
 
 -- AST             
 data Program = Program Exp
