@@ -205,7 +205,7 @@ public class ExpressionParser extends frontend.lis.LisParser {
     }
     
     public static void main(String[] args) throws Exception {
-	Scanner s = FrontendFactory.createScanner("d = c <= b");
+	Scanner s = FrontendFactory.createScanner("++a");
 	ExpressionParser p = new ExpressionParser(s);
 	ParseTreePrinter printer = new ParseTreePrinter(System.out);
 	printer.print(p.parseExpression());
