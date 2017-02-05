@@ -289,6 +289,8 @@ eval (LetRecExp name args pbody body) env = do
   eval body env'
 eval (ProcExp vars body) env = return $ ProcVal vars body env
 eval (CallExp rator rands) envOuter = do
+  liftIO $ putStrLn $ show rator
+  liftIO $ putStrLn "--------------------"
   randVals <- mapM (`eval` envOuter) rands
   ratorVal <- eval rator envOuter
   case ratorVal of
@@ -331,7 +333,7 @@ resolveVar var env =
         Just val -> return val
         Nothing ->
           throwErr (ErrorData "location not found")
-    _ -> throwErr (ErrorData $ "variable not found   "  ++ show env)
+    _ -> throwErr (ErrorData $ "variable '" ++ (show var) ++ "' not found   "  ++ show env)
 
 allocateArgs :: [Name] -> [ExpVal] -> Env -> InterpM Env
 allocateArgs vars vals env = 

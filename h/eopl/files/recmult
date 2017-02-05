@@ -1,0 +1,11 @@
+((proc (f)
+  (proc (maker)
+   (maker maker)
+   proc (maker)
+    (f proc (x) ((maker maker) x)))
+
+proc (recur)
+ proc (x)
+  if zero?(x)
+   then 0
+   else -((recur -(x, 1)), -4)) 3)
