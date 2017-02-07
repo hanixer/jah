@@ -1,5 +1,6 @@
 module PropLog where
 
+import Data.Maybe (fromMaybe)
 import Parser
 import Control.Applicative ((<|>))
 import Data.List (lookup, sort, nub)
@@ -55,6 +56,7 @@ onAtoms _ fm = fm
 
 overAtoms :: (a -> b -> b) -> Formula a -> b -> b
 overAtoms f (Atom a) b = f a b
+overAtoms f (Not fm) b = overAtoms f fm b
 overAtoms f (And fm1 fm2) b = overAtoms f fm1 (overAtoms f fm2 b)
 overAtoms f (Or fm1 fm2) b = overAtoms f fm1 (overAtoms f fm2 b)
 overAtoms f (Imp fm1 fm2) b = overAtoms f fm1 (overAtoms f fm2 b)
@@ -62,7 +64,7 @@ overAtoms f (Iff fm1 fm2) b = overAtoms f fm1 (overAtoms f fm2 b)
 overAtoms _ _ b = b
 
 atomUnion :: Ord a => Formula a -> [a]
-atomUnion fm = (sort . nub) $ overAtoms (\s ss -> s:ss) fm []
+atomUnion fm = (sort . nub) $ overAtoms (:) fm []
 
 type Env = [(String, Bool)]
 
@@ -70,18 +72,14 @@ eval :: FmString -> Env -> Bool
 eval FmTrue _ = True
 eval FmFalse _ = False
 eval (Not fm) env = not (eval fm env)
-eval (Atom a) env = case lookup a env of
-  Just b -> b
-  Nothing -> error "variable not found"
-eval (And fm1 fm2) env = (eval fm1 env) && (eval fm2 env)
-eval (Or fm1 fm2) env = (eval fm1 env) || (eval fm2 env)
-eval (Imp fm1 fm2) env = (not $ eval fm1 env) || (eval fm2 env)
-eval (Iff fm1 fm2) env = (eval fm1 env) == (eval fm2 env)
+eval (Atom a) env = fromMaybe (error "variable not found") (lookup a env)
+eval (And fm1 fm2) env = eval fm1 env && eval fm2 env
+eval (Or fm1 fm2) env = eval fm1 env || eval fm2 env
+eval (Imp fm1 fm2) env = not (eval fm1 env) || eval fm2 env
+eval (Iff fm1 fm2) env = eval fm1 env == eval fm2 env
 
 justParseFm :: String -> FmString
-justParseFm s = case parse formulaPrs s of
-  Just t -> t
-  Nothing -> error "parser error"
+justParseFm s = fromMaybe (error "parser error") (parse formulaPrs s)
 
 run :: String -> Bool
 run str = case parse formulaPrs str of
@@ -104,3 +102,13 @@ printTruthTable fm =
     print $ eval fm e
   where envs = generEnvs fm
         atoms = atomUnion fm
+
+tautology :: FmString -> Bool
+tautology fm = all (fm `eval`) envs
+  where envs = generEnvs fm
+
+unsatisfiable :: FmString -> Bool
+unsatisfiable fm = tautology (Not fm)
+
+substit :: [(String, FmString)] -> FmString -> FmString
+substit dict = onAtoms $ \a -> fromMaybe (Atom a) (lookup a dict)

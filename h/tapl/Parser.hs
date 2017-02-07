@@ -3,11 +3,15 @@ module Parser where
 import Control.Monad.State
 import Control.Applicative
 import Data.Char (isSpace)
+import Data.Maybe (fromJust)
 
 type Parser a = StateT String Maybe a
 
 parse :: Parser a -> String -> Maybe a
 parse = evalStateT
+
+parseJust :: Parser a -> String -> a
+parseJust p s = fromJust $ parse p s
 
 item :: Parser Char
 item = do
