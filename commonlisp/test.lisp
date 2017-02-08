@@ -1,0 +1,2 @@
+(defun thing (x)
+  x)
