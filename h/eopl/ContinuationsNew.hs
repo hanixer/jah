@@ -237,14 +237,7 @@ data ExpVal = IntVal Int
             | EmptyVal
             | ProcVal [String] Exp Env
             | RefVal Loc
-
-instance Show ExpVal where
-  show (IntVal n) = "<" ++ show n ++ ">"
-  show (BoolVal b) = "<" ++ show b ++ ">"
-  show (RefVal loc) = "<loc:" ++ show loc ++ ">"
-  show (ProcVal vs _ _) = "<proc:" ++ show vs ++ ">"
-  show _ = "<otherval>"
-
+  deriving (Show)
 
 expValToNum :: ExpVal -> Int
 expValToNum (IntVal n) = n
@@ -275,7 +268,7 @@ applyEnv :: Env -> Name -> Maybe ExpVal
 applyEnv env var = L.lookup var env
 
 -- Evaluation
-type InterpM a = StateT StateData (WriterT [HistItem] (ExceptT ErrorData IO)) a
+type InterpM a = StateT StoreData (WriterT [HistItem] (ExceptT ErrorData IO)) a
 
 eval :: Exp -> Env -> InterpM ExpVal
 eval (NumExp n) _ = return (IntVal n)
@@ -336,28 +329,15 @@ eval (IfExp e1 e2 e3) env = do
 eval val _ = error ("not available for " ++ show val)
 
 -- Continuations
-type Cont = (ExpVal -> InterpM ExpVal)
+type Cont = (ExpVal -> InterpM ())
 
-applyCont :: Cont -> ExpVal -> InterpM ExpVal
-applyCont cont val = do
-  liftIO $ putStrLn $ show val ++ "\n--------------------\n"
-  timeExp <- isTimeExpired
-  if timeExp
-    then placeThreadOnQueue (\_ -> applyCont cont val) >> runNextThread
-    else decrementTicks >> cont val
-
-endMainThreadCont :: Cont
-endMainThreadCont val = endCurrThread >> 
-  setFinalAnswer val >> return EmptyVal
-
-endOtherThreadCont :: Cont
-endOtherThreadCont _ = endCurrThread >> runNextThread
+applyCont :: Cont -> ExpVal -> InterpM ()
+applyCont cont = cont
 
 endCont :: Cont
 endCont val = do
   liftIO $ putStr "End of computation: "
   liftIO $ print val
-  return EmptyVal
 
 zeroCont :: Cont -> Cont
 zeroCont cont val = applyCont cont $ BoolVal $ unboxInt val == 0
@@ -389,7 +369,7 @@ diffCont1 e2 env cont val1 =
 
 diffCont2 :: ExpVal -> Cont -> Cont
 diffCont2 val1 cont val2 = 
-  applyCont cont (IntVal $ unboxInt val1 - unboxInt val2)
+  cont (IntVal $ unboxInt val1 - unboxInt val2)
 
 compoundCont :: [Exp] -> Env -> Cont -> Cont
 compoundCont [] _ cont val = cont val
@@ -399,18 +379,18 @@ compoundCont (e:es) env cont _ =
 assignCont :: String -> Env -> Cont -> Cont
 assignCont var env cont val = case applyEnv env var of
   Just (RefVal loc) -> 
-    setLocVal loc val >> return val >> applyCont cont val
+    setLocVal loc val >> return val >> cont val
   v -> throwErr (ErrorData ("RefVal is expected but got " ++ show v)) >>
-    applyCont cont val
+    cont val
 
-evalk :: Exp -> Env -> Cont -> InterpM ExpVal
+evalk :: Exp -> Env -> Cont -> InterpM ()
 evalk (VarExp var) env cont = do
   val <- resolveVar var env
-  applyCont cont val
+  cont val
 evalk (NumExp n) _ cont = 
-  applyCont cont $ IntVal n
+  cont $ IntVal n
 evalk (ProcExp vars body) env cont =
-  applyCont cont $ ProcVal vars body env
+  cont $ ProcVal vars body env
 evalk (IsZeroExp e) env cont = 
   evalk e env $ zeroCont cont
 evalk (IfExp e1 e2 e3) env cont =
@@ -425,7 +405,7 @@ evalk (CompoundExp (e:es)) env cont =
   evalk e env $ compoundCont es env cont
 evalk (AssignExp var e) env cont = 
   evalk e env $ assignCont var env cont
-evalk e _ _ = throwErr $ ErrorData $ "Evalk error " ++ show e
+evalk _ _ _ = return ()
 
 resolveVar :: Name -> Env -> InterpM ExpVal
 resolveVar var env = 
@@ -463,42 +443,32 @@ instance Show HistItem where
   show (DerefItem n val) = "[" ++ show n ++ "] => " ++ show val
 
 type Hist = [HistItem]
-type Store = (Int, IM.IntMap ExpVal)
+type StoreData = (Int, IM.IntMap ExpVal)
 type Loc = Int
-type Thread = () -> InterpM ExpVal
-data StateData = StateData 
-  { store :: Store
-  , maxTicks :: Int
-  , currTicks :: Int
-  , threadQueue :: [Thread]
-  , finalAnswer :: ExpVal }
 
 getNewLoc :: InterpM Loc
 getNewLoc = do
-  sdata <- get
-  let (n, memry) = store sdata
+  (n, store) <- get
   let n' = n + 1
-  put $ sdata {store = (n', memry)}
+  put (n', store)
   tell [NewRefItem n']
   return n'
 
 setLocVal :: Loc -> ExpVal -> InterpM ExpVal
 setLocVal loc val = do
-  sdata <- get
-  let (n, memry) = store sdata
-  put $ sdata {store = (n, IM.insert loc val memry)}
+  (n, store) <- get
+  put (n, IM.insert loc val store)
   tell [SetRefItem loc val]
   return val
 
 deref :: Int -> InterpM (Maybe ExpVal)
 deref loc = do
-  sdata <- get
-  let (n, memry) = store sdata
-  case IM.lookup loc memry of 
+  (n, store) <- get
+  case IM.lookup loc store of 
     Just val -> do
-      put $ sdata {store = (n, memry)}
-      tell [DerefItem loc val]
-      return (Just val)
+        put (n, store)
+        tell [DerefItem loc val]
+        return (Just val)
     Nothing -> return Nothing
 
 newrefAndInit :: ExpVal -> InterpM Loc
@@ -507,50 +477,8 @@ newrefAndInit val = do
   _ <- setLocVal loc val
   return loc
 
-emptyStateData :: Int -> StateData
-emptyStateData ticks = StateData 
-  { store = (0 :: Int, IM.empty)
-  , maxTicks = ticks
-  , currTicks = ticks
-  , threadQueue = []
-  , finalAnswer = EmptyVal }
-
-emptyStateData' :: StateData
-emptyStateData' = emptyStateData 2
-
--- Thread control
-placeThreadOnQueue :: Thread -> InterpM ()
-placeThreadOnQueue th = do
-  sdata <- get
-  put $ sdata {threadQueue = threadQueue sdata ++ [th]}
-
-runNextThread :: InterpM ExpVal
-runNextThread = do
-  sdata <- get
-  case threadQueue sdata of
-    [] -> return $ finalAnswer sdata
-    (th:ths) -> th ()
-
-decrementTicks :: InterpM ()
-decrementTicks = do
-  sdata <- get
-  put $ sdata {currTicks = currTicks sdata - 1}
-
-isTimeExpired :: InterpM Bool
-isTimeExpired = do
-  sdata <- get
-  return $ currTicks sdata == 0
-
-setFinalAnswer :: ExpVal -> InterpM ()
-setFinalAnswer val = do
-  sdata <- get
-  put $ sdata {finalAnswer = val}
-
-endCurrThread :: InterpM ()
-endCurrThread = do
-  sdata <- get
-  put $ sdata {threadQueue = tail $ threadQueue sdata}
-
+emptyState :: StoreData
+emptyState = (0 :: Int, IM.empty)
 
 -- Test helpers
 
@@ -586,13 +514,12 @@ parseFile file = do
 
 unwrapState
   :: (Monoid w, Monad m) =>
-     StateT StateData (WriterT w (ExceptT e m)) a -> m (Either e (a, w))
-unwrapState s = runExceptT $ runWriterT $ evalStateT s emptyStateData'
+     StateT StoreData (WriterT w (ExceptT e m)) a -> m (Either e (a, w))
+unwrapState s = runExceptT $ runWriterT $ evalStateT s emptyState
 
 runk :: String -> IO ()
 runk str = do  
-  res <- unwrapState (evalk (fst $ head $ parse expr str) emptyEnv endMainThreadCont)
-  liftIO $ print res
+  res <- unwrapState (evalk (fst $ head $ parse expr str) emptyEnv endCont)
   case res of
     Left (ErrorData errr) -> print errr
     Right (_, h) -> do
@@ -600,23 +527,17 @@ runk str = do
       return ()
   
 run :: String -> IO ()
-run str = undefined
-  
--- run :: String -> IO ()
--- run str = do  
---   res <- unwrapState (eval (fst $ head $ parse expr str) emptyEnv)
---   case res of
---     Left (ErrorData err) -> putStrLn ("Error: " ++ err)
---     Right (expres, _) ->
---       print expres
+run str = do  
+  res <- unwrapState (eval (fst $ head $ parse expr str) emptyEnv)
+  case res of
+    Left (ErrorData err) -> putStrLn ("Error: " ++ err)
+    Right (expres, _) ->
+      print expres
 
-runFile :: FilePath ->  (String -> IO ()) -> IO ()
-runFile file rf = do
+runFile :: FilePath -> IO ()
+runFile file = do
   contents <- fileContents file
-  rf contents
-
-runFileK :: FilePath -> IO ()
-runFileK file = runFile file runk
+  run contents
 
 exs :: [String]
 exs = [
