@@ -347,11 +347,11 @@ applyCont cont val = do
     else decrementTicks >> cont val
 
 endMainThreadCont :: Cont
-endMainThreadCont val = endCurrThread >> 
-  setFinalAnswer val >> return EmptyVal
+endMainThreadCont val =  
+  setFinalAnswer val >> return EmptyVal >> runNextThread
 
 endOtherThreadCont :: Cont
-endOtherThreadCont _ = endCurrThread >> runNextThread
+endOtherThreadCont _ = runNextThread
 
 endCont :: Cont
 endCont val = do
@@ -529,7 +529,9 @@ runNextThread = do
   sdata <- get
   case threadQueue sdata of
     [] -> return $ finalAnswer sdata
-    (th:ths) -> th ()
+    (th:ths) -> do
+      put $ sdata {currTicks = maxTicks sdata, threadQueue = ths}
+      th ()
 
 decrementTicks :: InterpM ()
 decrementTicks = do
