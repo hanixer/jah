@@ -70,7 +70,7 @@ token p = do space
              return v
 
 ident = do x <- lower
-           xs <- (many (lower <|> digit))
+           xs <- (many (lower <|> digit <|> char '_'))
            return (x:xs)
 
 identifier = token ident

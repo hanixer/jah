@@ -52,6 +52,9 @@ data Exp = NumExp Int
           | AssignExp String Exp
           -- Threads
           | SpawnExp Exp
+          | MutexExp
+          | WaitExp Exp
+          | SignalExp Exp
           -- Other
           | PrintExp Exp
           deriving (Show)
@@ -197,7 +200,19 @@ assignExp = do
   return (AssignExp var e)
 
 spawnExp :: Parser Exp
-spawnExp = strTok "spawn" >> expr >>= \e -> return $ SpawnExp e
+spawnExp = do
+  _ <- strTok "spawn"
+  _ <- strTok "(" 
+  e <- expr
+  _ <- strTok ")" 
+  return $ SpawnExp e
+
+mutextExp :: Parser Exp
+mutextExp = do
+  _ <- strTok "mutex"
+  _ <- strTok "(" 
+  _ <- strTok ")" 
+  return MutexExp
 
 expr :: Parser Exp
 expr = numExp <|> letExp <|> ifExp <|> procExp <|> letrec <|> callExp <|>
@@ -224,6 +239,9 @@ expr = numExp <|> letExp <|> ifExp <|> procExp <|> letrec <|> callExp <|>
   <|> unaryOp "deref" DerefExp <|>
   assignExp <|>
   spawnExp <|>
+  mutextExp <|>
+  unaryOp "wait" WaitExp <|>
+  unaryOp "signal" SignalExp <|>
   varExp
 
 program :: Parser Program
@@ -237,12 +255,16 @@ data ExpVal = IntVal Int
             | EmptyVal
             | ProcVal [String] Exp Env
             | RefVal Loc
+            | MutexVal Bool [Thread]
+            | MutexRef Loc
 
 instance Show ExpVal where
   show (IntVal n) = "<" ++ show n ++ ">"
   show (BoolVal b) = "<" ++ show b ++ ">"
   show (RefVal loc) = "<loc:" ++ show loc ++ ">"
   show (ProcVal vs _ _) = "<proc:" ++ show vs ++ ">"
+  show EmptyVal = "<empty>"
+  show (MutexVal b ts) = "<mutex: " ++ show b ++ ", " ++ show (length ts) ++ ">"
   show _ = "<otherval>"
 
 
@@ -340,7 +362,7 @@ type Cont = (ExpVal -> InterpM ExpVal)
 
 applyCont :: Cont -> ExpVal -> InterpM ExpVal
 applyCont cont val = do
-  liftIO $ putStrLn $ show val ++ "\n--------------------\n"
+  -- liftIO $ putStrLn $ show val ++ "\n--------------------\n"
   timeExp <- isTimeExpired
   if timeExp
     then placeThreadOnQueue (\_ -> applyCont cont val) >> runNextThread
@@ -363,8 +385,9 @@ zeroCont :: Cont -> Cont
 zeroCont cont val = applyCont cont $ BoolVal $ unboxInt val == 0
 
 letExpCont :: Name -> Exp -> Env -> Cont -> Cont
-letExpCont var body env cont val =
-  evalk body (extendEnv var val env) cont
+letExpCont var body env cont val = do
+  env' <- allocateArgs [var] [val] env
+  evalk body env' cont
 
 ifTestCont :: Exp -> Exp -> Env -> Cont -> Cont
 ifTestCont thenExp elseExp env cont val =
@@ -373,15 +396,19 @@ ifTestCont thenExp elseExp env cont val =
     else evalk elseExp env cont
 
 operatorCont :: [Exp] -> Env -> Cont -> Cont 
-operatorCont [randExp] env cont ratorVal =
-  evalk randExp env $ operandCont ratorVal cont
-operatorCont _ _ _ _ = throwErr (ErrorData "procedure are only with one arg")
+operatorCont [] _ cont (ProcVal _ body env) =
+  evalk body env cont
+operatorCont (e:es) env cont ratorVal =
+  evalk e env $ operandCont ratorVal es [] env cont
+operatorCont _ _ _ _ = throwErr (ErrorData "operatorCont error")
 
-operandCont :: ExpVal -> Cont -> Cont
-operandCont (ProcVal [arg] body env) cont val = do
-  env' <- allocateArgs [arg] [val] env
+operandCont :: ExpVal -> [Exp] -> [ExpVal] -> Env -> Cont -> Cont
+operandCont (ProcVal args body env) [] randVals _ cont randVal = do
+  env' <- allocateArgs args (reverse (randVal:randVals)) env
   evalk body env' cont
-operandCont _ _ _ = throwErr (ErrorData "procedure are only with one arg")
+operandCont procVal (e:es) randVals env cont val = 
+  evalk e env $ operandCont procVal es (val:randVals) env cont
+operandCont _ _ _ _ _ _ = throwErr (ErrorData "operandCont error")
 
 diffCont1 :: Exp -> Env -> Cont -> Cont
 diffCont1 e2 env cont val1 = 
@@ -400,8 +427,41 @@ assignCont :: String -> Env -> Cont -> Cont
 assignCont var env cont val = case applyEnv env var of
   Just (RefVal loc) -> 
     setLocVal loc val >> return val >> applyCont cont val
-  v -> throwErr (ErrorData ("RefVal is expected but got " ++ show v)) >>
+  v -> throwErr (ErrorData ("RefVal is expected but got " ++ show v ++ "value is " ++ show val)) >>
     applyCont cont val
+
+spawnCont :: Cont -> Cont
+spawnCont cont (ProcVal args body env) = do
+  env' <- allocateArgs args (replicate (length args) EmptyVal) env
+  placeThreadOnQueue (\_ -> evalk body env' endOtherThreadCont)
+  applyCont cont EmptyVal
+spawnCont _ e = throwErr (ErrorData $ "Procval expected but got " ++ show e)
+
+printCont :: Cont -> Cont
+printCont cont val = do
+  liftIO $ putStr "Program output: "
+  liftIO $ print val
+  applyCont cont EmptyVal
+
+waitCont :: Cont -> Cont
+waitCont cont (MutexRef loc) = do
+  opened <- isMutexOpened loc
+  if opened
+    then openMutex loc False >> applyCont cont EmptyVal
+    else placeThreadOnMutexQueue loc (\_ -> applyCont cont EmptyVal) >> runNextThread
+waitCont _ _ = throwErr (ErrorData "mutex ref expected")
+
+signalCont :: Cont -> Cont
+signalCont cont (MutexRef loc) = do
+  opened <- isMutexOpened loc
+  empt <- isMutexQueueEmpty loc
+  if opened
+    then applyCont cont EmptyVal
+    else if empt
+      then openMutex loc True >> applyCont cont EmptyVal
+      else scheduleMutexThread loc >> applyCont cont EmptyVal
+
+signalCont _ _ = throwErr (ErrorData "mutex ref expected")
 
 evalk :: Exp -> Env -> Cont -> InterpM ExpVal
 evalk (VarExp var) env cont = do
@@ -425,6 +485,23 @@ evalk (CompoundExp (e:es)) env cont =
   evalk e env $ compoundCont es env cont
 evalk (AssignExp var e) env cont = 
   evalk e env $ assignCont var env cont
+evalk (SpawnExp e) env cont = 
+  evalk e env $ spawnCont cont
+evalk (LetRecExp name args pbody body) env cont = do
+  loc <- getNewLoc
+  let env' = extendEnv name (RefVal loc) env
+  let procVal = ProcVal args pbody env'
+  _ <- setLocVal loc procVal
+  evalk body env' cont
+evalk (PrintExp e) env cont = 
+  evalk e env $ printCont cont
+evalk MutexExp _ cont = do
+  mx <- newMutex
+  applyCont cont mx
+evalk (WaitExp e) env cont =
+  evalk e env $ waitCont cont
+evalk (SignalExp e) env cont = 
+  evalk e env $ signalCont cont
 evalk e _ _ = throwErr $ ErrorData $ "Evalk error " ++ show e
 
 resolveVar :: Name -> Env -> InterpM ExpVal
@@ -516,7 +593,7 @@ emptyStateData ticks = StateData
   , finalAnswer = EmptyVal }
 
 emptyStateData' :: StateData
-emptyStateData' = emptyStateData 2
+emptyStateData' = emptyStateData 1
 
 -- Thread control
 placeThreadOnQueue :: Thread -> InterpM ()
@@ -553,6 +630,34 @@ endCurrThread = do
   sdata <- get
   put $ sdata {threadQueue = tail $ threadQueue sdata}
 
+newMutex :: InterpM ExpVal
+newMutex = do
+  loc <- newrefAndInit (MutexVal True [])
+  return (MutexRef loc)
+
+isMutexOpened :: Loc -> InterpM Bool
+isMutexOpened loc = handleMutex loc (\opened _ -> return opened)
+
+isMutexQueueEmpty :: Loc -> InterpM Bool
+isMutexQueueEmpty loc = handleMutex loc (\_ ths -> return $ null ths)
+
+openMutex :: Loc -> Bool -> InterpM ()
+openMutex loc open = handleMutex loc (\_ ts -> setLocVal loc (MutexVal open ts) >> return ())
+
+placeThreadOnMutexQueue :: Loc -> Thread -> InterpM ()
+placeThreadOnMutexQueue loc th =
+  handleMutex loc (\b ths -> setLocVal loc (MutexVal b (ths ++ [th])) >> return ())
+
+scheduleMutexThread :: Loc -> InterpM ()
+scheduleMutexThread loc = handleMutex loc $ \open (th:ths) ->  
+  setLocVal loc (MutexVal open ths) >> placeThreadOnQueue th
+
+handleMutex :: Loc -> (Bool -> [Thread] -> InterpM a) -> InterpM a
+handleMutex loc f = do
+  mval <- deref loc
+  case mval of 
+    Just (MutexVal b ts) -> f b ts
+    Nothing -> throwErr (ErrorData "mutex value is expected")
 
 -- Test helpers
 
@@ -594,10 +699,12 @@ unwrapState s = runExceptT $ runWriterT $ evalStateT s emptyStateData'
 runk :: String -> IO ()
 runk str = do  
   res <- unwrapState (evalk (fst $ head $ parse expr str) emptyEnv endMainThreadCont)
-  liftIO $ print res
+  -- liftIO $ print res
   case res of
     Left (ErrorData errr) -> print errr
-    Right (_, h) -> do
+    Right (e, h) -> do
+      putStr "Final answer: "
+      print e
       mapM_ print h
       return ()
   
