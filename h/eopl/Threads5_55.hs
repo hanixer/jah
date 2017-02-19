@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module Threads where 
 --import Control.Monad (void)
+import Control.Arrow (second)
 import Control.Monad.Except
 import Control.Monad.Trans.Except (throwE)
 import Control.Monad.Writer
@@ -10,6 +11,7 @@ import System.IO
 import qualified Data.IntMap as IM
 import qualified Data.List as L
 import Control.Monad.State
+import Control.Monad (when)
 
 -- Implicit references - variables can store only references to locations with values, but not values
 -- Threads added
@@ -56,6 +58,9 @@ data Exp = NumExp Int
           | MutexExp
           | WaitExp Exp
           | SignalExp Exp
+          | KillExp Exp
+          | SendExp Exp Exp
+          | RecvExp
           -- Other
           | PrintExp Exp
           deriving (Show)
@@ -215,6 +220,13 @@ mutextExp = do
   _ <- strTok ")" 
   return MutexExp
 
+recvExp :: Parser Exp
+recvExp = do
+  _ <- strTok "recv"
+  _ <- strTok "(" 
+  _ <- strTok ")" 
+  return RecvExp
+
 expr :: Parser Exp
 expr = numExp <|> letExp <|> ifExp <|> procExp <|> letrec <|> callExp <|>
   compoundExp
@@ -243,6 +255,9 @@ expr = numExp <|> letExp <|> ifExp <|> procExp <|> letrec <|> callExp <|>
   mutextExp <|>
   unaryOp "wait" WaitExp <|>
   unaryOp "signal" SignalExp <|>
+  unaryOp "kill" KillExp <|>
+  binOp "send" SendExp <|>
+  recvExp <|>
   varExp
 
 program :: Parser Program
@@ -258,6 +273,7 @@ data ExpVal = IntVal Int
             | RefVal Loc
             | MutexVal Bool [Thread]
             | MutexRef Loc
+            | ThreadVal TId
 
 instance Show ExpVal where
   show (IntVal n) = "<" ++ show n ++ ">"
@@ -267,6 +283,7 @@ instance Show ExpVal where
   show EmptyVal = "<empty>"
   show (MutexVal b ts) = "<mutex: " ++ show b ++ ", " ++ show (length ts) ++ ">"
   show (MutexRef mid) = "<mutexref:" ++ show mid ++ ">"
+  show (ThreadVal tid) = "<thread:" ++ show tid ++ ">"
   show _ = "<otherval>"
 
 
@@ -433,10 +450,11 @@ assignCont var env cont val = case applyEnv env var of
     applyCont cont val
 
 spawnCont :: Cont -> Cont
-spawnCont cont (ProcVal args body env) = do
-  env' <- allocateArgs args (replicate (length args) EmptyVal) env
-  enqueueNewThread (\_ -> evalk body env' endOtherThreadCont)
-  applyCont cont EmptyVal
+spawnCont cont (ProcVal [arg] body env) = do
+  tid <- enqueueNewThread (\_ -> return EmptyVal)
+  env' <- allocateArgs [arg] [ThreadVal tid] env
+  _ <- updateThread tid (\_ -> evalk body env' endOtherThreadCont)
+  applyCont cont (ThreadVal tid)
 spawnCont _ e = throwErr (ErrorData $ "Procval expected but got " ++ show e)
 
 printCont :: Cont -> Cont
@@ -462,8 +480,23 @@ signalCont cont (MutexRef loc) = do
     else if empt
       then openMutex loc True >> applyCont cont EmptyVal
       else dequeueMutexThread loc >> applyCont cont EmptyVal
-
 signalCont _ _ = throwErr (ErrorData "mutex ref expected")
+
+killCont :: Cont -> Cont
+killCont cont (ThreadVal tid) = do
+  removed <- removeThread tid
+  applyCont cont (BoolVal removed)
+killCont _ _ = throwErr (ErrorData "thread value expected")
+
+send1Cont :: Exp -> Env -> Cont -> Cont
+send1Cont e2 env cont (ThreadVal tid) = 
+  evalk e2 env $ send2Cont tid cont
+send1Cont _ _ _ _ = throwErr (ErrorData "thread value expected")
+
+send2Cont :: TId -> Cont -> Cont
+send2Cont tid cont val = do
+  sendToThread tid val
+  applyCont cont EmptyVal
 
 evalk :: Exp -> Env -> Cont -> InterpM ExpVal
 evalk (VarExp var) env cont = do
@@ -504,6 +537,11 @@ evalk (WaitExp e) env cont =
   evalk e env $ waitCont cont
 evalk (SignalExp e) env cont = 
   evalk e env $ signalCont cont
+evalk (KillExp e) env cont =
+  evalk e env $ killCont cont
+evalk (SendExp e1 e2) env cont = 
+  evalk e1 env $ send1Cont e2 env cont
+evalk RecvExp _ cont = recvCurrThread cont
 evalk e _ _ = throwErr $ ErrorData $ "Evalk error " ++ show e
 
 resolveVar :: Name -> Env -> InterpM ExpVal
@@ -614,8 +652,9 @@ emptyStateData' = emptyStateData 1
 
 -- Thread control
 type Thread = () -> InterpM ExpVal
+type ThreadData = (Thread, ExpVal, Bool)
 type TId = Int -- Thread ID
-type ThreadStorage = IM.IntMap Thread
+type ThreadStorage = IM.IntMap ThreadData
 
 type Mutex = (Bool, [TId])
 type MId = Int -- Mutex ID
@@ -641,7 +680,14 @@ newThread th = do
 updateThread :: TId -> Thread -> InterpM ()
 updateThread tid th = 
   modifyStateData (\sdata -> 
-    sdata {threads = IM.insert tid th (threads sdata)})
+    sdata {threads = IM.alter f tid (threads sdata)})
+  where f Nothing = Just (th, EmptyVal, False)
+        f (Just (_, val, isWaiting)) = Just (th, val, isWaiting)
+
+updateThreadData :: TId -> ThreadData -> InterpM ()
+updateThreadData tid tdata = 
+  modifyStateData (\sdata -> 
+    sdata {threads = IM.insert tid tdata (threads sdata)})
 
 freeTId :: StateData -> TId
 freeTId sdata = freeId (threads sdata)
@@ -657,17 +703,36 @@ enqueueCurrThread th = do
   updateThread (currTId sdata) th
   enqueueThread (currTId sdata)
 
-enqueueNewThread :: Thread -> InterpM ()
+enqueueNewThread :: Thread -> InterpM TId
 enqueueNewThread th = do
   tid <- newThread th
   enqueueThread tid
+  return tid
 
 getThread :: TId -> InterpM Thread
 getThread tid = do
   sdata <- get
   case IM.lookup tid (threads sdata) of
-    Just th -> return th
+    Just (th, _, _) -> return th
     Nothing -> throwErr (ErrorData "thread not found")
+
+getThreadVal :: TId -> InterpM ExpVal
+getThreadVal tid = do
+  sdata <- get
+  case IM.lookup tid (threads sdata) of
+    Just (_, val, _) -> return val
+    Nothing -> throwErr (ErrorData "thread not found")
+
+removeThread :: TId -> InterpM Bool
+removeThread tid = do 
+  sdata <- get
+  case IM.lookup tid (threads sdata) of
+    Just _ -> do
+      let queue = L.filter (/= tid) (threadQueue sdata)
+      let ms = IM.map (Control.Arrow.second (L.filter (/= tid))) (mutexes sdata)
+      put $ sdata {threadQueue = queue, mutexes = ms}
+      return True
+    Nothing -> return False
 
 runNextThread :: InterpM ExpVal
 runNextThread = do
@@ -694,6 +759,33 @@ setFinalAnswer val = modifyStateData (\sdata ->
 endCurrThread :: InterpM ()
 endCurrThread = modifyStateData (\sdata -> 
   sdata {threadQueue = tail $ threadQueue sdata})
+
+sendToThread :: TId -> ExpVal -> InterpM ()
+sendToThread tid val = do
+  sdata <- get
+  case IM.lookup tid (threads sdata) of
+    Just (th, _, isWaiting) -> do
+      put $ sdata {threads = IM.insert tid (th, val, False) (threads sdata)}
+      Control.Monad.when isWaiting $ enqueueThread tid
+    Nothing -> throwErr (ErrorData "thread id not found")
+
+recvCurrThread :: Cont -> InterpM ExpVal
+recvCurrThread cont = do
+  sdata <- get
+  let tid = currTId sdata
+  case IM.lookup tid (threads sdata) of
+    Just (_, EmptyVal, _) -> do
+      updateThreadData tid (sleepyThread tid, EmptyVal, True)
+      runNextThread
+    Just (th, val, _) -> do
+      updateThreadData tid (th, EmptyVal, False)
+      applyCont cont val
+    _ -> throwErr (ErrorData "thread not found")
+  where sleepyThread tid () = do
+          val <- getThreadVal tid
+          updateThreadData tid (\_ -> return EmptyVal, EmptyVal, False)
+          applyCont cont val
+
 
 freeMId :: StateData -> MId
 freeMId sdata = freeId (mutexes sdata)
@@ -775,7 +867,7 @@ runk str = do
     Right (e, h) -> do
       putStr "Final answer: "
       print e
-      mapM_ print h
+      -- mapM_ print h
       return ()
   
 run :: String -> IO ()

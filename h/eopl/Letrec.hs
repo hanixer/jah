@@ -123,7 +123,7 @@ commaSeparExpList =
 listExp = do strTok "list"
              strTok "("
              es <- commaSeparExpList
-             strTok ")"
+ 7            strTok ")"
              return (ListExp es)
 
 letrec = do strTok "letrec"

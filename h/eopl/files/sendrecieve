@@ -1,0 +1,21 @@
+letrec loop(pri, num) =
+	if zero?(num)
+		then -9999
+		else if zero?(pri)
+			then {print(num);(loop pri -(num, 1))}
+			else (loop pri -(num, 1))
+	in
+let threadproc = proc(x)
+	{
+		(loop 0 10);
+		print(recv());
+
+		(loop 0 10);
+		print(recv())
+	}
+	in
+let th = spawn(threadproc) in
+{	
+	(loop 0 2);
+	send(th, 5000)
+}

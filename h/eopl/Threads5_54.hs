@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module Threads where 
 --import Control.Monad (void)
+import Control.Arrow (second)
 import Control.Monad.Except
 import Control.Monad.Trans.Except (throwE)
 import Control.Monad.Writer
@@ -56,6 +57,7 @@ data Exp = NumExp Int
           | MutexExp
           | WaitExp Exp
           | SignalExp Exp
+          | KillExp Exp
           -- Other
           | PrintExp Exp
           deriving (Show)
@@ -243,6 +245,7 @@ expr = numExp <|> letExp <|> ifExp <|> procExp <|> letrec <|> callExp <|>
   mutextExp <|>
   unaryOp "wait" WaitExp <|>
   unaryOp "signal" SignalExp <|>
+  unaryOp "kill" KillExp <|>
   varExp
 
 program :: Parser Program
@@ -258,6 +261,7 @@ data ExpVal = IntVal Int
             | RefVal Loc
             | MutexVal Bool [Thread]
             | MutexRef Loc
+            | ThreadVal TId
 
 instance Show ExpVal where
   show (IntVal n) = "<" ++ show n ++ ">"
@@ -267,6 +271,7 @@ instance Show ExpVal where
   show EmptyVal = "<empty>"
   show (MutexVal b ts) = "<mutex: " ++ show b ++ ", " ++ show (length ts) ++ ">"
   show (MutexRef mid) = "<mutexref:" ++ show mid ++ ">"
+  show (ThreadVal tid) = "<thread:" ++ show tid ++ ">"
   show _ = "<otherval>"
 
 
@@ -435,8 +440,8 @@ assignCont var env cont val = case applyEnv env var of
 spawnCont :: Cont -> Cont
 spawnCont cont (ProcVal args body env) = do
   env' <- allocateArgs args (replicate (length args) EmptyVal) env
-  enqueueNewThread (\_ -> evalk body env' endOtherThreadCont)
-  applyCont cont EmptyVal
+  tid <- enqueueNewThread (\_ -> evalk body env' endOtherThreadCont)
+  applyCont cont (ThreadVal tid)
 spawnCont _ e = throwErr (ErrorData $ "Procval expected but got " ++ show e)
 
 printCont :: Cont -> Cont
@@ -462,8 +467,13 @@ signalCont cont (MutexRef loc) = do
     else if empt
       then openMutex loc True >> applyCont cont EmptyVal
       else dequeueMutexThread loc >> applyCont cont EmptyVal
-
 signalCont _ _ = throwErr (ErrorData "mutex ref expected")
+
+killCont :: Cont -> Cont
+killCont cont (ThreadVal tid) = do
+  removed <- removeThread tid
+  applyCont cont (BoolVal removed)
+killCont _ _ = throwErr (ErrorData "thread value expected")
 
 evalk :: Exp -> Env -> Cont -> InterpM ExpVal
 evalk (VarExp var) env cont = do
@@ -504,6 +514,8 @@ evalk (WaitExp e) env cont =
   evalk e env $ waitCont cont
 evalk (SignalExp e) env cont = 
   evalk e env $ signalCont cont
+evalk (KillExp e) env cont =
+  evalk e env $ killCont cont
 evalk e _ _ = throwErr $ ErrorData $ "Evalk error " ++ show e
 
 resolveVar :: Name -> Env -> InterpM ExpVal
@@ -657,10 +669,11 @@ enqueueCurrThread th = do
   updateThread (currTId sdata) th
   enqueueThread (currTId sdata)
 
-enqueueNewThread :: Thread -> InterpM ()
+enqueueNewThread :: Thread -> InterpM TId
 enqueueNewThread th = do
   tid <- newThread th
   enqueueThread tid
+  return tid
 
 getThread :: TId -> InterpM Thread
 getThread tid = do
@@ -668,6 +681,17 @@ getThread tid = do
   case IM.lookup tid (threads sdata) of
     Just th -> return th
     Nothing -> throwErr (ErrorData "thread not found")
+
+removeThread :: TId -> InterpM Bool
+removeThread tid = do 
+  sdata <- get
+  case IM.lookup tid (threads sdata) of
+    Just _ -> do
+      let queue = L.filter (/= tid) (threadQueue sdata)
+      let ms = IM.map (Control.Arrow.second (L.filter (/= tid))) (mutexes sdata)
+      put $ sdata {threadQueue = queue, mutexes = ms}
+      return True
+    Nothing -> return False
 
 runNextThread :: InterpM ExpVal
 runNextThread = do
@@ -775,7 +799,7 @@ runk str = do
     Right (e, h) -> do
       putStr "Final answer: "
       print e
-      mapM_ print h
+      -- mapM_ print h
       return ()
   
 run :: String -> IO ()

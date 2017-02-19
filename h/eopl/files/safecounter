@@ -15,12 +15,5 @@ begin
  spawn((incr_x 100));
  spawn((incr_x 200));
  spawn((incr_x 300));
- wait(mut);
- -(x,-(-1, -(0, -(0, -(0, 0)))));
- signal(mut);
  print(-(x,-500))
- ;
- wait(mut);
- wait(mut);
- signal(mut)
 end
