@@ -11,6 +11,8 @@ import qualified Data.IntMap as IM
 import qualified Data.List as L
 import qualified Data.List (union)
 import Control.Monad.State
+import qualified Text.PrettyPrint.HughesPJ as PP
+import Text.PrettyPrint.HughesPJ ((<+>), ($+$))
 
 type Name = String
 
@@ -413,10 +415,10 @@ convertLetrec (name, args, body) =
   where fresh = freshVar "k" (freeVars body args)
 
 expsToTf :: [Exp] -> ([SimpleExp] -> TfExp) -> TfExp
-expsToTf es builder = case span isExpSimple es of
+expsToTf es builder = case span isExpSimple (reverse es) of
   (ses, e : rest) -> 
     let fresh = freshVar "x" (foldl1 L.union $ map (`freeVars` []) es) in
-    let tfRest = expsToTf (ses ++ [VarExp fresh] ++ rest) builder in
+    let tfRest = expsToTf ((reverse rest) ++ [VarExp fresh] ++ (reverse ses)) builder in
     expToTf e (CpsProcExp [fresh] tfRest)
   (ses, []) -> builder $ map expToSimpleExp ses
 
@@ -548,3 +550,29 @@ strtoexpr str = fst $ head $ parse expr str
 strtoprog :: String -> Program
 strtoprog str = fst $ head $ parse program str
 
+-- Pretty
+ppSimpleExp :: SimpleExp -> PP.Doc
+ppSimpleExp (CpsNumExp n) = PP.int n
+ppSimpleExp (CpsVarExp v) = PP.text v
+ppSimpleExp (CpsDiffExp e1 e2) = 
+  PP.text "-" <> PP.parens (ppSimpleExp e1 <> PP.text ", " <> ppSimpleExp e2)
+ppSimpleExp (CpsIsZeroExp e) = PP.text "zero?" <> PP.parens (ppSimpleExp e)
+ppSimpleExp (CpsProcExp args body) = 
+  PP.text "proc" <> PP.parens (PP.cat $ PP.punctuate PP.comma (map PP.text args)) $+$
+  PP.nest 2 (ppTfExp body)
+ppSimpleExp (CpsSumExp es) = PP.text "sum" <> 
+  PP.parens (PP.cat $ PP.punctuate PP.comma (map ppSimpleExp es))
+
+ppTfExp :: TfExp -> PP.Doc
+ppTfExp (CpsSimpleExp e) = ppSimpleExp e
+ppTfExp (CpsLetExp var rhs body) = 
+  PP.text "let = " <> ppSimpleExp rhs <> PP.text " in " $+$ ppTfExp body
+ppTfExp (CpsIfExp e1 e2 e3) = 
+  PP.text "if " <> ppSimpleExp e1 $+$ 
+    PP.nest 2 ((PP.text "then " <> ppTfExp e2) $+$ (PP.text "else " <> ppTfExp e3))
+ppTfExp (CpsCallExp e1 es) = PP.parens (PP.sep (map ppSimpleExp (e1 : es)))
+
+ppCpsProgram (CpsProg e) = ppTfExp e
+
+transandpp :: String -> PP.Doc
+transandpp str = ppCpsProgram $ progToTf $ strtoprog str
