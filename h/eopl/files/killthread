@@ -1,0 +1,12 @@
+letrec loop(pri, num) =
+	if zero?(num)
+		then -9999
+		else if zero?(pri)
+			then {print(num);(loop pri -(num, 1))}
+			else (loop pri -(num, 1))
+	in
+let thr = spawn(proc(x) (loop 0 20)) in
+{
+	(loop 0 100);
+	kill(thr)
+}

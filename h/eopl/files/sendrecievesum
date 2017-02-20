@@ -1,0 +1,33 @@
+letrec loop(pri, num) =
+	if zero?(num)
+		then -9999
+		else if zero?(pri)
+			then {print(num);(loop pri -(num, 1))}
+			else (loop pri -(num, 1))
+	in
+let th1proc = proc(myid)
+	let th2id = recv() in
+	{
+		send(th2id, myid);
+		print(recv());
+		send(th2id, 5);
+		print(recv());
+		send(th2id, 10);
+		print(recv())
+	}
+	in
+let th2proc = proc(myid)
+	let th1id = recv() in
+	{
+		send(th1id, -1);
+		let x = recv() in
+		{
+		send(th1id, -1);
+		let y = recv() in
+		send(th1id, -(x,-(0,y)))
+		}
+	}
+	in
+let th1id = spawn(th1proc) in
+let th2id = spawn(th2proc) in
+	send(th1id, th2id)
