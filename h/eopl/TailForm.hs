@@ -42,7 +42,7 @@ data Exp = NumExp Int
           | CondExp [(Exp, Exp)]
           -- Other
           | PrintExp Exp
-          deriving (Show)
+          deriving (Show, Eq)
           
 newtype CpsProgram = CpsProg TfExp
     deriving (Show)
@@ -54,7 +54,7 @@ data SimpleExp =
   | CpsIsZeroExp SimpleExp
   | CpsProcExp [String] TfExp
   | CpsSumExp [SimpleExp]
-  deriving (Show)
+  deriving (Show, Eq)
 
 data TfExp = 
     CpsSimpleExp SimpleExp
@@ -62,7 +62,7 @@ data TfExp =
   | CpsLetrecExp [(String, [String], TfExp)] TfExp
   | CpsIfExp SimpleExp TfExp TfExp
   | CpsCallExp SimpleExp [SimpleExp]
-  deriving (Show)
+  deriving (Show, Eq)
 
 numExp :: Parser Exp
 numExp = do n <- number
@@ -128,7 +128,7 @@ varListExp :: Parser [String]
 varListExp = do 
   v <- identifier
   vs <- many (do 
-    _ <- strTok ","
+    _ <- (strTok "," <|> strTok "")
     varListExp)
   return (v : concat vs)
 
@@ -184,7 +184,7 @@ emptyExp = do _ <- strTok "empty"
 commaSeparExpList :: Parser [Exp]
 commaSeparExpList = 
   (do e <- expr
-      (do _ <- strTok "," 
+      (do _ <- (strTok "," <|> empty)
           es <- commaSeparExpList
           return (e:es)) 
        <|> return [e]) 
@@ -198,7 +198,7 @@ listExp = do _ <- strTok "list"
              return (ListExp es)
 
 sumExp :: Parser Exp
-sumExp = strTok "sum" >> strTok "(" >> 
+sumExp = (strTok "sum" <|> strTok "+") >> strTok "(" >> 
   commaSeparExpList >>= \es -> strTok ")" >> 
   return (SumExp es)
 
@@ -230,9 +230,9 @@ data ExpVal = IntVal Int
             | ConsVal ExpVal ExpVal
             | EmptyVal
             | ProcVal [String] Exp Env
+            | ProcValCps [String] TfExp Env
             | RefVal Loc
-            | MutexVal Bool [Thread]
-            | MutexRef Loc
+  deriving (Eq)
 
 instance Show ExpVal where
   show (IntVal n) = "<" ++ show n ++ ">"
@@ -240,7 +240,6 @@ instance Show ExpVal where
   show (RefVal loc) = "<loc:" ++ show loc ++ ">"
   show (ProcVal vs _ _) = "<proc:" ++ show vs ++ ">"
   show EmptyVal = "<empty>"
-  show (MutexVal b ts) = "<mutex: " ++ show b ++ ", " ++ show (length ts) ++ ">"
   show _ = "<otherval>"
 
 
@@ -259,7 +258,7 @@ unboxBool = expValToBool
 -- Environment
 data EnvEntry = SimpleEnvEntry String ExpVal
               | RecEnvEntry [(String, [String], Exp)] Env
-              deriving (Show)
+  deriving (Show, Eq)
 type Env = [EnvEntry]
 
 emptyEnv :: Env
@@ -305,7 +304,8 @@ endCont val = do
   return EmptyVal
 
 zeroCont :: Cont -> Cont
-zeroCont cont val = applyCont cont $ BoolVal $ unboxInt val == 0
+zeroCont cont (IntVal n) = applyCont cont $ BoolVal $ n == 0
+zeroCont _ _ = throwErr (ErrorData "number is expected")
 
 letExpCont :: Name -> Exp -> Env -> Cont -> Cont
 letExpCont var body env cont val = do
@@ -313,10 +313,11 @@ letExpCont var body env cont val = do
   evalk body env' cont
 
 ifTestCont :: Exp -> Exp -> Env -> Cont -> Cont
-ifTestCont thenExp elseExp env cont val =
-  if unboxBool val
+ifTestCont thenExp elseExp env cont (BoolVal b) =
+  if b
     then evalk thenExp env cont
     else evalk elseExp env cont
+ifTestCont _ _ _ _ _ = throwErr (ErrorData "bool is expected")
 
 operatorCont :: [Exp] -> Env -> Cont -> Cont 
 operatorCont [] _ cont (ProcVal _ body env) =
@@ -338,8 +339,9 @@ diffCont1 e2 env cont val1 =
   evalk e2 env (diffCont2 val1 cont)
 
 diffCont2 :: ExpVal -> Cont -> Cont
-diffCont2 val1 cont val2 = 
-  applyCont cont (IntVal $ unboxInt val1 - unboxInt val2)
+diffCont2 (IntVal n1) cont (IntVal n2) = 
+  applyCont cont (IntVal (n1 - n2))
+diffCont2 _ _ _  = throwErr (ErrorData "number is expected")
 
 compoundCont :: [Exp] -> Env -> Cont -> Cont
 compoundCont [] _ cont val = cont val
@@ -377,6 +379,28 @@ evalk (LetRecExp ps body) env cont =
 evalk (PrintExp e) env cont = 
   evalk e env $ printCont cont
 evalk e _ _ = throwErr $ ErrorData $ "Evalk error " ++ show e
+
+evalcpssimple :: SimpleExp -> Env -> InterpM ExpVal
+evalcpssimple (CpsNumExp n) _ = return (IntVal n)
+evalcpssimple (CpsVarExp var) env = resolveVar var env
+evalcpssimple (CpsDiffExp e1 e2) env = do
+  v1 <- evalcpssimple e1 env
+  v2 <- evalcpssimple e2 env
+  case (v1, v2) of
+     (IntVal n1, IntVal n2) -> return (IntVal (n1 - n2))
+     _ -> te "two ints expected"
+evalcpssimple (CpsIsZeroExp e) env = do
+  v <- evalcpssimple e env
+  case v of
+    (IntVal n) -> return (BoolVal $ n == 0)
+    _ -> te "int expected"
+evalcpssimple (CpsProcExp args body) env = return (ProcValCps args body env)
+evalcpssimple (CpsSumExp es) env = do
+  res <- forM es (`evalcpssimple` env)
+  ints <- forM res (\val -> case val of
+    (IntVal n) -> return n
+    _ -> te "int expected")  
+  return (IntVal (sum ints))
 
 resolveVar :: Name -> Env -> InterpM ExpVal
 resolveVar var env = 
@@ -475,6 +499,9 @@ data ErrorData = ErrorData String
 
 throwErr :: ErrorData -> InterpM a
 throwErr edat = lift $ lift $ throwE edat
+
+te :: String -> InterpM a
+te s = throwErr (ErrorData s)
 
 -- Storage
 data HistItem = 
@@ -579,7 +606,78 @@ ppTfExp (CpsLetrecExp ps body) =
     PP.text name <> PP.parens (PP.cat $ PP.punctuate PP.comma (map PP.text args)) <> 
     PP.text " = " $+$ PP.nest 2 (ppTfExp pbody)) ps)) <> PP.text " in " $+$ ppTfExp body
 
+ppCpsProgram :: CpsProgram -> PP.Doc
 ppCpsProgram (CpsProg e) = ppTfExp e
 
 transandpp :: String -> PP.Doc
 transandpp str = ppCpsProgram $ progToTf $ strtoprog str
+
+-- Tests
+
+runtests :: IO ()
+runtests = forM_ tests run
+  where run (str, val) = case parse program str of
+          [(Program e, _)] -> run1 e str val
+          _ -> putStrLn $ "Parse failed: " ++ str
+        run1 e str val = do
+          res <- unwrapState (evalk e env (\resval -> return resval))
+          case res of
+            Left (ErrorData err) -> if val == EmptyVal
+              then return ()
+              else report str EmptyVal EmptyVal
+            Right (resval, _) -> if resval == val
+              then return ()
+              else report str val resval
+        env = (extendEnv "x" (IntVal 10) emptyEnv)
+        report str expect observ =
+          putStrLn ("For: " ++ str) >>
+          putStrLn ("Expected: " ++ show expect) >> 
+          putStrLn ("Got: " ++ show observ ++ "\n")
+
+tests :: [(String, ExpVal)]
+tests = 
+  [
+  ("11",(IntVal 11)),
+  ("-33",(IntVal (-33))),
+  ("-(44,33)",(IntVal 11)),
+  ("-(-(44,33),22)",(IntVal (-11))),
+  ("-(55, -(22,11))",(IntVal 44)),
+  ("x",(IntVal 10)),
+  ("-(x,1)",(IntVal 9)),
+  ("-(1,x)",(IntVal (-9))),
+  ("foo",EmptyVal),
+  ("-(x,foo)",EmptyVal),
+  ("if zero?(0) then 3 else 4",(IntVal 3)),
+  ("if zero?(1) then 3 else 4",(IntVal 4)),
+  ("-(zero?(0),1)",EmptyVal),
+  ("-(1,zero?(0))",EmptyVal),
+  ("if 1 then 2 else 3",EmptyVal),
+  ("if zero?(-(11,11)) then 3 else 4",(IntVal 3)),
+  ("if zero?(-(11, 12)) then 3 else 4",(IntVal 4)),
+  ("if zero?(-(11, 11)) then 3 else foo",(IntVal 3)),
+  ("if zero?(-(11,12)) then foo else 4",(IntVal 4)),
+  ("let x = 3 in x",(IntVal 3)),
+  ("let x = 3 in -(x,1)",(IntVal 2)),
+  ("let x = -(4,1) in -(x,1)",(IntVal 2)),
+  ("let x = 3 in let y = 4 in -(x,y)",(IntVal (-1))),
+  ("let x = 3 in let x = 4 in x",(IntVal 4)),
+  ("let x = 3 in let x = -(x,1) in x",(IntVal 2)),
+  ("(proc(x) -(x,1)  30)",(IntVal 29)),
+  ("let f = proc (x) -(x,1) in (f 30)",(IntVal 29)),
+  ("(proc(f)(f 30)  proc(x)-(x,1))",(IntVal 29)),
+  ("((proc (x) proc (y) -(x,y)  5) 6)",(IntVal (-1))),
+  ("(proc (x y) -(x,y)  5 6)",(IntVal (-1))),
+  ("let f = proc(x y) -(x,y) in (f -(10,5) 6)",(IntVal (-1))),
+  ("let fix =  proc (f)            let d = proc (x) proc (z) ((f (x x)) z)            in proc (n) ((f (d d)) n)in let    t4m = proc (f) proc(x) if zero?(x) then 0 else -((f -(x,1)),-4)in let times4 = (fix t4m)   in (times4 3)",(IntVal 12)),
+  ("        (proc (twice)           ((twice proc (z) -(z,1)) 11)         proc (f) proc (x) (f (f x)))",(IntVal 9)),
+  ("      let twice = proc(f x k)                    (f x  proc (z) (f z k))      in (twice           proc (x k) (k -(x,1))          11          proc(z) z)",(IntVal 9)),
+  ("       let f = proc (x) -(x,1)       in (f 27)",(IntVal 26)),
+  ("       let f = proc (x) -(x,1)       in (f (f 27))",(IntVal 25)),
+  ("       let f = proc (x) proc (y) -(x,y)       in ((f 27) 4)",(IntVal 23)),
+  ("      let f = proc (x) proc (y) -(x, y)      in let g = proc (z) -(z, 1)      in ((f 27) (g 11))",(IntVal 17)),
+  ("      let f = proc (x) -(x, 1)      in if zero?((f 1)) then 11 else 22",(IntVal 11)),
+  ("letrec f(x) = 17 in 34",(IntVal 34)),
+  ("letrec f(x y) = -(x,y) in -(34, 2)",(IntVal 32)),
+  ("       letrec even(x) = if zero?(x) then zero?(0) else (odd -(x,1))              odd (x) = if zero?(x) then zero?(1) else (even -(x,1))       in (even 5)",(BoolVal False)),
+  ("      letrec fib(n) = if zero?(n) then 1                      else if zero?(-(n,1)) then 1                      else -((fib -(n,1)), -(0, (fib -(n,2))))      in (fib 5)",(IntVal 8))
+  ]
