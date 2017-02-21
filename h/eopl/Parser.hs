@@ -111,3 +111,12 @@ oneAndMore p combiner = do
 concatp p1 p2 = do
   p1
   p2
+
+chainr :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainr p op = do
+  x <- p
+  do
+    f <- op
+    y <- chainr p op
+    return $ f x y
+   <|> return x
