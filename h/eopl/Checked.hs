@@ -24,9 +24,9 @@ data Exp = NumExp Int
           | IfExp Exp Exp Exp
           | VarExp String
           | LetExp String Exp Exp
-          | ProcExp String Exp
-          | LetRecExp (String, String, Exp) Exp
-          | CallExp Exp [Exp]
+          | ProcExp String Type Exp
+          | LetRecExp (Type, String, String, Type, Exp) Exp
+          | CallExp Exp Exp
           | CompoundExp [Exp]
           -- Arithmetic
           | DiffExp Exp Exp
@@ -136,17 +136,26 @@ argsListExp = do
 procExp :: Parser Exp
 procExp = do 
   _ <- strTok "proc"
-  args <- argsListExp
+  _ <- strTok "("
+  arg <- identifier
+  _ <- strTok ":"
+  t <- typeParser
+  _ <- strTok ")"
   e <- expr
-  return (ProcExp (head args) e)
+  return (ProcExp arg t e)
 
 letrec :: Parser Exp
 letrec = do _ <- strTok "letrec"
-            ps <- some (do name <- identifier
-                           args <- argsListExp
-                           _ <- strTok "="
-                           pbody <- expr
-                           return (name, head args, pbody))
+            ps <- some (do  t <- typeParser
+                            name <- identifier
+                            _ <- strTok "("
+                            arg <- identifier
+                            _ <- strTok ":"
+                            t <- typeParser
+                            _ <- strTok ")"
+                            _ <- strTok "="
+                            pbody <- expr
+                            return (t, name, arg, t, pbody))
             _ <- strTok "in"
             lbody <- expr
             return (LetRecExp (head ps) lbody)
@@ -156,7 +165,7 @@ callExp = do _ <- strTok "("
              e1 <- expr
              es <- many expr
              _ <- strTok ")"
-             return (CallExp e1 es)
+             return (CallExp e1 (head es))
 
 compoundExp :: Parser Exp
 compoundExp = do 
@@ -261,9 +270,9 @@ emptyEnv = []
 extendEnv :: String -> ExpVal -> Env -> Env
 extendEnv var val env = SimpleEnvEntry var val : env
 
-extendEnvRec :: (String, String, Exp) -> Env -> Env
-extendEnvRec p env =
-  RecEnvEntry p env : env
+extendEnvRec :: String -> String -> Exp -> Env -> Env
+extendEnvRec name arg pbody env =
+  RecEnvEntry (name, arg, pbody) env : env
 
 extendEnvMany :: [(String, ExpVal)] -> Env -> Env
 extendEnvMany [] env = env
@@ -277,7 +286,7 @@ applyEnv (SimpleEnvEntry var val:env) svar =
     else applyEnv env svar
 applyEnv (RecEnvEntry p@(var, args, body) innerEnv : restEnv) svar = 
   if var == svar 
-    then Just (ProcVal args body (extendEnvRec p innerEnv))
+    then Just (ProcVal args body (extendEnvRec var args body innerEnv))
     else applyEnv restEnv svar
 applyEnv _ _ = Nothing
 
@@ -286,6 +295,10 @@ emptyTEnv = []
 
 extendTEnv :: String -> Type -> TEnv -> TEnv
 extendTEnv var t tenv = (var, t) : tenv
+
+applyTEnv :: TEnv -> String -> Maybe Type
+applyTEnv tenv var = L.lookup var tenv
+
 
 -- Evaluation
 type InterpM a = StateT StateData (WriterT [HistItem] (ExceptT ErrorData IO)) a
@@ -359,7 +372,7 @@ evalk (VarExp var) env cont = do
   applyCont cont val
 evalk (NumExp n) _ cont = 
   applyCont cont $ IntVal n
-evalk (ProcExp arg body) env cont =
+evalk (ProcExp arg _ body) env cont =
   applyCont cont $ ProcVal arg body env
 evalk (IsZeroExp e) env cont = 
   evalk e env $ zeroCont cont
@@ -369,12 +382,12 @@ evalk (LetExp name rhs body) env cont =
   evalk rhs env $ letExpCont name body env cont
 evalk (DiffExp e1 e2) env cont =
   evalk e1 env (diffCont1 e2 env cont) 
-evalk (CallExp e1 es2) env cont =
-  evalk e1 env $ operatorCont es2 env cont
+evalk (CallExp e1 e2) env cont =
+  evalk e1 env $ operatorCont [e2] env cont
 evalk (CompoundExp (e:es)) env cont =
   evalk e env $ compoundCont es env cont
-evalk (LetRecExp p body) env cont = 
-  evalk body (extendEnvRec p env) cont
+evalk (LetRecExp (_, name, arg, _, pbody) body) env cont = 
+  evalk body (extendEnvRec name arg pbody env) cont
 evalk (PrintExp e) env cont = 
   evalk e env $ printCont cont
 evalk e _ _ = throwErr $ ErrorData $ "Evalk error " ++ show e
@@ -388,7 +401,49 @@ resolveVar var env =
 allocateArgs :: [Name] -> [ExpVal] -> Env -> InterpM Env
 allocateArgs vars vals env = 
   return $ extendEnvMany (zip vars vals) env
-  
+
+typeof :: Exp -> TEnv -> Maybe Type
+typeof (NumExp _) _ = return IntType
+typeof (VarExp v) tenv = applyTEnv tenv v
+typeof (IsZeroExp e) tenv = case typeof e tenv of
+  Just IntType -> return BoolType
+  _ -> empty
+typeof (IfExp e1 e2 e3) tenv = 
+  case (typeof e1 tenv,
+        typeof e2 tenv,
+        typeof e3 tenv) of
+    (Just BoolType, Just t1, Just t2) -> if t1 == t2
+      then return t1
+      else empty
+    _ -> empty
+typeof (ProcExp arg t body) tenv = do
+  t2 <- typeof body (extendTEnv arg t tenv)
+  return (ProcType t t2)
+typeof (LetRecExp (tres, name, arg, targ, pbody) body) tenv = do
+  let tp = ProcType targ tres
+  tpbody <- typeof pbody (extendTEnv name tp (extendTEnv arg targ tenv))
+  if tpbody == tres
+    then typeof body (extendTEnv name tp tenv)
+    else empty
+typeof (CallExp e1 e2) tenv = do
+  t1 <- typeof e1 tenv
+  t2 <- typeof e2 tenv
+  case t1 of
+    ProcType tin tout -> if tin == t2
+      then return tout
+      else empty
+    _ -> empty
+typeof (DiffExp e1 e2) tenv = do
+  t1 <- typeof e1 tenv
+  t2 <- typeof e2 tenv
+  case (t1, t2) of
+    (IntType, IntType) -> return IntType
+    _ -> empty
+typeof (LetExp var rhs body) tenv = do
+  t1 <- typeof rhs tenv
+  typeof body (extendTEnv var t1 tenv)
+typeof _ _ = empty
+
 -- Errors
 data ErrorData = ErrorData String
   deriving (Show)
@@ -497,7 +552,21 @@ runtests = forM_ tests run
           putStrLn ("Expected: " ++ show expect) >> 
           putStrLn ("Got: " ++ show observ ++ "\n")
 
--- TODO: update tests
+runtytests :: IO ()
+runtytests = forM_ tytests run
+  where run (str, t) = case parse program str of
+          [(Program e, _)] -> run1 e str t
+          _ -> putStrLn $ "Parse failed: " ++ str
+        run1 e str t = let tres = typeof e tenv in
+          if tres == t 
+            then return ()
+            else report str t tres
+        tenv = (extendTEnv "x" IntType emptyTEnv)
+        report str expect observ =
+          putStrLn ("For: " ++ str) >>
+          putStrLn ("Expected: " ++ show expect) >> 
+          putStrLn ("Got: " ++ show observ ++ "\n")
+
 tests :: [(String, ExpVal)]
 tests = 
   [
@@ -544,4 +613,60 @@ tests =
   ("letrec f(x y) = -(x,y) in -(34, 2)",(IntVal 32)),
   ("       letrec even(x) = if zero?(x) then zero?(0) else (odd -(x,1))              odd (x) = if zero?(x) then zero?(1) else (even -(x,1))       in (even 5)",(BoolVal False)),
   ("      letrec fib(n) = if zero?(n) then 1                      else if zero?(-(n,1)) then 1                      else -((fib -(n,1)), -(0, (fib -(n,2))))      in (fib 5)",(IntVal 8))
+  ]
+
+tytests :: [(String, Maybe Type)]
+tytests = 
+  [
+  ("11",(Just IntType)),
+  ("-33",(Just IntType)),
+  ("-(44,33)",(Just IntType)),
+  ("-(-(44,33),22)",(Just IntType)),
+  ("-(55, -(22,11))",(Just IntType)),
+  ("x",(Just IntType)),
+  ("-(x,1)",(Just IntType)),
+  ("-(1,x)",(Just IntType)),
+  ("zero?(-(3,2))",(Just BoolType)),
+  ("-(2,zero?(0))",Nothing),
+  ("foo",Nothing),
+  ("-(x,foo)",Nothing),
+  ("if zero?(1) then 3 else 4",(Just IntType)),
+  ("if zero?(0) then 3 else 4",(Just IntType)),
+  ("if zero?(-(11,12)) then 3 else 4",(Just IntType)),
+  ("if zero?(-(11, 11)) then 3 else 4",(Just IntType)),
+  ("if zero?(1) then -(22,1) else -(22,2)",(Just IntType)),
+  ("if zero?(0) then -(22,1) else -(22,2)",(Just IntType)),
+  ("if zero?(0) then 1 else zero?(1)",Nothing),
+  ("if 1 then 11 else 12",Nothing),
+  ("let x = 3 in x",(Just IntType)),
+  ("let x = 3 in -(x,1)",(Just IntType)),
+  ("let x = -(4,1) in -(x,1)",(Just IntType)),
+  ("let x = 3 in let y = 4 in -(x,y)",(Just IntType)),
+  ("let x = 3 in let x = 4 in x",(Just IntType)),
+  ("let x = 3 in let x = -(x,1) in x",(Just IntType)),
+  ("(proc(x : int) -(x,1)  30)",(Just IntType)),
+  ("(proc(x : (int -> int)) -(x,1)  30)",Nothing),
+  ("let f = proc (x : int) -(x,1) in (f 30)",(Just IntType)),
+  ("(proc(f : (int -> int))(f 30)  proc(x : int)-(x,1))",(Just IntType)),
+  ("((proc (x : int) proc (y : int) -(x,y)  5) 6)",(Just IntType)),
+  ("let f = proc (x : int) proc (y : int) -(x,y) in ((f -(10,5)) 3)",(Just IntType)),
+  ("letrec int f(x : int) = -(x,1) in (f 33)",(Just IntType)),
+  ("letrec int f(x : int) = if zero?(x) then 0 else -((f -(x,1)), -2) in (f 4)",(Just IntType)),
+  ("let m = -5  in letrec int f(x : int) = if zero?(x) then -((f -(x,1)), m) else 0 in (f 4)",(Just IntType)),
+  ("letrec int double (n : int) = if zero?(n) then 0                                   else -( (double -(n,1)), -2)in (double 3)",(Just IntType)),
+  ("proc (x : int) -(x,1)",(Just (ProcType IntType IntType))),
+  ("proc (x : int) zero?(-(x,1))",(Just (ProcType IntType BoolType))),
+  ("let f = proc (x : int) -(x,1) in (f 4)",(Just IntType)),
+  ("let f = proc (x : int) -(x,1) in f",(Just (ProcType IntType IntType))),
+  ("proc(f : (int -> bool)) (f 3)",(Just (ProcType (ProcType IntType BoolType) BoolType))),
+  ("proc(f : (bool -> bool)) (f 3)",Nothing),
+  ("proc (x : int) proc (f : (int -> bool)) (f x)",(Just (ProcType IntType (ProcType (ProcType IntType BoolType) BoolType)))),
+  ("proc (x : int) proc (f : (int -> (int -> bool))) (f x)",(Just (ProcType IntType (ProcType (ProcType IntType (ProcType IntType BoolType)) (ProcType IntType BoolType))))),
+  ("proc (x : int) proc (f : (int -> (int -> bool))) (f zero?(x))",Nothing),
+  ("((proc(x : int) proc (y : int)-(x,y)  4) 3)",(Just IntType)),
+  ("(proc (x : int) -(x,1) 4)",(Just IntType)),
+  ("letrec int f(x : int) = -(x,1)in (f 40)",(Just IntType)),
+  ("(proc (x : int)      letrec bool loop(x : bool) =(loop x)       in x     1)",(Just IntType)),
+  ("let times = proc (x : int) proc (y : int) -(x,y)  in letrec int fact(x : int) = if zero?(x) then 1 else ((times x) (fact -(x,1)))   in fact",(Just (ProcType IntType IntType))),
+  ("let times = proc (x : int) proc (y : int) -(x,y)  in letrec int fact(x : int) = if zero?(x) then 1 else ((times x) (fact -(x,1)))   in (fact 4)",(Just IntType))  
   ]
