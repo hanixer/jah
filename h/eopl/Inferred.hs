@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
-module Checked where 
+module Inferred where 
 
 import Control.Applicative
 import Control.Monad.Except
@@ -48,14 +48,17 @@ data Type =
     IntType
   | BoolType
   | ProcType Type Type
+  | NoType
   deriving (Show, Eq)
 
 primTypeParser :: Parser Type
 primTypeParser = 
+  (strTok "?" >> return NoType) <|>
   (strTok "int" >> return IntType) <|> 
   (strTok "bool" >> return BoolType) <|>
   (strTok "(" >> typeParser >>= \t -> strTok ")" >> return t)
 
+typeParser :: Parser Type
 typeParser = chainr primTypeParser (strTok "->" >> return ProcType)
           
 numExp :: Parser Exp
@@ -133,25 +136,27 @@ argsListExp = do
   _ <- strTok ")"
   return vs            
 
+argAndTypeParser :: Parser (String, Type)
+argAndTypeParser = do
+  arg <- identifier
+  t <- (strTok ":" >> typeParser) <|> (strTok "" >> return NoType)
+  return (arg, t)
+
 procExp :: Parser Exp
 procExp = do 
   _ <- strTok "proc"
   _ <- strTok "("
-  arg <- identifier
-  _ <- strTok ":"
-  t <- typeParser
+  (arg, t) <- argAndTypeParser
   _ <- strTok ")"
   e <- expr
   return (ProcExp arg t e)
 
 letrec :: Parser Exp
 letrec = do _ <- strTok "letrec"
-            ps <- some (do  tret <- typeParser
+            ps <- some (do  tret <- typeParser <|> (strTok "" >> return NoType)
                             name <- identifier
                             _ <- strTok "("
-                            arg <- identifier
-                            _ <- strTok ":"
-                            targ <- typeParser
+                            (arg, targ) <- argAndTypeParser
                             _ <- strTok ")"
                             _ <- strTok "="
                             pbody <- expr
@@ -538,15 +543,13 @@ runtests = forM_ tests run
           [(Program e, _)] -> run1 e str val
           _ -> putStrLn $ "Parse failed: " ++ str
         run1 e str val = do
-          res <- unwrapState (evalk e env (\resval -> return resval))
+          res <- unwrapState (evalk e env return)
           case res of
-            Left (ErrorData err) -> if val == EmptyVal
-              then return ()
-              else report str EmptyVal EmptyVal
-            Right (resval, _) -> if resval == val
-              then return ()
-              else report str val resval
-        env = (extendEnv "x" (IntVal 10) emptyEnv)
+            Left (ErrorData _) -> 
+              unless (val == EmptyVal) $ report str EmptyVal EmptyVal
+            Right (resval, _) -> 
+              unless (resval == val) $ report str val resval
+        env = extendEnv "x" (IntVal 10) emptyEnv
         report str expect observ =
           putStrLn ("For: " ++ str) >>
           putStrLn ("Expected: " ++ show expect) >> 
@@ -558,10 +561,8 @@ runtytests = forM_ tytests run
           [(Program e, _)] -> run1 e str t
           _ -> putStrLn $ "Parse failed: " ++ str
         run1 e str t = let tres = typeof e tenv in
-          if tres == t 
-            then return ()
-            else report str t tres
-        tenv = (extendTEnv "x" IntType emptyTEnv)
+          unless (tres == t) $ report str t tres
+        tenv = extendTEnv "x" IntType emptyTEnv
         report str expect observ =
           putStrLn ("For: " ++ str) >>
           putStrLn ("Expected: " ++ show expect) >> 
@@ -570,103 +571,112 @@ runtytests = forM_ tytests run
 tests :: [(String, ExpVal)]
 tests = 
   [
-  ("11",(IntVal 11)),
-  ("-33",(IntVal (-33))),
-  ("-(44,33)",(IntVal 11)),
-  ("-(-(44,33),22)",(IntVal (-11))),
-  ("-(55, -(22,11))",(IntVal 44)),
-  ("x",(IntVal 10)),
-  ("-(x,1)",(IntVal 9)),
-  ("-(1,x)",(IntVal (-9))),
+  ("11",IntVal 11),
+  ("-33",IntVal (-33)),
+  ("-(44,33)",IntVal 11),
+  ("-(-(44,33),22)",IntVal (-11)),
+  ("-(55, -(22,11))",IntVal 44),
+  ("x",IntVal 10),
+  ("-(x,1)",IntVal 9),
+  ("-(1,x)",IntVal (-9)),
   ("foo",EmptyVal),
   ("-(x,foo)",EmptyVal),
-  ("if zero?(0) then 3 else 4",(IntVal 3)),
-  ("if zero?(1) then 3 else 4",(IntVal 4)),
+  ("if zero?(0) then 3 else 4",IntVal 3),
+  ("if zero?(1) then 3 else 4",IntVal 4),
   ("-(zero?(0),1)",EmptyVal),
   ("-(1,zero?(0))",EmptyVal),
   ("if 1 then 2 else 3",EmptyVal),
-  ("if zero?(-(11,11)) then 3 else 4",(IntVal 3)),
-  ("if zero?(-(11, 12)) then 3 else 4",(IntVal 4)),
-  ("if zero?(-(11, 11)) then 3 else foo",(IntVal 3)),
-  ("if zero?(-(11,12)) then foo else 4",(IntVal 4)),
-  ("let x = 3 in x",(IntVal 3)),
-  ("let x = 3 in -(x,1)",(IntVal 2)),
-  ("let x = -(4,1) in -(x,1)",(IntVal 2)),
-  ("let x = 3 in let y = 4 in -(x,y)",(IntVal (-1))),
-  ("let x = 3 in let x = 4 in x",(IntVal 4)),
-  ("let x = 3 in let x = -(x,1) in x",(IntVal 2)),
-  ("(proc(x) -(x,1)  30)",(IntVal 29)),
-  ("let f = proc (x) -(x,1) in (f 30)",(IntVal 29)),
-  ("(proc(f)(f 30)  proc(x)-(x,1))",(IntVal 29)),
-  ("((proc (x) proc (y) -(x,y)  5) 6)",(IntVal (-1))),
-  ("(proc (x y) -(x,y)  5 6)",(IntVal (-1))),
-  ("let f = proc(x y) -(x,y) in (f -(10,5) 6)",(IntVal (-1))),
-  ("let fix =  proc (f)            let d = proc (x) proc (z) ((f (x x)) z)            in proc (n) ((f (d d)) n)in let    t4m = proc (f) proc(x) if zero?(x) then 0 else -((f -(x,1)),-4)in let times4 = (fix t4m)   in (times4 3)",(IntVal 12)),
-  ("        (proc (twice)           ((twice proc (z) -(z,1)) 11)         proc (f) proc (x) (f (f x)))",(IntVal 9)),
-  ("      let twice = proc(f x k)                    (f x  proc (z) (f z k))      in (twice           proc (x k) (k -(x,1))          11          proc(z) z)",(IntVal 9)),
-  ("       let f = proc (x) -(x,1)       in (f 27)",(IntVal 26)),
-  ("       let f = proc (x) -(x,1)       in (f (f 27))",(IntVal 25)),
-  ("       let f = proc (x) proc (y) -(x,y)       in ((f 27) 4)",(IntVal 23)),
-  ("      let f = proc (x) proc (y) -(x, y)      in let g = proc (z) -(z, 1)      in ((f 27) (g 11))",(IntVal 17)),
-  ("      let f = proc (x) -(x, 1)      in if zero?((f 1)) then 11 else 22",(IntVal 11)),
-  ("letrec f(x) = 17 in 34",(IntVal 34)),
-  ("letrec f(x y) = -(x,y) in -(34, 2)",(IntVal 32)),
-  ("       letrec even(x) = if zero?(x) then zero?(0) else (odd -(x,1))              odd (x) = if zero?(x) then zero?(1) else (even -(x,1))       in (even 5)",(BoolVal False)),
-  ("      letrec fib(n) = if zero?(n) then 1                      else if zero?(-(n,1)) then 1                      else -((fib -(n,1)), -(0, (fib -(n,2))))      in (fib 5)",(IntVal 8))
+  ("if zero?(-(11,11)) then 3 else 4",IntVal 3),
+  ("if zero?(-(11, 12)) then 3 else 4",IntVal 4),
+  ("if zero?(-(11, 11)) then 3 else foo",IntVal 3),
+  ("if zero?(-(11,12)) then foo else 4",IntVal 4),
+  ("let x = 3 in x",IntVal 3),
+  ("let x = 3 in -(x,1)",IntVal 2),
+  ("let x = -(4,1) in -(x,1)",IntVal 2),
+  ("let x = 3 in let y = 4 in -(x,y)",IntVal (-1)),
+  ("let x = 3 in let x = 4 in x",IntVal 4),
+  ("let x = 3 in let x = -(x,1) in x",IntVal 2),
+  ("(proc(x) -(x,1)  30)",IntVal 29),
+  ("let f = proc (x) -(x,1) in (f 30)",IntVal 29),
+  ("(proc(f)(f 30)  proc(x)-(x,1))",IntVal 29),
+  ("((proc (x) proc (y) -(x,y)  5) 6)",IntVal (-1)),
+  ("(proc (x y) -(x,y)  5 6)",IntVal (-1)),
+  ("let f = proc(x y) -(x,y) in (f -(10,5) 6)",IntVal (-1)),
+  ("let fix =  proc (f)            let d = proc (x) proc (z) ((f (x x)) z)            in proc (n) ((f (d d)) n)in let    t4m = proc (f) proc(x) if zero?(x) then 0 else -((f -(x,1)),-4)in let times4 = (fix t4m)   in (times4 3)",IntVal 12),
+  ("        (proc (twice)           ((twice proc (z) -(z,1)) 11)         proc (f) proc (x) (f (f x)))",IntVal 9),
+  ("      let twice = proc(f x k)                    (f x  proc (z) (f z k))      in (twice           proc (x k) (k -(x,1))          11          proc(z) z)",IntVal 9),
+  ("       let f = proc (x) -(x,1)       in (f 27)",IntVal 26),
+  ("       let f = proc (x) -(x,1)       in (f (f 27))",IntVal 25),
+  ("       let f = proc (x) proc (y) -(x,y)       in ((f 27) 4)",IntVal 23),
+  ("      let f = proc (x) proc (y) -(x, y)      in let g = proc (z) -(z, 1)      in ((f 27) (g 11))",IntVal 17),
+  ("      let f = proc (x) -(x, 1)      in if zero?((f 1)) then 11 else 22",IntVal 11),
+  ("letrec f(x) = 17 in 34",IntVal 34),
+  ("letrec f(x y) = -(x,y) in -(34, 2)",IntVal 32),
+  ("       letrec even(x) = if zero?(x) then zero?(0) else (odd -(x,1))              odd (x) = if zero?(x) then zero?(1) else (even -(x,1))       in (even 5)", BoolVal False),
+  ("      letrec fib(n) = if zero?(n) then 1                      else if zero?(-(n,1)) then 1                      else -((fib -(n,1)), -(0, (fib -(n,2))))      in (fib 5)",IntVal 8)
   ]
 
 tytests :: [(String, Maybe Type)]
 tytests = 
   [
-  ("11",(Just IntType)),
-  ("-33",(Just IntType)),
-  ("-(44,33)",(Just IntType)),
-  ("-(-(44,33),22)",(Just IntType)),
-  ("-(55, -(22,11))",(Just IntType)),
-  ("x",(Just IntType)),
-  ("-(x,1)",(Just IntType)),
-  ("-(1,x)",(Just IntType)),
-  ("zero?(-(3,2))",(Just BoolType)),
+  ("11",Just IntType),
+  ("-33",Just IntType),
+  ("-(44,33)",Just IntType),
+  ("-(-(44,33),22)",Just IntType),
+  ("-(55, -(22,11))",Just IntType),
+  ("x",Just IntType),
+  ("-(x,1)",Just IntType),
+  ("-(1,x)",Just IntType),
+  ("zero?(-(3,2))",Just BoolType),
   ("-(2,zero?(0))",Nothing),
   ("foo",Nothing),
   ("-(x,foo)",Nothing),
-  ("if zero?(1) then 3 else 4",(Just IntType)),
-  ("if zero?(0) then 3 else 4",(Just IntType)),
-  ("if zero?(-(11,12)) then 3 else 4",(Just IntType)),
-  ("if zero?(-(11, 11)) then 3 else 4",(Just IntType)),
-  ("if zero?(1) then -(22,1) else -(22,2)",(Just IntType)),
-  ("if zero?(0) then -(22,1) else -(22,2)",(Just IntType)),
+  ("if zero?(1) then 3 else 4",Just IntType),
+  ("if zero?(0) then 3 else 4",Just IntType),
+  ("if zero?(-(11,12)) then 3 else 4",Just IntType),
+  ("if zero?(-(11, 11)) then 3 else 4",Just IntType),
+  ("if zero?(1) then -(22,1) else -(22,2)",Just IntType),
+  ("if zero?(0) then -(22,1) else -(22,2)",Just IntType),
   ("if zero?(0) then 1 else zero?(1)",Nothing),
   ("if 1 then 11 else 12",Nothing),
-  ("let x = 3 in x",(Just IntType)),
-  ("let x = 3 in -(x,1)",(Just IntType)),
-  ("let x = -(4,1) in -(x,1)",(Just IntType)),
-  ("let x = 3 in let y = 4 in -(x,y)",(Just IntType)),
-  ("let x = 3 in let x = 4 in x",(Just IntType)),
-  ("let x = 3 in let x = -(x,1) in x",(Just IntType)),
-  ("(proc(x : int) -(x,1)  30)",(Just IntType)),
+  ("let x = 3 in x",Just IntType),
+  ("let x = 3 in -(x,1)",Just IntType),
+  ("let x = -(4,1) in -(x,1)",Just IntType),
+  ("let x = 3 in let y = 4 in -(x,y)",Just IntType),
+  ("let x = 3 in let x = 4 in x",Just IntType),
+  ("let x = 3 in let x = -(x,1) in x",Just IntType),
+  ("(proc(x : int) -(x,1)  30)",Just IntType),
   ("(proc(x : (int -> int)) -(x,1)  30)",Nothing),
-  ("let f = proc (x : int) -(x,1) in (f 30)",(Just IntType)),
-  ("(proc(f : (int -> int))(f 30)  proc(x : int)-(x,1))",(Just IntType)),
-  ("((proc (x : int) proc (y : int) -(x,y)  5) 6)",(Just IntType)),
-  ("let f = proc (x : int) proc (y : int) -(x,y) in ((f -(10,5)) 3)",(Just IntType)),
-  ("letrec int f(x : int) = -(x,1) in (f 33)",(Just IntType)),
-  ("letrec int f(x : int) = if zero?(x) then 0 else -((f -(x,1)), -2) in (f 4)",(Just IntType)),
-  ("let m = -5  in letrec int f(x : int) = if zero?(x) then -((f -(x,1)), m) else 0 in (f 4)",(Just IntType)),
-  ("letrec int double (n : int) = if zero?(n) then 0                                   else -( (double -(n,1)), -2)in (double 3)",(Just IntType)),
-  ("proc (x : int) -(x,1)",(Just (ProcType IntType IntType))),
-  ("proc (x : int) zero?(-(x,1))",(Just (ProcType IntType BoolType))),
-  ("let f = proc (x : int) -(x,1) in (f 4)",(Just IntType)),
-  ("let f = proc (x : int) -(x,1) in f",(Just (ProcType IntType IntType))),
-  ("proc(f : (int -> bool)) (f 3)",(Just (ProcType (ProcType IntType BoolType) BoolType))),
+  ("let f = proc (x : int) -(x,1) in (f 30)",Just IntType),
+  ("(proc(f : (int -> int))(f 30)  proc(x : int)-(x,1))",Just IntType),
+  ("((proc (x : int) proc (y : int) -(x,y)  5) 6)",Just IntType),
+  ("let f = proc (x : int) proc (y : int) -(x,y) in ((f -(10,5)) 3)",Just IntType),
+  ("letrec int f(x : int) = -(x,1) in (f 33)",Just IntType),
+  ("letrec int f(x : int) = if zero?(x) then 0 else -((f -(x,1)), -2) in (f 4)",Just IntType),
+  ("let m = -5  in letrec int f(x : int) = if zero?(x) then -((f -(x,1)), m) else 0 in (f 4)",Just IntType),
+  ("letrec int double (n : int) = if zero?(n) then 0                                   else -( (double -(n,1)), -2)in (double 3)",Just IntType),
+  ("proc (x : int) -(x,1)", Just (ProcType IntType IntType)),
+  ("proc (x : int) zero?(-(x,1))", Just (ProcType IntType BoolType)),
+  ("let f = proc (x : int) -(x,1) in (f 4)",Just IntType),
+  ("let f = proc (x : int) -(x,1) in f",
+  Just (ProcType IntType IntType)),
+  ("proc(f : (int -> bool)) (f 3)",
+  Just (ProcType (ProcType IntType BoolType) BoolType)),
   ("proc(f : (bool -> bool)) (f 3)",Nothing),
-  ("proc (x : int) proc (f : (int -> bool)) (f x)",(Just (ProcType IntType (ProcType (ProcType IntType BoolType) BoolType)))),
-  ("proc (x : int) proc (f : (int -> (int -> bool))) (f x)",(Just (ProcType IntType (ProcType (ProcType IntType (ProcType IntType BoolType)) (ProcType IntType BoolType))))),
+  ("proc (x : int) proc (f : (int -> bool)) (f x)",
+  Just
+    (ProcType IntType (ProcType (ProcType IntType BoolType) BoolType))),
+  ("proc (x : int) proc (f : (int -> (int -> bool))) (f x)",
+  Just
+    (ProcType IntType
+        (ProcType (ProcType IntType (ProcType IntType BoolType))
+          (ProcType IntType BoolType)))),
   ("proc (x : int) proc (f : (int -> (int -> bool))) (f zero?(x))",Nothing),
-  ("((proc(x : int) proc (y : int)-(x,y)  4) 3)",(Just IntType)),
-  ("(proc (x : int) -(x,1) 4)",(Just IntType)),
-  ("letrec int f(x : int) = -(x,1)in (f 40)",(Just IntType)),
-  ("(proc (x : int)      letrec bool loop(x : bool) =(loop x)       in x     1)",(Just IntType)),
-  ("let times = proc (x : int) proc (y : int) -(x,y)  in letrec int fact(x : int) = if zero?(x) then 1 else ((times x) (fact -(x,1)))   in fact",(Just (ProcType IntType IntType))),
-  ("let times = proc (x : int) proc (y : int) -(x,y)  in letrec int fact(x : int) = if zero?(x) then 1 else ((times x) (fact -(x,1)))   in (fact 4)",(Just IntType))  
+  ("((proc(x : int) proc (y : int)-(x,y)  4) 3)",Just IntType),
+  ("(proc (x : int) -(x,1) 4)",Just IntType),
+  ("letrec int f(x : int) = -(x,1)in (f 40)",Just IntType),
+  ("(proc (x : int)      letrec bool loop(x : bool) =(loop x)       in x     1)",Just IntType),
+  ("let times = proc (x : int) proc (y : int) -(x,y)  in letrec int fact(x : int) = if zero?(x) then 1 else ((times x) (fact -(x,1)))   in fact",
+  Just (ProcType IntType IntType)),
+  ("let times = proc (x : int) proc (y : int) -(x,y)  in letrec int fact(x : int) = if zero?(x) then 1 else ((times x) (fact -(x,1)))   in (fact 4)",Just IntType)  
   ]
