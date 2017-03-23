@@ -3,9 +3,10 @@ module PropLog where
 import Data.Maybe (fromMaybe)
 import Parser
 import Control.Applicative ((<|>))
-import Data.List (lookup, sort, nub)
+import Data.List (lookup, sort, nub, transpose)
 import Text.Printf
 import Control.Monad (forM_)
+import Text.PrettyPrint.Boxes
 
 data Formula a = 
     FmTrue
@@ -25,9 +26,10 @@ formulaPrs = iffPrs
 
 primaryPrs :: Parser FmString
 primaryPrs = 
-  (strtok "~" >> formulaPrs >>= \fm -> return $ Not fm) <|>  
+  (strtok "~" >> primaryPrs >>= \fm -> return $ Not fm) <|>  
   (strtok "true" >> return FmTrue) <|>
   (strtok "false" >> return FmFalse) <|>
+  (strtok "(" >> formulaPrs >>= \fm -> strtok ")" >> return fm) <|>
   (identifier >>= \s -> return $ Atom s)
 
 andPrs :: Parser FmString
@@ -67,6 +69,7 @@ atomUnion :: Ord a => Formula a -> [a]
 atomUnion fm = (sort . nub) $ overAtoms (:) fm []
 
 type Env = [(String, Bool)]
+type Subst = [(String, FmString)]
 
 eval :: FmString -> Env -> Bool
 eval FmTrue _ = True
@@ -103,6 +106,11 @@ printTruthTable fm =
   where envs = generEnvs fm
         atoms = atomUnion fm
 
+printtt :: FmString -> IO ()
+printtt fm = mapM_ print solut
+  where envs = generEnvs fm
+        solut = map (\e -> (e, eval fm e)) envs 
+
 tautology :: FmString -> Bool
 tautology fm = all (fm `eval`) envs
   where envs = generEnvs fm
@@ -112,3 +120,57 @@ unsatisfiable fm = tautology (Not fm)
 
 substit :: [(String, FmString)] -> FmString -> FmString
 substit dict = onAtoms $ \a -> fromMaybe (Atom a) (lookup a dict)
+
+dual :: Formula a -> Formula a
+dual FmTrue = FmFalse
+dual FmFalse = FmTrue
+dual fm@(Atom _) = fm
+dual (Not p) = Not (dual p)
+dual (And p q) = Or (dual p) (dual q)
+dual (Or p q) = And (dual p) (dual q)
+dual _ = error "wrong formula"
+
+psimplify1 :: Formula a -> Formula a
+psimplify1 (Not FmTrue) = FmFalse
+psimplify1 (Not FmFalse) = FmTrue
+psimplify1 (Not (Not p)) = p
+psimplify1 (And FmTrue p) = p
+psimplify1 (And FmFalse _) = FmFalse
+psimplify1 (And p FmTrue) = p
+psimplify1 (And _ FmFalse) = FmFalse
+psimplify1 (Or FmTrue _) = FmTrue
+psimplify1 (Or FmFalse p) = p
+psimplify1 (Or _ FmTrue) = FmTrue
+psimplify1 (Or p FmFalse) = p
+psimplify1 (Imp FmTrue p) = p
+psimplify1 (Imp FmFalse _) = FmTrue
+psimplify1 (Imp _ FmTrue) = FmTrue
+psimplify1 (Imp p FmFalse) = Not p -- here also try use recursive
+psimplify1 (Iff FmTrue p) = p
+psimplify1 (Iff FmFalse p) = Not p -- here also
+psimplify1 (Iff p FmTrue) = p
+psimplify1 (Iff p FmFalse) = Not p -- here also
+psimplify1 fm = fm
+
+psimplify :: Formula a -> Formula a
+psimplify (Not p) = psimplify1 (Not (psimplify p))
+psimplify (And p q) = psimplify1 (And (psimplify p) (psimplify q))
+psimplify (Or p q) = psimplify1 (Or (psimplify p) (psimplify q))
+psimplify (Imp p q) = psimplify1 (Imp (psimplify p) (psimplify q))
+psimplify (Iff p q) = psimplify1 (Iff (psimplify p) (psimplify q))
+psimplify fm = fm
+
+nnf :: Formula a -> Formula a
+nnf (And p q) = And (nnf p) (nnf q)
+nnf (Or p q) = Or (nnf p) (nnf q)
+nnf (Imp p q) = Or (nnf (Not p)) (nnf q)
+nnf (Iff p q) = Or (And (nnf p) (nnf q)) (And (nnf (Not p)) (nnf (Not q)))
+nnf (Not (Not p)) = nnf p
+nnf (Not (And p q)) = Or (nnf (Not p)) (nnf (Not q))
+nnf (Not (Or p q)) = And (nnf (Not p)) (nnf (Not q))
+nnf (Not (Imp p q)) = And (nnf p) (nnf (Not q))
+nnf (Not (Iff p q)) = Or (And (nnf p) (nnf (Not q))) (And (nnf (Not p)) (nnf q))
+nnf fm = fm
+
+printTable :: [[String]] -> IO ()
+printTable rows = printBox $ hsep 2 left (map (vcat left . map text) (transpose rows))
