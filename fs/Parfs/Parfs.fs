@@ -12,16 +12,16 @@ let parseChar inp =
     else
         Success (inp.[0], inp.[1..])
 
-let parsePred pred = 
-    function
-        | Success (c, rest) -> 
-            if pred c then
-                Success (c, rest)
-            else
-                Failure "Predicate didn't matched"
-        | Failure f -> Failure f
+let parsePred pred inp = 
+    match parseChar inp with
+    | Success (c, rest:string) -> 
+        if pred c then
+            Success (c, rest)
+        else
+            Failure "Predicate didn't matched"
+    | Failure f -> Failure f
 
-let parseLower = parsePred (fun (c:char) -> c.IsLower)
+let parseLower = parsePred (fun (c:char) -> System.Char.IsLower(c))
 
 [<EntryPoint>]
 let main argv =
