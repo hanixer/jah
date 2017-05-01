@@ -49,7 +49,17 @@ data Type =
   | BoolType
   | ProcType Type Type
   | NoType
+  | TypeVar Int
   deriving (Show, Eq)
+
+data TyCon = TyCon TyCHS TyCHS
+  deriving (Show, Eq)
+
+data TyCHS = 
+    TyExpr Exp
+  | TyConstr String [TyCHS]
+  deriving (Show, Eq)
+
 
 primTypeParser :: Parser Type
 primTypeParser = 
@@ -289,7 +299,7 @@ applyEnv (SimpleEnvEntry var val:env) svar =
   if var == svar 
     then Just val 
     else applyEnv env svar
-applyEnv (RecEnvEntry p@(var, args, body) innerEnv : restEnv) svar = 
+applyEnv (RecEnvEntry (var, args, body) innerEnv : restEnv) svar = 
   if var == svar 
     then Just (ProcVal args body (extendEnvRec var args body innerEnv))
     else applyEnv restEnv svar
