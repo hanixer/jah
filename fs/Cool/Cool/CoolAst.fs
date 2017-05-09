@@ -51,9 +51,7 @@ module Deserialize =
         return (line, id)
     } 
 
-    let pExprPair<'r> = createParserForwardedToRef()
-    let pExpr<'r> = fst pExprPair
-    let pExprRef<'r> = snd pExprPair
+    let pExpr, pExprRef = createParserForwardedToRef()
     let pList p = parse {
         let! n = pNumEndline
         let! results = parray n p
@@ -180,7 +178,7 @@ module Deserialize =
         let! elems = pList pCaseElem
         return Case(e, elems)
     }
-    let pNew<'b> = newline >>. pId |>> New
+    let pNew<'b> = skipStringNewline "new" >>. pId |>> New
     let pExprInner<'r> = 
         pAssign <|> 
         pDynDispatch <|> 
