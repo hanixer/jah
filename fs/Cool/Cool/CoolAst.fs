@@ -3,12 +3,7 @@ module CoolAst
 type Id = int * string
 type Formal = Id * Id
 
-type Ast = Ast of Class list
-and Class = Class of Id * Id option * Feature list
-and Feature = 
-    | Method of Id * Formal list * Id * Expr
-    | Attribute of Id * Id * Expr option
-and Expr = int * ExprInner
+type Expr = int * ExprInner
 and ExprInner =
     | Assign of Id * Expr
     | DynDispatch of Expr * Id * Expr list
@@ -35,6 +30,14 @@ and ExprInner =
     | Identifier of Id
     | True
     | False
+
+type Ast<'e> = Ast of Class<'e> list
+and Class<'e> = Class of Id * Id option * Feature<'e> list
+and Feature<'e> = 
+    | Method of Id * Formal list * Id * 'e
+    | Attribute of Id * Id * 'e option
+
+
 
 module Deserialize =
     open FParsec
@@ -245,7 +248,7 @@ module Deserialize =
         return Class(id, inh, fs)    
     }
 
-    let pAst : Parser<Class list, unit> = pList pClass
+    let pAst : Parser<Class<Expr> list, unit> = pList pClass
     let x = (do());true
     let initIt n = 
         printfn "YOU %d ARE NEVER SO GOOOOOOOOOOOOOOOD" n
