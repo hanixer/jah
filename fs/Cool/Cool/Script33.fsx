@@ -8,7 +8,7 @@ open FParsec
 open CoolAst
 open CoolAst.Deserialize
 
-run pExpr "1\ninteger\n3\n"
 run pExpr "1\nnew\n3\nbbb\n"
 
-
+let x = Choice1Of2 1
+Seq.append (seq {yield 1}) (seq {1..5})
