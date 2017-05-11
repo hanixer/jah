@@ -14,13 +14,27 @@ type ObjectEnv = Map<string, string>
 let className (Class (id, _, _)) = snd id
 let parentName (Class (_, p, _)) = p |> defaultArg <| (0, "Object") |> snd
 
+let checkNoRedefinition (classes : string list) = false
+let checkAllParentsValid (classes : string list) (parents : string list) = true
+
 let isCyclesPresent nodes = 
     let dic = Map.ofList nodes
-    let rec check c curr =
-        
-    nodes 
-    |> List.exists (fun n -> Seq.from
+    let updateRoots oldRoot newRoot roots =
+        roots
+        |> Map.map (fun k v -> if v = oldRoot then newRoot else v)
+        |> Map.add oldRoot newRoot 
 
+    let rec f parents roots = 
+        match parents with
+        | [] -> false
+        | (c, p)::tail ->
+            match Map.tryFind p roots with
+            | None -> f tail (Map.add c p roots)
+            | Some x when x = c -> true
+            | Some x -> f tail (updateRoots c p roots)
+
+    f nodes Map.empty
+    
 let parents classes =
     let handle c = className c, parentName c
     classes
