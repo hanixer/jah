@@ -5,11 +5,15 @@ open CoolAst
 type Result<'a> = 
     | Success of 'a
     | Failure of string list
+module Result =
+    let bind = 0
 
 type Signature = string list
 type MethodEnv = Map<string * string, Signature>
 
 type ObjectEnv = Map<string, string>
+
+let id2str = snd
 
 let className (Class (id, _, _)) = snd id
 let parentName (Class (_, p, _)) = p |> defaultArg <| (0, "Object") |> snd
@@ -67,9 +71,10 @@ let findCycles parents =
     |> snd
 
 let primitiveTypes = ["Int";"String";"Bool"]
-let standartTypes = "Object" :: primitiveTypes
+let standartTypes = "Object" :: "IO" :: primitiveTypes
 
 let validateRedefinition classes = 
+    let classes = List.append classes standartTypes
     (classes |> List.length)  = 
         (classes |> List.distinct |> List.length)
 
@@ -80,6 +85,24 @@ let validateCycles parents =
     else
         Success true
 
-let inheritanceMap ast : Result<'a> =
-    let redef = validateRedefinition
+let classParent (Ast cs)  : list<string * string option>  =
+    cs
+    |> List.map (fun (Class (c, pOpt, _)) -> 
+        id2str c, Option.map id2str pOpt)
+
+let completeWithStandartTypes parentsOpt =
+    parentsOpt
+    |> List.map (fun (c, p) -> c, defaultArg p "Object")
+    |> List.append
+    <| List.map (fun t -> t, "Object") ("IO" :: primitiveTypes)
+
+let inheritanceMap ast : Result<'a> =    
+    let parentsOpt = classParent ast
+    let redef = parentsOpt |> List.map fst |> validateRedefinition
+    let cycles = 
+        parentsOpt 
+        |> List.filter (snd >> Option.isSome)
+        |> List.map (fun (c, p) -> c, Option.toObj p)
+        |> validateCycles
+    let completeParents = completeWithStandartTypes parentsOpt
     Failure [""]
