@@ -17,30 +17,69 @@ let parentName (Class (_, p, _)) = p |> defaultArg <| (0, "Object") |> snd
 let checkNoRedefinition (classes : string list) = false
 let checkAllParentsValid (classes : string list) (parents : string list) = true
 
-let isCyclesPresent nodes = 
-    let dic = Map.ofList nodes
-    let updateRoots oldRoot newRoot roots =
-        roots
-        |> Map.map (fun k v -> if v = oldRoot then newRoot else v)
-        |> Map.add oldRoot newRoot 
-
-    let rec f parents roots = 
-        match parents with
-        | [] -> false
-        | (c, p)::tail ->
-            match Map.tryFind p roots with
-            | None -> f tail (Map.add c p roots)
-            | Some x when x = c -> true
-            | Some x -> f tail (updateRoots c p roots)
-
-    f nodes Map.empty
     
 let parents classes =
     let handle c = className c, parentName c
     classes
     |> List.map handle
-// let methodMap (Ast classes) = 
-//     let handleClass c = 
-//         match c with
-//         | Class (name, parent, 
-//     1
+
+let updateRoots clas parent root roots =
+    roots
+    |> Map.add clas (parent, root)
+    |> Map.map (fun c (p, r) -> 
+        if r = clas then (p, root) 
+        else (p, r))
+
+let addCycle (roots:Map<'a,'a * 'a>) root cycles = 
+    let rec go curr =
+        let next = roots.[curr] |> fst
+        if  next = root then 
+            [curr]
+        else
+            curr :: go next
+    go root :: cycles
+
+let findCycles parents = 
+    let iter (roots, cycles) (c, p) =
+        if c = p then
+            // we have a cycle
+            let roots' = Map.add c (c,c) roots
+            let cycles' = addCycle roots' c cycles
+            roots', cycles'
+        else 
+            match Map.tryFind p roots with
+            | Some (pp, rp) -> 
+                if c = rp then
+                    let roots' = Map.add c (p, c) roots
+                    let cycles' = addCycle roots' c cycles
+                    roots', cycles'
+                else
+                    let roots' = 
+                        roots |> updateRoots c p rp
+                    roots', cycles
+            | None ->
+                let roots' = 
+                    roots |> updateRoots c p p
+                roots', cycles
+
+    parents
+    |> List.fold iter (Map.empty, List.empty)
+    |> snd
+
+let primitiveTypes = ["Int";"String";"Bool"]
+let standartTypes = "Object" :: primitiveTypes
+
+let validateRedefinition classes = 
+    (classes |> List.length)  = 
+        (classes |> List.distinct |> List.length)
+
+let validateCycles parents =
+    let cycles = findCycles parents
+    if cycles.Length > 0 then
+        Failure ["There are cycles. TODO: add classes here"]
+    else
+        Success true
+
+let inheritanceMap ast : Result<'a> =
+    let redef = validateRedefinition
+    Failure [""]
