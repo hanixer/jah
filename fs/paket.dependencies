@@ -3,3 +3,4 @@ nuget FAKE
 nuget FParsecCS
 nuget FSharp.Core
 nuget FParsec
+nuget Fantomas

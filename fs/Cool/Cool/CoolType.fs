@@ -10,6 +10,7 @@ module Result =
 type TypeError =
     | ClassRedefined of string
     | ClassesInheritanceCircle of string list
+    | MethodRedefined of Id * Id // id of method * class
 
 type Signature = string list
 type MethodEnv = Map<string * string, Signature>
@@ -135,7 +136,6 @@ let ret x = function
     | Success _ -> Success x
     | Failure errs -> Failure errs
 
-
 let inheritanceMap ast =    
     ast
     |> classesFromAst
@@ -143,4 +143,42 @@ let inheritanceMap ast =
     |> bind validateCycles
     |> mapRes completeWithStandartTypes
 
-// TODO: add more error cases to union, return errors in "validate*" functions
+let isMethod = function
+    | Method _ -> true
+    | _ -> false
+
+let methodsOf (Class (c, _, fs)) =
+    fs |> List.filter isMethod
+
+// let rec methodIds (Class
+
+let validateMethodRedefinition (Ast cs) = 
+    let getDuplicated (Class (c, _, fs)) =
+        fs
+        |> List.choose (function
+            | Method (m, _, _, _) -> Some (c, m)
+            | _ -> None)
+        |> List.fold (fun dic (c, m) ->
+            let key = (c, snd m)
+            let value = (c, m)
+            if Map.containsKey key dic then
+                Map.add key (value :: dic.[key]) dic
+            else
+                Map.add key [value] dic)
+            Map.empty
+        |> Map.toList
+        |> List.map 
+            (snd >> List.sort >> List.tail)
+
+    let report duplicated =
+        if List.isEmpty duplicated then
+            Success (Ast cs)
+        else
+            duplicated
+            |> List.map MethodRedefined
+            |> Failure
+
+    cs
+    |> List.collect getDuplicated
+    |> List.concat
+    |> report
