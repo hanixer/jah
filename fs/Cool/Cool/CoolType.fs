@@ -2,11 +2,14 @@ module CoolType
 
 open CoolAst
 
-type Result<'a> = 
+type Result<'a, 'Error> = 
     | Success of 'a
-    | Failure of string list
+    | Failure of 'Error list
 module Result =
     let bind = 0
+type TypeError =
+    | ClassRedefined of string
+    | ClassesInheritanceCircle of string list
 
 type Signature = string list
 type MethodEnv = Map<string * string, Signature>
@@ -73,22 +76,46 @@ let findCycles parents =
 let primitiveTypes = ["Int";"String";"Bool"]
 let standartTypes = "Object" :: "IO" :: primitiveTypes
 
-let validateRedefinition classes = 
-    let classes = List.append classes standartTypes
-    (classes |> List.length)  = 
-        (classes |> List.distinct |> List.length)
+let validateRedefinition (classes:list<string*string option>) = 
+    let getDuplicated xs =
+        xs
+        |> List.countBy id
+        |> List.filter (snd >> ((<) 1))
+        |> List.map fst
+    let report redefined =
+        if List.isEmpty redefined then
+            Success classes
+        else
+            redefined 
+            |> List.map ClassRedefined
+            |> Failure
+    
+    classes
+    |> List.map fst
+    |> List.append standartTypes
+    |> getDuplicated
+    |> report
 
-let validateCycles parents =
-    let cycles = findCycles parents
-    if cycles.Length > 0 then
-        Failure ["There are cycles. TODO: add classes here"]
-    else
-        Success true
+let validateCycles classes =
+    let report cycles =
+        if List.isEmpty cycles then
+            Success classes
+        else
+            cycles
+            |> List.map ClassesInheritanceCircle
+            |> Failure
 
-let classParent (Ast cs)  : list<string * string option>  =
+    classes    
+    |> List.filter (snd >> Option.isSome)
+    |> List.map (fun (c, p) -> c, Option.toObj p)
+    |> findCycles
+    |> report
+
+let classesFromAst (Ast cs)  : (string * string option) list  =
+    let convertToStr (Class (c, pOpt, _)) =
+        id2str c, Option.map id2str pOpt
     cs
-    |> List.map (fun (Class (c, pOpt, _)) -> 
-        id2str c, Option.map id2str pOpt)
+    |> List.map convertToStr
 
 let completeWithStandartTypes parentsOpt =
     parentsOpt
@@ -96,13 +123,24 @@ let completeWithStandartTypes parentsOpt =
     |> List.append
     <| List.map (fun t -> t, "Object") ("IO" :: primitiveTypes)
 
-let inheritanceMap ast : Result<'a> =    
-    let parentsOpt = classParent ast
-    let redef = parentsOpt |> List.map fst |> validateRedefinition
-    let cycles = 
-        parentsOpt 
-        |> List.filter (snd >> Option.isSome)
-        |> List.map (fun (c, p) -> c, Option.toObj p)
-        |> validateCycles
-    let completeParents = completeWithStandartTypes parentsOpt
-    Failure [""]
+let bind f = function
+    | Success x -> f x
+    | Failure errs -> Failure errs
+
+let mapRes f = function
+    | Success x -> f x |> Success
+    | Failure errs -> Failure errs
+
+let ret x = function
+    | Success _ -> Success x
+    | Failure errs -> Failure errs
+
+
+let inheritanceMap ast =    
+    ast
+    |> classesFromAst
+    |> validateRedefinition
+    |> bind validateCycles
+    |> mapRes completeWithStandartTypes
+
+// TODO: add more error cases to union, return errors in "validate*" functions
