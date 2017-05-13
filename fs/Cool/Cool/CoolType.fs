@@ -10,7 +10,8 @@ module Result =
 type TypeError =
     | ClassRedefined of string
     | ClassesInheritanceCircle of string list
-    | MethodRedefined of Id * Id // id of method * class
+    | MethodRedefined of Id * Id
+    | MethodFormalsRedefined of Id * Id * Id
 
 type Signature = string list
 type MethodEnv = Map<string * string, Signature>
@@ -147,11 +148,6 @@ let isMethod = function
     | Method _ -> true
     | _ -> false
 
-let methodsOf (Class (c, _, fs)) =
-    fs |> List.filter isMethod
-
-// let rec methodIds (Class
-
 let validateMethodRedefinition (Ast cs) = 
     let getDuplicated (Class (c, _, fs)) =
         fs
@@ -181,4 +177,42 @@ let validateMethodRedefinition (Ast cs) =
     cs
     |> List.collect getDuplicated
     |> List.concat
+    |> report
+
+let formalName = fst >> snd
+
+let methodsOf (Class (c, _, fs)) =    
+    List.choose (function
+        | Method (m, m2, m3, m4) -> Some (m, m2, m3, m4)
+        | _ -> None) fs
+
+let getDuplicatedFormals(name:Id, formals:Formal list, _, _) =
+    let isDuplicated x y = 
+        y <> x && formalName y = formalName x
+    let rec go : (Id * Id) list -> (Id * Id) list = function
+        | x :: xs -> 
+            match List.tryFind (isDuplicated x) formals with
+            | Some y -> [name, fst y]
+            | None -> go xs
+        | [] -> []
+    match go formals with
+        | x :: _ -> Some x
+        | [] -> None
+
+
+let validateMethodFormalsRedefinition (Ast cs) =
+    let validateClass ((Class (name, _, features)) as c) =
+        c
+        |> methodsOf
+        |> List.choose getDuplicatedFormals
+        |> List.map (fun (m, p) -> name, m, p)
+    let report duplicated =
+        if List.isEmpty duplicated then
+            Success (Ast cs)
+        else
+            duplicated
+            |> List.map MethodFormalsRedefined
+            |> Failure
+    cs
+    |> List.collect validateClass
     |> report

@@ -69,4 +69,24 @@ let badast =
         Method ((55, "f"),[],(44, "Int"),(13, Integer 1));
         Method ((14, "da"),[],(14, "Int"),(14, Integer 3))])]
 
-validateMethodRedefinition ast
+validateMethodRedefinition badast
+
+
+let badast2 = 
+ Ast
+    [Class
+    ((1, "Main"),Some (1, "IO"),
+        [Method
+        ((2, "main"),[],(2, "Object"),
+            (3, SelfDispatch ((3, "out_string"),[(3, String "Hello, world.\n")])))]);
+    Class
+    ((6, "A"),None,
+        [Method ((7, "f"),[(1,"x"),(1,"Int");(1,"x"),(2,"Bool")],(7, "Int"),(7, Integer 1));
+        Method ((8, "g"),[],(8, "Int"),(8, Integer 2));
+        Method ((10, "as"),[],(10, "Int"),(10, Integer 4))]);
+    Class
+    ((12, "C"),None,
+        [Method ((13, "f"),[(1,"x"),(1,"Int");(1,"x"),(2,"Bool")],(13, "Int"),(13, Integer 1));
+        Method ((14, "da"),[(1,"y"),(1,"Int");(1,"y"),(2,"Bool");(1,"y"),(2,"Object");(1,"x"),(1,"Int");(1,"x"),(2,"Bool")],(14, "Int"),(14, Integer 3))])]
+
+validateMethodFormalsRedefinition badast2
