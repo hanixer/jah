@@ -216,3 +216,9 @@ let validateMethodFormalsRedefinition (Ast cs) =
     cs
     |> List.collect validateClass
     |> report
+
+let toposort (edges:Map<'T, 'T option>) : 'T list =
+    let head = edges |> Map.toList |> List.head
+    if Map.isEmpty edges then []
+    else
+        []
