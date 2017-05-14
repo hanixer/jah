@@ -137,6 +137,7 @@ let ret x = function
     | Success _ -> Success x
     | Failure errs -> Failure errs
 
+// TODO: add check for inheriting from primitive types
 let inheritanceMap ast =    
     ast
     |> classesFromAst
@@ -217,8 +218,44 @@ let validateMethodFormalsRedefinition (Ast cs) =
     |> List.collect validateClass
     |> report
 
-let toposort (edges:Map<'T, 'T option>) : 'T list =
-    let head = edges |> Map.toList |> List.head
-    if Map.isEmpty edges then []
-    else
-        []
+let ast2inheritanceGraph ast =
+        ast
+        |> inheritanceMap
+        |> mapRes Graphs.edges2adjacency
+
+type MethodSignature = Id * Formal list * Id
+
+let str2id s = (0, s)
+
+let class2methodsSignatures c =
+    c
+    |> methodsOf 
+    |> List.map (fun (a,b,c,_) -> a,b,c)
+
+let unwrapClass (Class (a,b,c)) = a,b,c
+
+let tryFindClass c (Ast cs) =
+    cs
+    |> List.tryFind (fun (Class ((_, c2), _, _)) -> c = c2)
+
+let getClassMethods c ((Ast cs) as ast) : MethodSignature list =
+    let methods () = 
+        match tryFindClass c ast with
+        | Some cl ->
+            class2methodsSignatures cl
+        | None -> 
+            []
+    match c with
+    | "Object" ->
+        [   str2id "abort", [], str2id "Object"
+            str2id "type_name", [], str2id "String"
+            str2id "copy", [], str2id "SELF_TYPE" ]
+    | "IO" -> 
+        [   str2id "out_string", [str2id "x", str2id "String"], str2id "SELF_TYPE"
+            str2id "out_int", [str2id "x", str2id "Int"], str2id "SELF_TYPE"
+            str2id "in_string", [], str2id "String"
+            str2id "in_int", [], str2id "Int" ]
+    | _ -> 
+        methods ()
+
+// let getInheritedMethods inhMap c ast =

@@ -1,11 +1,13 @@
 #r @"..\..\packages\FParsec\lib\portable-net45+netcore45+wpa81+wp8\FParsecCS.dll"
 #r @"..\..\packages\FParsec\lib\portable-net45+netcore45+wpa81+wp8\FParsec.dll"  
 #r @"bin\Debug\Cool.dll"
+#load "Graphs.fs"
 #load "CoolType.fs"
 
 open System.IO
 open CoolAst
 open CoolType
+open Graphs
 
 // let aste : Ast<int> = 
 //     Ast [
@@ -90,3 +92,6 @@ let badast2 =
         Method ((14, "da"),[(1,"y"),(1,"Int");(1,"y"),(2,"Bool");(1,"y"),(2,"Object");(1,"x"),(1,"Int");(1,"x"),(2,"Bool")],(14, "Int"),(14, Integer 3))])]
 
 validateMethodFormalsRedefinition badast2
+inheritanceMap badast2
+ast2inheritanceGraph ast |> mapRes Graphs.toposort
+getClassMethods "IO" ast

@@ -1,10 +1,11 @@
+module Graphs
+
 type Edge<'a> = 'a * 'a
 type Graph<'a> = 'a list * Edge<'a> list
 
 type Node<'a> = 'a * 'a list
 type AdjacencyGraph<'a> = Node<'a> list
 
-let n : Node<int> = 1,[1..20]
 let graph2adjacency ((nodes, edges) : Graph<'a>) =
     let mapa =
         nodes
@@ -67,7 +68,7 @@ let findCycles (start:'a) (g:AdjacencyGraph<'a>) =
 
     go [] start
 
-let toposort g =
+let toposort (g:AdjacencyGraph<'a>) =
     let rec go curr visited =
         let visitedNew = curr :: visited
         match findNode curr g with
@@ -103,34 +104,3 @@ let edges2adjacency edges =
         else
             Map.add y [] nodesNew) Map.empty
     |> Map.toList
-
-let g = (['b';'c';'d';'f';'g';'h';'k'],[('b','c');('b','f');('c','f');('f','k');('g','h')])
-let ggg : AdjacencyGraph<char> =
-  [('b', ['f'; 'c']); ('c', ['f']); ('d', []); ('f', ['k']); ('g', ['h']);
-   ('h', []); ('k', [])]
-let g2 = [  1, [2;5]
-            2, [3]
-            3, [4]
-            5, [4] ]
-        
-let g3 = [  1, [2]
-            2, [3]
-            3, [2; 5] ]
-
-let g4 = [  1, [2]
-            2, [3;6]
-            3, [4]
-            4, [2; 5]
-            6, [7]
-            7, [6] ]
-let g5 = [  1, [2]
-            2, [9;3]
-            3, [4]
-            4, [5]
-            9, []
-            11, [10]
-            10, [9] ]
-let g6 = [1,[2;4];2,[3];3,[];4,[5;6];5,[];6,[];11,[12;13];12,[6];13,[14];14,[]]
-toposort g6
-
-edges2adjacency [1,2;2,3;3,4;1,5;1,4;1,3]
