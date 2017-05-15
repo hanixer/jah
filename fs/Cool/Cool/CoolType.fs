@@ -13,7 +13,8 @@ type TypeError =
     | MethodRedefined of Id * Id
     | MethodFormalsRedefined of Id * Id * Id
     | MethodInheritedFormalsLengthDiffer of string * Id
-    | MethodInheritedFormalTypeDiffer of (*class*)Id * (*method*)Id * (*current type*)Id * (*expected type*)Id
+    | MethodInheritedFormalTypeDiffer of (*class*)string * (*method*)Id * (*formal name*) Id * (*current type*)Id * (*expected type*)Id
+    | MethodInheritedReturnTypeDiffer of string * Id * Id * Id
 
 type Signature = string list
 type MethodEnv = Map<string * string, Signature>
@@ -260,33 +261,25 @@ let getClassMethods c ((Ast cs) as ast) : MethodSignature list =
     | _ -> 
         methods ()
 
+let mergeMethods currMethods baseMethods =
+    currMethods
+    |> List.filter (fun ((_, m1), _, _) ->
+        baseMethods
+        |> List.tryFind (fun ((_, m2), _, _) ->
+            m1 = m2)
+        |> Option.isNone)
+    |> List.append baseMethods
+
 let getInheritedMethods c ast inhMap : MethodSignature list =
-    let merge ms1 ms2 =
-        ms1
-        |> List.filter (fun ((_, m1), _, _) ->
-            ms2
-            |> List.tryFind (fun ((_, m2), _, _) ->
-                m1 = m2)
-            |> Option.isNone)
-        |> List.append ms2
     let rec go c =
         match Map.tryFind c inhMap with
         | None -> []
         | Some p ->
             go p
-            |> merge
+            |> mergeMethods
             <| getClassMethods p ast
 
     go c
-// Sort classes
-// For each class
-//  get inherited methods
-//  get current methods
-//  group methods with the same name
-//  check for:
-//   number of args
-//   types of args
-//   return type
 
 let groupMethodsByName ms1 ms2 =
     ms1
@@ -295,26 +288,84 @@ let groupMethodsByName ms1 ms2 =
         | None -> res
         | Some m2 -> (m1, m2) :: res) []
 
-let formal2type = snd >> snd
+let formal2type : Formal -> string = snd >> snd
+
+// let optList2List (optList:<'a> option list) : <'a> list =
+//     List.choose
 
 let getInheritedMethodsErrors c ast inhMap : TypeError list =
     let inhMs = getInheritedMethods c ast inhMap
     let myMs = getClassMethods c ast
     let merged = groupMethodsByName myMs inhMs
-    let formalLengthError (m1, formals1, _) (_, formals2, _) =
+    let formalLengthError ((m1, formals1, _), (_, formals2, _)) =
         if List.length formals1 <> List.length formals2 then
             MethodInheritedFormalsLengthDiffer (c, m1) |> Some
         else None
-    let formalTypeError (m1, formals1, _) (_, formals2, _) =
-        List.zip formals1 formals2
-        |> List.tryFind (fun (f1, f3) -> formal2type f1 <> formal2type f2)
-        |> Option.map (fun (
-    []
+    let formalTypeError ((m1, formals1, _), (_, formals2, _)) =
+        if List.length formals1 <> List.length formals2 then
+            None
+        else
+            List.zip formals1 formals2
+            |> List.tryFind (fun (f1, f2) -> formal2type f1 <> formal2type f2)
+            |> Option.map (fun (f1, f2) -> 
+                MethodInheritedFormalTypeDiffer (c, m1, fst f1, snd f1, snd f2)) 
+    let formalReturnTypeError ((m1, _, rt1), (_, _, rt2)) =
+        if snd rt1 <> snd rt2 then
+            MethodInheritedReturnTypeDiffer (c, m1, rt1, rt2) 
+            |> Some
+        else None
     
+    merged
+    |> List.collect (fun x -> 
+        [   formalLengthError x
+            formalTypeError x
+            formalReturnTypeError x ])
+    |> List.choose id
+
+let inheritanceMapUnchecked<'a> : (Ast<'a> -> Map<string,string>)= 
+    classesFromAst >> completeWithStandartTypes >> Map.ofList
 
 let validateRedefinedMethods ast =
-    let inhMap = ast |> classesFromAst |> completeWithStandartTypes |> Map.ofList
+    let inhMap = ast |> inheritanceMapUnchecked
     ast 
     |> ast2inheritanceGraph 
     |> mapRes Graphs.toposort
-    
+    |> mapRes (List.collect (fun c -> getInheritedMethodsErrors c ast inhMap))
+    |> bind (fun errs -> 
+        if List.isEmpty errs then
+            Success ast
+        else
+            Failure errs)
+
+type MethodType = string list * string // t1 .. tn - argument types, return type
+
+let getAllClassMethods c ast inhMap = 
+    getClassMethods c ast
+    |> mergeMethods
+    <|  getInheritedMethods c ast inhMap
+
+let class2name (Class ((_, cname), _, _)) = cname
+
+let methodSignature2methodType ((_, m), formals, rt) = 
+    formals |> List.map formal2type, snd rt
+
+let ast2methodEnvironment (Ast cs as ast) =
+    let inhMap = ast |> inheritanceMapUnchecked
+    let extractFromClass = fun c ->
+        Map.empty
+        |> List.fold (fun meth2type ((_, m), formals, rt) ->
+            meth2type
+            |> Map.add m  
+                (formals |> List.map formal2type, snd rt)) 
+        <| getAllClassMethods (class2name c) ast inhMap
+        
+    Map.empty
+    |> List.fold (fun class2map c -> 
+        class2map 
+        |> Map.add (class2name c) (extractFromClass c))
+    <| cs
+
+let getMethodType c m methEnv = 
+    methEnv
+    |> Map.tryFind c 
+    |> Option.bind (Map.tryFind m)
