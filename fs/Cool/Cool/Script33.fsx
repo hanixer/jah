@@ -95,3 +95,5 @@ validateMethodFormalsRedefinition badast2
 inheritanceMap badast2
 ast2inheritanceGraph ast |> mapRes Graphs.toposort
 getClassMethods "IO" ast
+inheritanceMap ast |> mapRes (Map.ofList >> getInheritedMethods "Main" ast)
+validateRedefinedMethods ast

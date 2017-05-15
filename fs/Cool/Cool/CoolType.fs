@@ -12,6 +12,8 @@ type TypeError =
     | ClassesInheritanceCircle of string list
     | MethodRedefined of Id * Id
     | MethodFormalsRedefined of Id * Id * Id
+    | MethodInheritedFormalsLengthDiffer of string * Id
+    | MethodInheritedFormalTypeDiffer of (*class*)Id * (*method*)Id * (*current type*)Id * (*expected type*)Id
 
 type Signature = string list
 type MethodEnv = Map<string * string, Signature>
@@ -258,4 +260,61 @@ let getClassMethods c ((Ast cs) as ast) : MethodSignature list =
     | _ -> 
         methods ()
 
-// let getInheritedMethods inhMap c ast =
+let getInheritedMethods c ast inhMap : MethodSignature list =
+    let merge ms1 ms2 =
+        ms1
+        |> List.filter (fun ((_, m1), _, _) ->
+            ms2
+            |> List.tryFind (fun ((_, m2), _, _) ->
+                m1 = m2)
+            |> Option.isNone)
+        |> List.append ms2
+    let rec go c =
+        match Map.tryFind c inhMap with
+        | None -> []
+        | Some p ->
+            go p
+            |> merge
+            <| getClassMethods p ast
+
+    go c
+// Sort classes
+// For each class
+//  get inherited methods
+//  get current methods
+//  group methods with the same name
+//  check for:
+//   number of args
+//   types of args
+//   return type
+
+let groupMethodsByName ms1 ms2 =
+    ms1
+    |> List.fold (fun res (((_, n1), _, _) as m1) ->
+        match List.tryFind (fun ((_, n2), _, _) -> n1 = n2) ms2 with
+        | None -> res
+        | Some m2 -> (m1, m2) :: res) []
+
+let formal2type = snd >> snd
+
+let getInheritedMethodsErrors c ast inhMap : TypeError list =
+    let inhMs = getInheritedMethods c ast inhMap
+    let myMs = getClassMethods c ast
+    let merged = groupMethodsByName myMs inhMs
+    let formalLengthError (m1, formals1, _) (_, formals2, _) =
+        if List.length formals1 <> List.length formals2 then
+            MethodInheritedFormalsLengthDiffer (c, m1) |> Some
+        else None
+    let formalTypeError (m1, formals1, _) (_, formals2, _) =
+        List.zip formals1 formals2
+        |> List.tryFind (fun (f1, f3) -> formal2type f1 <> formal2type f2)
+        |> Option.map (fun (
+    []
+    
+
+let validateRedefinedMethods ast =
+    let inhMap = ast |> classesFromAst |> completeWithStandartTypes |> Map.ofList
+    ast 
+    |> ast2inheritanceGraph 
+    |> mapRes Graphs.toposort
+    
