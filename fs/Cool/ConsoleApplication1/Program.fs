@@ -25,6 +25,6 @@ let main argv =
     let x = 
         inheritanceMap astBadTypes
         |> mapRes (Map.ofList >> 
-            getInheritedMethodsErrors (0, "C") astBadTypes)
+            getInheritedMethodsErrors "C" astBadTypes)
 
     0 // return an integer exit code

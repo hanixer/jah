@@ -2,6 +2,10 @@ module CoolType
 
 open CoolAst
 
+type Type =
+    | Type of string
+    | SelfType of string
+
 type Result<'a, 'Error> = 
     | Success of 'a
     | Failure of 'Error list
@@ -15,6 +19,7 @@ type TypeError =
     | MethodInheritedFormalsLengthDiffer of string * Id
     | MethodInheritedFormalTypeDiffer of (*class*)string * (*method*)Id * (*formal name*) Id * (*current type*)Id * (*expected type*)Id
     | MethodInheritedReturnTypeDiffer of string * Id * Id * Id
+    | AttributeRedefined of string * Id
 
 type Signature = string list
 type MethodEnv = Map<string * string, Signature>
@@ -290,9 +295,6 @@ let groupMethodsByName ms1 ms2 =
 
 let formal2type : Formal -> string = snd >> snd
 
-// let optList2List (optList:<'a> option list) : <'a> list =
-//     List.choose
-
 let getInheritedMethodsErrors c ast inhMap : TypeError list =
     let inhMs = getInheritedMethods c ast inhMap
     let myMs = getClassMethods c ast
@@ -361,11 +363,36 @@ let getInheritedAttributes c ast inhMap =
 let getInheritedAttributesErrors c ast inhMap = 
     1
 
+let attributeName ((_, a), _, _) = a
+
+let getRedefinedAttribute c ast inhMap =
+    let isRedefined x y =
+        x <> y && attributeName x = attributeName y
+    let baseAttrs = getInheritedAttributes c ast inhMap
+    let selfAttrs =
+        tryFindClass c ast
+        |> Option.map class2attributes
+        |> defaultArg
+        <| []
+    let attrs = List.append baseAttrs selfAttrs
+    attrs
+    |> List.tryPick (fun x ->
+        List.tryFind (isRedefined x) attrs)
+
 let validateRedefinedAttributes ast = 
-    let inhMap = ast |> classesFromAst |> completeWithStandartTypes
-    let g = Graphs.edges2adjacency inhMap
-    1
+    let inhMap = ast |> inheritanceMapUnchecked
+    let g = Graphs.edges2adjacency (Map.toList inhMap)
+    let sorted = Graphs.toposort g
+    let errors =
+        sorted
+        |> List.choose (fun c -> 
+            getRedefinedAttribute c ast inhMap
+            |> Option.map (fun (a, _, _) ->
+                AttributeRedefined (c, a)))
     
+    if List.isEmpty errors then
+        Success ast
+    else Failure errors
 
 type MethodType = string list * string // t1 .. tn - argument types, return type
 
@@ -399,3 +426,10 @@ let getMethodType c m methEnv =
     methEnv
     |> Map.tryFind c 
     |> Option.bind (Map.tryFind m)
+
+let getObjectType v objectEnv = Type "Undefined"
+
+let typecheck objectEnv methodEnv ((loc, e) as expr) =
+    match e with
+    | Integer _ as n -> Type "Int", expr
+    | Identifier (iloc, v) -> objectEnv v, expr
