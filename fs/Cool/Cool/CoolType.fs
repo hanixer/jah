@@ -337,6 +337,36 @@ let validateRedefinedMethods ast =
         else
             Failure errs)
 
+let class2attributes (Class (_, _, features)) =
+    features
+    |> List.choose (function
+        | Attribute (a,b,c) -> Some (a,b,c)
+        | _ -> None)
+
+let getInheritedAttributes c ast inhMap =
+    let rec go c =
+        match Map.tryFind c inhMap with
+        | None -> []
+        | Some p -> 
+            let selfAttrs = 
+                tryFindClass p ast
+                |> Option.map class2attributes
+                |> defaultArg
+                <| []
+            go p
+            |> List.append  
+            <| selfAttrs
+    go c
+
+let getInheritedAttributesErrors c ast inhMap = 
+    1
+
+let validateRedefinedAttributes ast = 
+    let inhMap = ast |> classesFromAst |> completeWithStandartTypes
+    let g = Graphs.edges2adjacency inhMap
+    1
+    
+
 type MethodType = string list * string // t1 .. tn - argument types, return type
 
 let getAllClassMethods c ast inhMap = 
