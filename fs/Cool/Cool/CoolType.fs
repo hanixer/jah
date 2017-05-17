@@ -1,7 +1,6 @@
 module CoolType
 
 open CoolAst
-type Type = int // todo: change
 
 type Result<'a, 'Error> = 
     | Success of 'a
@@ -132,7 +131,7 @@ let completeWithStandartTypes parentsOpt =
     |> List.append
     <| List.map (fun t -> t, "Object") ("IO" :: primitiveTypes)
 
-let bind f = function
+let bindRes f = function
     | Success x -> f x
     | Failure errs -> Failure errs
 
@@ -149,7 +148,7 @@ let inheritanceMap ast =
     ast
     |> classesFromAst
     |> validateRedefinition
-    |> bind validateCycles
+    |> bindRes validateCycles
     |> mapRes completeWithStandartTypes
 
 let isMethod = function
@@ -332,7 +331,7 @@ let validateRedefinedMethods ast =
     |> ast2inheritanceGraph 
     |> mapRes Graphs.toposort
     |> mapRes (List.collect (fun c -> getInheritedMethodsErrors c ast inhMap))
-    |> bind (fun errs -> 
+    |> bindRes (fun errs -> 
         if List.isEmpty errs then
             Success ast
         else
@@ -428,30 +427,19 @@ let getMethodType c m methEnv =
 
 let getObjectType v objectEnv = Type "Undefined" |> Some
 
-// Implement object environment
-// How does it must work?
-// Should it grow when method is called?
+type ResultBuilder() =
+    member x.Bind(v, f) = bindRes f v
+    member x.Return(v) = Success v
+    member x.Delay(f) = f()
+    member x.ReturnFrom(v) = v
 
-// Regarding typechecking, 
-// What type of this function should be?
-// Should it reconstruct tree or it is simpler to use mutable fields and return
-// only static type?
+let result = new ResultBuilder()
 
-// In case of reconstruction, we need to Call expr constructor again,
-// and expr can have more than one child
-// In case of assignement only one field need to be set.
-
-// Maybe there is some other way to construct typed AST?
-// Maybe split typechecking and setting AST?
-// But in this case we'll have to execute type inference
-// on the same elements again and again many times.
-
-// More likely - use assignment.
-let rec typecheck objectEnv methodEnv ((loc, e) as expr) =
+let rec typecheck2 objectEnv methodEnv (expr : Expr) : Result<Type, TypeError> =
     let ret = Success
     let fail = List.singleton >> Failure
     let t =
-        match e with
+        match expr.Expr with
         | True | False -> 
             Type "Bool" |> ret
         | String _ -> 
@@ -463,35 +451,29 @@ let rec typecheck objectEnv methodEnv ((loc, e) as expr) =
             | Some t -> t |> ret
             | None -> VariableNotFound var |> fail
         | Negate e1 ->
-            typecheck objectEnv methodEnv e1
-            |> bind (function
-                | Type "Int" as t1, _ -> ret t1
-                | t1, _ -> ArithmIntExpected (fst e1, t1) |> fail)
-    
-    t
-    |> mapRes (fun t -> t, e)
-let rec typecheck2 objectEnv methodEnv (expr:TExpr) : Result<Type, TypeError> =
-    let ret = Success
-    let fail = List.singleton >> Failure
-    let t =
-        match expr.E |> snd with
-        | True | False -> 
-            Type "Bool" |> ret
-        | String _ -> 
-            Type "String" |> ret
-        | Integer _ as n -> 
-            Type "Int" |> ret
-        | Identifier (_, v as var) -> 
-            match getObjectType v objectEnv with
-            | Some t -> t |> ret
-            | None -> VariableNotFound var |> fail
-        | Negate e1 ->
-            typecheck objectEnv methodEnv e1
-            |> bind (function
-                | Type "Int" as t1, _ -> ret t1
-                | t1, _ -> ArithmIntExpected (fst e1, t1) |> fail)
-    
+            result {
+                let! t1 = typecheck2 objectEnv methodEnv e1
+                match t1 with
+                | Type "Int" -> return t1
+                | _ -> return! ArithmIntExpected (e1.Loc, t1) |> fail
+            }
+        | Not e1 ->
+            typecheck2 objectEnv methodEnv e1
+            |> bindRes (function
+                | Type "Bool" as t1 -> ret t1
+                | t1 -> ArithmIntExpected (e1.Loc, t1) |> fail)
+        | Plus (e1, e2) -> 
+            result {
+                let! t1 = typecheck2 objectEnv methodEnv e1
+                let! t2 = typecheck2 objectEnv methodEnv e2
+                match t1, t2 with
+                | Type "Int", Type "Int" -> return t1
+                | Type "Int", _ -> return! ArithmIntExpected (e2.Loc, t2) |> fail
+                | _, Type "Int" -> return! ArithmIntExpected (e1.Loc, t1) |> fail
+                | _, _ -> return! ArithmIntExpected (e1.Loc, t1) |> fail
+            }
+
     t
     |> mapRes (fun t -> 
-        expr.T <- Some t
+        expr.Type <- Some t
         t)

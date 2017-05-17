@@ -1,7 +1,8 @@
 #r @"..\..\packages\FParsec\lib\portable-net45+netcore45+wpa81+wp8\FParsecCS.dll"
 #r @"..\..\packages\FParsec\lib\portable-net45+netcore45+wpa81+wp8\FParsec.dll"  
-#r @"bin\Debug\Cool.dll"
+// #r @"bin\Debug\Cool.dll"
 #load "Graphs.fs"
+#load "CoolAst.fs"
 #load "CoolType.fs"
 
 open System.IO
@@ -34,7 +35,7 @@ open Graphs
 // inheritanceMap ast3
 
 // [1..10] |> List.choose (fun x -> if x % 2 = 0 then Some (x + 1) else None)
-
+(*
 let ast = 
  Ast
     [Class
@@ -72,8 +73,6 @@ let badast =
         Method ((14, "da"),[],(14, "Int"),(14, Integer 3))])]
 
 validateMethodRedefinition badast
-
-
 let badast2 = 
  Ast
     [Class
@@ -97,8 +96,6 @@ ast2inheritanceGraph ast |> mapRes Graphs.toposort
 getClassMethods "IO" ast
 inheritanceMap ast |> mapRes (Map.ofList >> getInheritedMethods "Main" ast)
 validateRedefinedMethods ast
-
-
 let astBadTypes = 
     Ast
         [Class
@@ -158,15 +155,12 @@ validateRedefinedMethods astBadTypes2
 ast2methodEnvironment ast |> getMethodType "w" "f"
 getInheritedAttributes "C" ast2 (inheritanceMapUnchecked ast2)
 validateRedefinedAttributes ast2
-
-type T1=
-    | C1 of int
-    | C2 of int
-    | C3 of double * double
-
-let x = C1 2
-match x with
-| C1 x | C2 x -> printfn "%A" x
-| _ -> printfn "Nothing"
-
-typecheck2 1 2 {E = ()}
+*)
+typecheck2 1 2 ({ Type = None; Loc = 2; Expr = {Type = None; Loc = 5; Expr = True } |> Negate } )
+typecheck2 1 2 { 
+        Type = None; Loc = 2; 
+        Expr = 
+            Plus (
+                { Type = None; Loc = 2; Expr = Integer 5 },
+                { Type = None; Loc = 3; Expr = True } ) }
+                 

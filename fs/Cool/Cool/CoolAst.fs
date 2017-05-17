@@ -1,9 +1,13 @@
 module CoolAst    
 
+type Type = 
+    | Type of string
+    | SelfType of string
+
 type Id = int * string
 type Formal = Id * Id
 
-type Expr = { mutable Type: Type; Loc : int * ExprInner }
+type Expr = { mutable Type : Type option; Loc : int; Expr : ExprInner }
 and ExprInner =
     | Assign of Id * Expr
     | DynDispatch of Expr * Id * Expr list
@@ -212,7 +216,7 @@ module Deserialize =
     pExprRef := parse {
         let! line = pNumEndline
         let! inner = pExprInner
-        return (line, inner)
+        return { Type = None; Loc = line; Expr = inner }
     }
 
     let pAttributeNo<'r> = parse {
@@ -249,12 +253,3 @@ module Deserialize =
     }
 
     let pAst : Parser<Class<Expr> list, unit> = pList pClass
-    let x = (do());true
-    let initIt n = 
-        printfn "YOU %d ARE NEVER SO GOOOOOOOOOOOOOOOD" n
-        do pExprRef := parse {
-            let! line = pNumEndline
-            let! inner = pExprInner
-            return (line, inner)
-        }
-        1
