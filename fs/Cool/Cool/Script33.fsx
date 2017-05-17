@@ -158,3 +158,15 @@ validateRedefinedMethods astBadTypes2
 ast2methodEnvironment ast |> getMethodType "w" "f"
 getInheritedAttributes "C" ast2 (inheritanceMapUnchecked ast2)
 validateRedefinedAttributes ast2
+
+type T1=
+    | C1 of int
+    | C2 of int
+    | C3 of double * double
+
+let x = C1 2
+match x with
+| C1 x | C2 x -> printfn "%A" x
+| _ -> printfn "Nothing"
+
+typecheck2 1 2 {E = ()}

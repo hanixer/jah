@@ -1,10 +1,7 @@
 module CoolType
 
 open CoolAst
-
-type Type =
-    | Type of string
-    | SelfType of string
+type Type = int // todo: change
 
 type Result<'a, 'Error> = 
     | Success of 'a
@@ -20,6 +17,8 @@ type TypeError =
     | MethodInheritedFormalTypeDiffer of (*class*)string * (*method*)Id * (*formal name*) Id * (*current type*)Id * (*expected type*)Id
     | MethodInheritedReturnTypeDiffer of string * Id * Id * Id
     | AttributeRedefined of string * Id
+    | VariableNotFound of Id
+    | ArithmIntExpected of int * Type
 
 type Signature = string list
 type MethodEnv = Map<string * string, Signature>
@@ -427,9 +426,72 @@ let getMethodType c m methEnv =
     |> Map.tryFind c 
     |> Option.bind (Map.tryFind m)
 
-let getObjectType v objectEnv = Type "Undefined"
+let getObjectType v objectEnv = Type "Undefined" |> Some
 
-let typecheck objectEnv methodEnv ((loc, e) as expr) =
-    match e with
-    | Integer _ as n -> Type "Int", expr
-    | Identifier (iloc, v) -> objectEnv v, expr
+// Implement object environment
+// How does it must work?
+// Should it grow when method is called?
+
+// Regarding typechecking, 
+// What type of this function should be?
+// Should it reconstruct tree or it is simpler to use mutable fields and return
+// only static type?
+
+// In case of reconstruction, we need to Call expr constructor again,
+// and expr can have more than one child
+// In case of assignement only one field need to be set.
+
+// Maybe there is some other way to construct typed AST?
+// Maybe split typechecking and setting AST?
+// But in this case we'll have to execute type inference
+// on the same elements again and again many times.
+
+// More likely - use assignment.
+let rec typecheck objectEnv methodEnv ((loc, e) as expr) =
+    let ret = Success
+    let fail = List.singleton >> Failure
+    let t =
+        match e with
+        | True | False -> 
+            Type "Bool" |> ret
+        | String _ -> 
+            Type "String" |> ret
+        | Integer _ as n -> 
+            Type "Int" |> ret
+        | Identifier (_, v as var) -> 
+            match getObjectType v objectEnv with
+            | Some t -> t |> ret
+            | None -> VariableNotFound var |> fail
+        | Negate e1 ->
+            typecheck objectEnv methodEnv e1
+            |> bind (function
+                | Type "Int" as t1, _ -> ret t1
+                | t1, _ -> ArithmIntExpected (fst e1, t1) |> fail)
+    
+    t
+    |> mapRes (fun t -> t, e)
+let rec typecheck2 objectEnv methodEnv (expr:TExpr) : Result<Type, TypeError> =
+    let ret = Success
+    let fail = List.singleton >> Failure
+    let t =
+        match expr.E |> snd with
+        | True | False -> 
+            Type "Bool" |> ret
+        | String _ -> 
+            Type "String" |> ret
+        | Integer _ as n -> 
+            Type "Int" |> ret
+        | Identifier (_, v as var) -> 
+            match getObjectType v objectEnv with
+            | Some t -> t |> ret
+            | None -> VariableNotFound var |> fail
+        | Negate e1 ->
+            typecheck objectEnv methodEnv e1
+            |> bind (function
+                | Type "Int" as t1, _ -> ret t1
+                | t1, _ -> ArithmIntExpected (fst e1, t1) |> fail)
+    
+    t
+    |> mapRes (fun t -> 
+        expr.T <- Some t
+        t)

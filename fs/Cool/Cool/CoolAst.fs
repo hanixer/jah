@@ -3,7 +3,7 @@ module CoolAst
 type Id = int * string
 type Formal = Id * Id
 
-type Expr = int * ExprInner
+type Expr = { mutable Type: Type; Loc : int * ExprInner }
 and ExprInner =
     | Assign of Id * Expr
     | DynDispatch of Expr * Id * Expr list
