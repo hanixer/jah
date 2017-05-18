@@ -139,8 +139,8 @@ let mapRes f = function
     | Success x -> f x |> Success
     | Failure errs -> Failure errs
 
-let forRes<'a> (xs : seq<'a>) (f : 'a -> Result<'a, 'b>) =
-    1
+let rec forRes<'a> (xs : seq<'a>) (f : 'a -> Result<'c, 'b>) =
+    if Seq.isEmpty then
 
 let ret x = function
     | Success _ -> Success x
@@ -507,7 +507,13 @@ let rec typecheck2 objectEnv methodEnv (expr : Expr) : Result<Type, TypeError> =
 //    then it must be extended by parameters of current method.
 //    Return type must be the same  body expression type.
 //    Typechecker goes recursively on method body expression.
-let typecheckClass () = 1
+
+
+let typecheckClass methodEnv (Class (n, p, fs) as c) = 
+    let rec go = function
+        | Method _ -> 1
+        | Attribute _ -> 2
+    1
 
 let typecheckAst (Ast cs as ast) =
     result {

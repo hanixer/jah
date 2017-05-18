@@ -163,21 +163,7 @@ typecheck2 1 2 {
             Plus (
                 { Type = None; Loc = 2; Expr = Integer 5 },
                 { Type = None; Loc = 3; Expr = True } ) }
-                 
-let x = { Type = None; Loc = 2; Expr = Integer 5 }
-x.Type <- Some (Type "")
-let y = { x with Loc = 5 }
-x
-y.Type <- Some (Type "JIJIJIJ")
-x
-y
-let modigy (expr:Expr) =
-    expr.Type <- None
-    expr
-
-let krol = { Type = Type "Hanzi" |> Some ; Loc = 3; Expr = True }
-let krol2 = modigy krol
-krol
-krol2
-krol2.Type  <- Type "Thing" |> Some
-krol, krol2
+seq {
+    for i in 1..10 do
+         yield i
+}
