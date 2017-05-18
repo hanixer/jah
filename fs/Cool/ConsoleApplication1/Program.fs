@@ -3,6 +3,9 @@
 open CoolAst
 open CoolType
 
+module Backery =
+    let f x y z c = x + c |> y |> z
+
 [<EntryPoint>]
 let main argv = 
     // let astBadTypes = 

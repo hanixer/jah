@@ -139,6 +139,9 @@ let mapRes f = function
     | Success x -> f x |> Success
     | Failure errs -> Failure errs
 
+let forRes<'a> (xs : seq<'a>) (f : 'a -> Result<'a, 'b>) =
+    1
+
 let ret x = function
     | Success _ -> Success x
     | Failure errs -> Failure errs
@@ -322,7 +325,7 @@ let getInheritedMethodsErrors c ast inhMap : TypeError list =
             formalReturnTypeError x ])
     |> List.choose id
 
-let inheritanceMapUnchecked<'a> : (Ast<'a> -> Map<string,string>)= 
+let inheritanceMapUnchecked : (Ast -> Map<string,string>)= 
     classesFromAst >> completeWithStandartTypes >> Map.ofList
 
 let validateRedefinedMethods ast =
@@ -462,7 +465,8 @@ let rec typecheck2 objectEnv methodEnv (expr : Expr) : Result<Type, TypeError> =
             |> bindRes (function
                 | Type "Bool" as t1 -> ret t1
                 | t1 -> ArithmIntExpected (e1.Loc, t1) |> fail)
-        | Plus (e1, e2) -> 
+        | Plus (e1, e2) | Minus (e1, e2)
+        | Times (e1, e2) | Divide (e1, e2) -> 
             result {
                 let! t1 = typecheck2 objectEnv methodEnv e1
                 let! t2 = typecheck2 objectEnv methodEnv e2
@@ -472,8 +476,42 @@ let rec typecheck2 objectEnv methodEnv (expr : Expr) : Result<Type, TypeError> =
                 | _, Type "Int" -> return! ArithmIntExpected (e1.Loc, t1) |> fail
                 | _, _ -> return! ArithmIntExpected (e1.Loc, t1) |> fail
             }
+        | LT (e1, e2) | LE (e1, e2) ->
+            result {
+                let! t1 = typecheck2 objectEnv methodEnv e1
+                let! t2 = typecheck2 objectEnv methodEnv e2
+                match t1, t2 with
+                | Type "Int", Type "Int" -> return Type "Bool"
+                | Type "Int", _ -> return! ArithmIntExpected (e2.Loc, t2) |> fail
+                | _, Type "Int" -> return! ArithmIntExpected (e1.Loc, t1) |> fail
+                | _, _ -> return! ArithmIntExpected (e1.Loc, t1) |> fail
+            }
 
     t
     |> mapRes (fun t -> 
         expr.Type <- Some t
         t)
+
+// How the typecheck would be used
+// AST is generated.
+// For each class in AST:
+//  For each feature in class:
+//   If feature is attribute -> 
+//    check init expression 
+//    Here also must be correct objEnv. 
+//    Method environment is already declared. It must be static.
+//    Object environment must include all attributes of base classes
+//    and all attributes of current class.
+//   If feature is method:
+//    Object enviroment must be as in init expression for attributes,
+//    then it must be extended by parameters of current method.
+//    Return type must be the same  body expression type.
+//    Typechecker goes recursively on method body expression.
+let typecheckClass () = 1
+
+let typecheckAst (Ast cs as ast) =
+    result {
+        let methodEnv = ast2methodEnvironment ast
+        let inhMap = inheritanceMapUnchecked ast
+        return! Failure []
+    }

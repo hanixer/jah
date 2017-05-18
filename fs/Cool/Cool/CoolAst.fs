@@ -5,6 +5,7 @@ type Type =
     | SelfType of string
 
 type Id = int * string
+
 type Formal = Id * Id
 
 type Expr = { mutable Type : Type option; Loc : int; Expr : ExprInner }
@@ -35,11 +36,13 @@ and ExprInner =
     | True
     | False
 
-type Ast<'e> = Ast of Class<'e> list
-and Class<'e> = Class of Id * Id option * Feature<'e> list
-and Feature<'e> = 
-    | Method of Id * Formal list * Id * 'e
-    | Attribute of Id * Id * 'e option
+type Feature= 
+    | Method of Id * Formal list * Id * Expr
+    | Attribute of Id * Id * Expr option
+
+type Class = Class of Id * Id option * Feature list
+
+type Ast = Ast of Class list
 
 
 
@@ -252,4 +255,4 @@ module Deserialize =
         return Class(id, inh, fs)    
     }
 
-    let pAst : Parser<Class<Expr> list, unit> = pList pClass
+    let pAst : Parser<Class list, unit> = pList pClass
