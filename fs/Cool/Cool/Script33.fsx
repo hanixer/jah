@@ -9,6 +9,7 @@ open System.IO
 open CoolAst
 open CoolType
 open Graphs
+open FParsec
 
 // let aste : Ast<int> = 
 //     Ast [
@@ -155,7 +156,7 @@ validateRedefinedMethods astBadTypes2
 ast2methodEnvironment ast |> getMethodType "w" "f"
 getInheritedAttributes "C" ast2 (inheritanceMapUnchecked ast2)
 validateRedefinedAttributes ast2
-*)
+
 typecheck2 1 2 ({ Type = None; Loc = 2; Expr = {Type = None; Loc = 5; Expr = True } |> Negate } )
 typecheck2 1 2 { 
         Type = None; Loc = 2; 
@@ -163,12 +164,53 @@ typecheck2 1 2 {
             Plus (
                 { Type = None; Loc = 2; Expr = Integer 5 },
                 { Type = None; Loc = 3; Expr = True } ) }
-seq {
-    for i in 1..10 do
-         yield i
-}
+*)
 
-let fik = { Type = None; Loc = 2; Expr = {Type = None; Loc = 5; Expr = True } |> Negate }
-match fik with
-| {Type = Some (Type "Jijijij")} -> true
-| _ -> false
+// set global cool.exe path
+// get cool source file
+// use cool.exe to get AST
+// take ast |> typecheckAst
+// check passed AST 
+
+type ProcessResult = { exitCode : int; stdout : string; stderr : string }
+let executeProcess (exe,cmdline) =
+    let psi = System.Diagnostics.ProcessStartInfo(exe,cmdline) 
+    psi.UseShellExecute <- false
+    psi.RedirectStandardOutput <- true
+    psi.RedirectStandardError <- true
+    psi.CreateNoWindow <- true        
+    let p = System.Diagnostics.Process.Start(psi) 
+    let output = System.Text.StringBuilder()
+    let error = System.Text.StringBuilder()
+    p.OutputDataReceived.Add(fun args -> output.Append(args.Data) |> ignore)
+    p.ErrorDataReceived.Add(fun args -> error.Append(args.Data) |> ignore)
+    p.BeginErrorReadLine()
+    p.BeginOutputReadLine()
+    p.WaitForExit()
+    { exitCode = p.ExitCode; stdout = output.ToString(); stderr = error.ToString() }
+
+let checkFromFile () =
+    let pref = __SOURCE_DIRECTORY__ + "\\tests\\"
+    let src = pref + "2.cl"
+    let out = pref + "2"
+    let astFile = out + ".cl-ast"
+    let args = "--parse --out " + out + " " + src
+    let cool = System.Environment.GetEnvironmentVariable("COOLEXE")
+
+    executeProcess (cool, args) |> printfn "Process executed: \n%A"
+    if File.Exists(astFile) then
+        let text = File.ReadAllText(astFile)
+        match run CoolAst.Deserialize.pAst text with
+        | ParserResult.Success (cs,_,_) ->
+            let ast = Ast cs
+            match typecheckAst ast with
+            | CoolType.Result.Success _ -> printfn "%A" ast
+            | CoolType.Result.Failure ers -> 
+                printfn "Errors: "
+                printfn "%A" ers
+        | ParserResult.Failure _ -> printfn "parse error"
+    else
+        printfn "File does not exists"
+
+printfn "%A" System.Environment.CurrentDirectory
+checkFromFile ()

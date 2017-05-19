@@ -50,8 +50,8 @@
     <None Include="Script.fsx" />
     <Compile Include="CoolAst.fs" />
     <Compile Include="Graphs.fs" />
-    <Compile Include="CoolType.fs" />
     <None Include="Script33.fsx" />
+    <Compile Include="CoolType.fs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Choose>
