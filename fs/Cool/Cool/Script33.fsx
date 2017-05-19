@@ -167,3 +167,8 @@ seq {
     for i in 1..10 do
          yield i
 }
+
+let fik = { Type = None; Loc = 2; Expr = {Type = None; Loc = 5; Expr = True } |> Negate }
+match fik with
+| {Type = Some (Type "Jijijij")} -> true
+| _ -> false

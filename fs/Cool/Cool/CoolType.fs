@@ -18,11 +18,13 @@ type TypeError =
     | AttributeRedefined of string * Id
     | VariableNotFound of Id
     | ArithmIntExpected of int * Type
+    | AttributeTypeMismatch of Id * Type * Type
+    | MethodReturnTypeMismatch of (*class*) string * (*method*) Id * (*actual*) Type * (*expected*) Type
 
 type Signature = string list
 type MethodEnv = Map<string * string, Signature>
 
-type ObjectEnv = Map<string, string>
+type ObjectEnv = (string * string) list
 
 let id2str = snd
 
@@ -140,7 +142,7 @@ let mapRes f = function
     | Failure errs -> Failure errs
 
 let rec forRes<'a> (xs : seq<'a>) (f : 'a -> Result<'c, 'b>) =
-    if Seq.isEmpty then
+    1
 
 let ret x = function
     | Success _ -> Success x
@@ -361,9 +363,6 @@ let getInheritedAttributes c ast inhMap =
             <| selfAttrs
     go c
 
-let getInheritedAttributesErrors c ast inhMap = 
-    1
-
 let attributeName ((_, a), _, _) = a
 
 let getRedefinedAttribute c ast inhMap =
@@ -428,7 +427,13 @@ let getMethodType c m methEnv =
     |> Map.tryFind c 
     |> Option.bind (Map.tryFind m)
 
-let getObjectType v objectEnv = Type "Undefined" |> Some
+let extendObjectEnv varTypes (objectEnv:ObjectEnv) : ObjectEnv =
+    varTypes
+    |> List.fold (fun oe (v, t) -> (v, t) :: oe) objectEnv
+
+let getObjectType v (objectEnv:ObjectEnv) = 
+    objectEnv
+    |> List.tryFind (fun x -> (fst x) = v)
 
 type ResultBuilder() =
     member x.Bind(v, f) = bindRes f v
@@ -436,13 +441,17 @@ type ResultBuilder() =
     member x.Delay(f) = f()
     member x.ReturnFrom(v) = v
 
-let result = new ResultBuilder()
+let result = ResultBuilder()
 
 let rec typecheck2 objectEnv methodEnv (expr : Expr) : Result<Type, TypeError> =
     let ret = Success
     let fail = List.singleton >> Failure
     let t =
         match expr.Expr with
+        | Assign ((loc, v), e1) ->
+            result {
+                let! t = getObjectType v 
+            }
         | True | False -> 
             Type "Bool" |> ret
         | String _ -> 
@@ -508,12 +517,46 @@ let rec typecheck2 objectEnv methodEnv (expr : Expr) : Result<Type, TypeError> =
 //    Return type must be the same  body expression type.
 //    Typechecker goes recursively on method body expression.
 
+let getObjectEnv c ast inhMap : ObjectEnv =
+    let baseAttr = getInheritedAttributes (class2name c) ast inhMap
 
-let typecheckClass methodEnv (Class (n, p, fs) as c) = 
+    class2attributes c
+    |> List.append baseAttr
+    |> List.map (fun (n, t, _) -> snd n, snd t)
+    |> List.rev
+
+let typecheckMethod objectEnv methodEnv (c:string) (m:Id) formals rt body =
+    let t = rt |> snd |> Type
+    let vs =
+        formals
+        |> List.map (fun (v, t) -> snd v, snd t)
+    let objectEnv = extendObjectEnv vs objectEnv
+    typecheck2 objectEnv methodEnv body
+    |> bindRes (fun t2 ->
+        if t2 = t
+        then Success ()
+        else Failure [MethodReturnTypeMismatch (c, m, t2, t)])
+
+let typecheckAttributeInit objectEnv methodEnv n tname e = 
+    let t = Type tname
+    typecheck2 objectEnv methodEnv e 
+    |> bindRes (fun t2 ->
+        if t = t2 
+        then Success ()
+        else Failure [AttributeTypeMismatch (n, t, t2)])
+
+let typecheckClass methodEnv (Class (n, p, fs) as c) ast inhMap : Result<unit, TypeError> = 
+    let objectEnv = getObjectEnv c ast inhMap
     let rec go = function
-        | Method _ -> 1
-        | Attribute _ -> 2
-    1
+        | Method (m, formals, rt, body) :: tail -> 
+            typecheckMethod objectEnv methodEnv (snd n) m formals rt body
+        | Attribute (n, (_, tname), Some e) :: tail ->
+            typecheckAttributeInit objectEnv methodEnv n tname e
+            |> bindRes (fun () -> go tail)
+        | _ :: tail -> go tail
+        | [] -> Success ()
+
+    go fs
 
 let typecheckAst (Ast cs as ast) =
     result {
