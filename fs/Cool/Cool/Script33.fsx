@@ -189,13 +189,14 @@ let executeProcess (exe,cmdline) =
     p.WaitForExit()
     { exitCode = p.ExitCode; stdout = output.ToString(); stderr = error.ToString() }
 
-let checkFromFile () =
+let checkFromFile (srce) =
     let pref = __SOURCE_DIRECTORY__ + "\\tests\\"
-    let src = pref + "2.cl"
-    let out = pref + "2"
+    let src = pref + srce + ".cl"
+    let out = pref + srce
     let astFile = out + ".cl-ast"
     let args = "--parse --out " + out + " " + src
     let cool = System.Environment.GetEnvironmentVariable("COOLEXE")
+    printfn "out = %s" out
 
     executeProcess (cool, args) |> printfn "Process executed: \n%A"
     if File.Exists(astFile) then
@@ -212,5 +213,4 @@ let checkFromFile () =
     else
         printfn "File does not exists"
 
-printfn "%A" System.Environment.CurrentDirectory
-checkFromFile ()
+checkFromFile ("1-bad")
