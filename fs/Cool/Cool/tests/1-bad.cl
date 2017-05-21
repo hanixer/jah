@@ -4,7 +4,8 @@ class Main inherits IO {
     then 
     (while 2 < 3 
     loop 2 pool)
-    else "" fi
+    else {"|"
+    ;} fi
     
     -- self@Main.out_int(2) 
   } ;

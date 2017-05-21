@@ -20,12 +20,13 @@ type TypeError =
     | ArithmIntExpected of int * Type
     | AttributeTypeMismatch of Id * Type * Type
     | MethodReturnTypeMismatch of (*class*) string * (*method*) Id * (*actual*) Type * (*expected*) Type
-    | NonConformantTypes of Type * Type * string
+    | NonConformantTypes of int * (*actual*)Type * (*expected*)Type * string
     | MethodNotFound of (*class*)string * Id
     | DispatchWrongNumberOfArgs of (*loc*)int * (*actual*)int * (*expected*)int
     | DispatchArgumentTypeMismatch of (*loc*)int * (*number*) int * (*actual*) Type * (*expected*) Type
     | StaticDispatchCast of (*loc*)int * (*actual*) Type * (*expected*) Type
     | ConditionBoolExpected of int * Type
+    | SequenceExprHasNoSubexpressions of int
 
 type Signature = string list
 type MethodEnv = Map<string,Map<string,(string list * string)>>
@@ -516,7 +517,6 @@ let tryFindArgumentsError (loc:int) inhMap (argsTypes:Type list) (formalsTypes:T
         |> go
 
 (*
-    | Block of Expr list
     | Let of (Id * Id * Expr option) list * Expr
     | Case of Expr * (Id * Id * Expr) list
     | Isvoid of Expr
@@ -534,6 +534,7 @@ let rec typecheckList typecheck = function
 
 let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, TypeError> =
     let typecheck e = typecheck2 c objectEnv methodEnv e inhMap
+    let typecheckOE objectEnv e = typecheck2 c objectEnv methodEnv e inhMap
     // func : Expr list -> Result<Type list, TypeError>
     let ret = Success
     let fail = List.singleton >> Failure
@@ -576,6 +577,22 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
 
             return formalRetType
         }
+
+    // let typecheckBinding ((loc, v), (_, t), init) body =
+    //     result {
+    //         match init with
+    //         | Some initExpr ->
+    //             let tLhs = if t = "SELF_TYPE" then SelfType c else Type t 
+    //             let! tRhs = typecheck initExpr
+    //             if isInConformance inhMap tRhs tLhs
+    //             then
+    //                 // let! tBody = typecheckOE (extendObjectEnv [tLhs c
+    //                 return Success (Type "")
+
+    //             else 
+    //                 return! Failure [NonConformantTypes (loc, tRhs, tLhs, "let binding")]
+    //             return Type ""
+    //     }
     let validateCondition = function
         | Type "Bool" as t -> ret t
         | t -> ConditionBoolExpected (expr.Loc, t) |> fail
@@ -595,7 +612,7 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
                     return tRhs
                 else
                     return! 
-                        NonConformantTypes (tRhs, tLhs, "assignment") 
+                        NonConformantTypes (loc, tRhs, tLhs, "assignment") 
                         |> fail
             }
         | New (loc, s) ->
@@ -627,6 +644,17 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
                     typecheck body
                 return Type "Object"                    
             }
+        | Block exprs -> 
+            result {
+                let! types = typecheckList exprs
+                return! 
+                    List.tryLast types
+                    |> Option.map Success
+                    |> defaultArg
+                    <| Failure [SequenceExprHasNoSubexpressions expr.Loc]
+            }
+        // | Let (bindings, body) ->
+
         | True | False -> 
             Type "Bool" |> ret
         | String _ -> 

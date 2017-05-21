@@ -198,6 +198,8 @@ let checkFromFile (srce) =
     let cool = System.Environment.GetEnvironmentVariable("COOLEXE")
     printfn "out = %s" out
 
+    if File.Exists(astFile) then File.Delete(astFile)
+     
     executeProcess (cool, args) |> printfn "Process executed: \n%A"
     if File.Exists(astFile) then
         let text = File.ReadAllText(astFile)
@@ -211,6 +213,6 @@ let checkFromFile (srce) =
                 printfn "%A" ers
         | ParserResult.Failure _ -> printfn "parse error"
     else
-        printfn "File does not exists"
+        printfn "File does not exist"
 
 checkFromFile ("1-bad")
