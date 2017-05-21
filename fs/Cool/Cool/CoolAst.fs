@@ -3,6 +3,7 @@ module CoolAst
 type Type = 
     | Type of string
     | SelfType of string
+    | SelfTypeFree
 
 type Id = int * string
 

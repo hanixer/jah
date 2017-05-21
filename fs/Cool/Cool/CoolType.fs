@@ -27,11 +27,12 @@ type TypeError =
     | StaticDispatchCast of (*loc*)int * (*actual*) Type * (*expected*) Type
     | ConditionBoolExpected of int * Type
     | SequenceExprHasNoSubexpressions of int
+    | EqualityPrimitiveTypeError of int * Type * Type
 
 type Signature = string list
 type MethodEnv = Map<string,Map<string,(string list * string)>>
 
-type ObjectEnv = (string * string) list
+type ObjectEnv = (string * Type) list
 
 // TODO: add checks for whether the type is declared
 //       if SELF_TYPE is used whether it is permitted to use
@@ -160,6 +161,15 @@ let ret x = function
     | Success _ -> Success x
     | Failure errs -> Failure errs
 
+let rec mapListRes (xs:'a list) (f:'a -> Result<'b, 'e>) : Result<'b list, 'e> =
+    match xs with 
+    | [] -> Success []
+    | x :: tail ->
+        f x
+        |> bindRes (fun y ->
+            mapListRes tail f
+            |> bindRes (fun ys -> y :: ys |> Success))
+
 // TODO: add check for inheriting from primitive types
 let inheritanceMap ast =    
     ast
@@ -278,6 +288,11 @@ let getClassMethods c ((Ast cs) as ast) : MethodSignature list =
             str2id "out_int", [str2id "x", str2id "Int"], str2id "SELF_TYPE"
             str2id "in_string", [], str2id "String"
             str2id "in_int", [], str2id "Int" ]
+    | "String" ->
+        [   str2id "length", [], str2id "Int"
+            str2id "concat", [str2id "s", str2id "String"], str2id "String"
+            str2id "substr", [str2id "x", str2id "Int"; str2id "y", str2id "Int"], str2id "String" ]
+            
     | _ -> 
         methods ()
 
@@ -427,8 +442,17 @@ let ast2methodEnvironment (Ast cs as ast) : MethodEnv =
             |> Map.add m  
                 (formals |> List.map formal2type, snd rt)) 
         <| getAllClassMethods (class2name c) ast inhMap
+
+    let stringMethods =             
+        [    "length", ([],  "Int")
+             "concat", (["String"],  "String")
+             "substr", (["Int";  "Int"],  "String") ]
+
+    let withStringMethods = 
+        Map.empty
+        |> Map.add "String" (Map.ofList stringMethods)
         
-    Map.empty
+    withStringMethods
     |> List.fold (fun class2map c -> 
         class2map 
         |> Map.add (class2name c) (extractFromClass c))
@@ -471,6 +495,8 @@ let rec isInConformance inhMap t1 t2 =
             isInheritFrom ts1 ts2
         | SelfType ts1, Type ts2 ->
             isInConformance inhMap (Type ts1) t2
+        | Type ts1, SelfType ts2 ->
+            isInConformance inhMap (Type ts1) (Type ts2)
         | _, _ -> 
             false
 
@@ -482,8 +508,7 @@ let joinTypes inhMap t1 t2 : Type =
     let prepare t = 
         match t with 
         | SelfType s | Type s -> s |> makeRoute |> List.rev
-
-    printfn "inhMap joinTypes = %A" inhMap
+        | SelfTypeFree -> failwith "Not Implemented"
 
     let r1 = prepare t1
     let r2 = prepare t2
@@ -515,13 +540,6 @@ let tryFindArgumentsError (loc:int) inhMap (argsTypes:Type list) (formalsTypes:T
     else
         List.zip3 (seq{1..argsTypes.Length} |> Seq.toList) argsTypes formalsTypes
         |> go
-
-(*
-    | Let of (Id * Id * Expr option) list * Expr
-    | Case of Expr * (Id * Id * Expr) list
-    | Isvoid of Expr
-    | EQ of Expr * Expr
-*)
 
 let rec typecheckList typecheck = function
     | [] -> Success []
@@ -559,7 +577,7 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
                     then Success objTypeInitial
                     else Failure [StaticDispatchCast (fst mId, objTypeInitial, Type tc)]
             let! methodType =
-                let c = match objType with | Type t | SelfType t -> t
+                let c = match objType with | Type t | SelfType t -> t | _ -> "SELF_TYPE"
                 getMethodType c (snd mId) methodEnv
                 |> Option.map Success
                 |> defaultArg
@@ -578,21 +596,27 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
             return formalRetType
         }
 
-    // let typecheckBinding ((loc, v), (_, t), init) body =
-    //     result {
-    //         match init with
-    //         | Some initExpr ->
-    //             let tLhs = if t = "SELF_TYPE" then SelfType c else Type t 
-    //             let! tRhs = typecheck initExpr
-    //             if isInConformance inhMap tRhs tLhs
-    //             then
-    //                 // let! tBody = typecheckOE (extendObjectEnv [tLhs c
-    //                 return Success (Type "")
+    let typecheckBindings bindings body = 
+        let rec go objectEnv = function
+            | ((loc, v), (_, t), init) :: tail ->
+                result {
+                    let tLhs = if t = "SELF_TYPE" then SelfType c else Type t 
+                    match init with
+                    | Some initExpr ->
+                        let! tRhs = typecheckOE objectEnv initExpr
+                        if isInConformance inhMap tRhs tLhs
+                        then
+                            return! go (extendObjectEnv [v, tLhs] objectEnv) tail
+                        else 
+                            return! Failure [NonConformantTypes (loc, tRhs, tLhs, "let binding")]
+                    | None ->
+                        return! go (extendObjectEnv [v, tLhs] objectEnv) tail
+                }
+            | [] -> 
+                typecheckOE objectEnv body
+        
+        go objectEnv bindings
 
-    //             else 
-    //                 return! Failure [NonConformantTypes (loc, tRhs, tLhs, "let binding")]
-    //             return Type ""
-    //     }
     let validateCondition = function
         | Type "Bool" as t -> ret t
         | t -> ConditionBoolExpected (expr.Loc, t) |> fail
@@ -604,7 +628,7 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
                 let! tRhs = typecheck initExpr
                 let! tLhs = 
                     getObjectType v objectEnv 
-                    |> Option.map (Type >> Success)
+                    |> Option.map Success
                     |> defaultArg 
                     <| (VariableNotFound >> fail) (loc, v)
 
@@ -622,7 +646,8 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
         | DynDispatch (objExpr, mId, argsExprs) ->
             tcdp objExpr mId argsExprs None
         | SelfDispatch (mId, argsExprs) ->
-            tcdp { Type = None; Loc = expr.Loc; Expr = Identifier (expr.Loc, "self") } mId argsExprs None
+            let objExpr = { Type = None; Loc = expr.Loc; Expr = Identifier (expr.Loc, "self") } 
+            tcdp objExpr mId argsExprs None
         | StatDispatch (objExpr, (_, typeCast), mId, argsExpr) ->
             tcdp objExpr mId argsExpr (Some typeCast)
         | If (cond, thenExpr, elseExpr) ->
@@ -653,8 +678,32 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
                     |> defaultArg
                     <| Failure [SequenceExprHasNoSubexpressions expr.Loc]
             }
-        // | Let (bindings, body) ->
-
+        | Let (bindings, body) ->
+            typecheckBindings bindings body
+        | Case (toCheck, cases) ->
+            result {
+                let! t = typecheck toCheck
+                let! ts = mapListRes cases (fun ((_, v), (_, t), e) -> 
+                    typecheckOE (extendObjectEnv [v, Type t] objectEnv) e)
+                
+                return List.fold (joinTypes inhMap) (List.head ts) (List.tail ts)
+            }
+        | Isvoid e ->
+            result {
+                let! t = typecheck e
+                return Type "Bool"
+            }
+        | EQ (e1, e2) ->
+            let isPrimitive = function | Type t -> List.contains t primitiveTypes | _ -> false
+            result {
+                let! t1 = typecheck e1
+                let! t2 = typecheck e2
+                if (isPrimitive t1 || isPrimitive t2) && (t1 <> t2)
+                then 
+                    return! Failure [EqualityPrimitiveTypeError (expr.Loc, t1, t2)]
+                else
+                    return Type "Bool"
+            }
         | True | False -> 
             Type "Bool" |> ret
         | String _ -> 
@@ -663,8 +712,8 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
             Type "Int" |> ret
         | Identifier (_, v as var) -> 
             match getObjectType v objectEnv with
-            | Some "SELF_TYPE" -> c |> SelfType |> ret
-            | Some t -> t |> Type |> ret
+            | Some SelfTypeFree -> c |> SelfType |> ret
+            | Some t -> t |> ret
             | None -> VariableNotFound var |> fail
         | Negate e1 ->
             result {
@@ -699,8 +748,6 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
                 | _, Type "Int" -> return! ArithmIntExpected (e1.Loc, t1) |> fail
                 | _, _ -> return! ArithmIntExpected (e1.Loc, t1) |> fail
             }
-        | _ ->
-            Failure []
 
     resultType
     |> mapRes (fun t -> 
@@ -712,20 +759,23 @@ let getObjectEnv c ast inhMap : ObjectEnv =
 
     class2attributes c
     |> List.append baseAttr
-    |> List.map (fun (n, t, _) -> snd n, snd t)
+    |> List.map (fun (n, t, _) -> 
+        let tp = snd t       
+        snd n, if tp = "SELF_TYPE" then SelfType (class2name c) else Type tp)
     |> List.rev
 
-let typecheckMethod objectEnv methodEnv (c:string) (m:Id) formals rt body inhMap =
+// TODO: probably add check for SELF_TYPE
+let typecheckMethod objectEnv methodEnv (c:string) (m:Id) (formals:Formal list) rt body inhMap =
     let formalRetType = 
         match rt with
         | (_, "SELF_TYPE") -> SelfType c
         | (_, t) -> Type t
     let vs =
         formals
-        |> List.map (fun (v, t) -> snd v, snd t)
+        |> List.map (fun (v, t) -> snd v, snd t |> Type)
     let objectEnv = 
         objectEnv 
-        |> extendObjectEnv ["self", "SELF_TYPE"]
+        |> extendObjectEnv ["self", SelfType c]
         |> extendObjectEnv vs 
     result {
         let! retType = typecheck2 c objectEnv methodEnv body inhMap    
@@ -748,6 +798,7 @@ let typecheckClass methodEnv (Class (n, p, fs) as c) ast inhMap : Result<unit, T
     let rec go = function
         | Method (m, formals, rt, body) :: tail -> 
             typecheckMethod objectEnv methodEnv cname m formals rt body inhMap
+            |> bindRes (fun () -> go tail)
         | Attribute (n, (_, tname), Some e) :: tail ->
             typecheckAttributeInit objectEnv methodEnv cname n tname e inhMap
             |> bindRes (fun () -> go tail)
@@ -766,3 +817,6 @@ let typecheckAst (Ast cs as ast) =
         | [] -> Success ()
     
     go cs
+
+// Now need to output semantic analysis results
+//  to file and check diff with refence compiler.
