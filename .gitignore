@@ -6,7 +6,6 @@ Release
 *.*sdf
 *.suo
 ipch
-build*
 h/sandbox.hi
 h/sandbox.o
 h/eopl/ImplrefNew.hi

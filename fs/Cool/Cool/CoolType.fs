@@ -478,6 +478,12 @@ type ResultBuilder() =
     member x.Delay(f) = f()
     member x.ReturnFrom(v) = v
 
+    member x.Combine(res1, res2) =
+        match res1, res2 with
+        | Failure errs, _ -> Failure errs
+        | _, Success s -> Success s
+        | _, Failure errs -> Failure errs
+
 let result = ResultBuilder()
 
 // inhMap must include basic types
