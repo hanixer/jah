@@ -257,3 +257,8 @@ module Deserialize =
     }
 
     let pAst : Parser<Class list, unit> = pList pClass
+
+let parse (s:string) : Ast option =
+    match FParsec.CharParsers.run Deserialize.pAst s with
+    | FParsec.CharParsers.ParserResult.Success (ast, _, _) -> Some (Ast ast)
+    | _ -> None

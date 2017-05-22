@@ -550,9 +550,9 @@ let rec typecheckList typecheck = function
             return t :: ts
         }
 
-let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, TypeError> =
-    let typecheck e = typecheck2 c objectEnv methodEnv e inhMap
-    let typecheckOE objectEnv e = typecheck2 c objectEnv methodEnv e inhMap
+let rec typecheckExpr c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, TypeError> =
+    let check e = typecheckExpr c objectEnv methodEnv e inhMap
+    let checkWithObjectEnv objectEnv e = typecheckExpr c objectEnv methodEnv e inhMap
     // func : Expr list -> Result<Type list, TypeError>
     let ret = Success
     let fail = List.singleton >> Failure
@@ -560,14 +560,14 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
         | [] -> Success []
         | head :: tail ->
             result {
-                let! t = typecheck head
+                let! t = check head
                 let! ts = typecheckList  tail
                 return t :: ts
             }
     let tcdp objExpr mId argsExprs (typeCast:string option) = 
         result {
             let! objTypeInitial =
-                typecheck objExpr
+                check objExpr
             let! objType =
                 match typeCast, objTypeInitial with
                 | None, SelfType c' when c' = c -> Type c |> ret
@@ -603,7 +603,7 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
                     let tLhs = if t = "SELF_TYPE" then SelfType c else Type t 
                     match init with
                     | Some initExpr ->
-                        let! tRhs = typecheckOE objectEnv initExpr
+                        let! tRhs = checkWithObjectEnv objectEnv initExpr
                         if isInConformance inhMap tRhs tLhs
                         then
                             return! go (extendObjectEnv [v, tLhs] objectEnv) tail
@@ -613,7 +613,7 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
                         return! go (extendObjectEnv [v, tLhs] objectEnv) tail
                 }
             | [] -> 
-                typecheckOE objectEnv body
+                checkWithObjectEnv objectEnv body
         
         go objectEnv bindings
 
@@ -625,7 +625,7 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
         match expr.Expr with
         | Assign ((loc, v), initExpr) ->
             result {
-                let! tRhs = typecheck initExpr
+                let! tRhs = check initExpr
                 let! tLhs = 
                     getObjectType v objectEnv 
                     |> Option.map Success
@@ -653,20 +653,20 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
         | If (cond, thenExpr, elseExpr) ->
             result {
                 let! condType = 
-                    typecheck cond
+                    check cond
                     |> bindRes validateCondition
                         
-                let! thenType = typecheck thenExpr
-                let! elseType = typecheck elseExpr
+                let! thenType = check thenExpr
+                let! elseType = check elseExpr
                 return joinTypes inhMap thenType elseType
             }
         | While (cond, body) ->
             result {
                 let! condType = 
-                    typecheck cond
+                    check cond
                     |> bindRes validateCondition
                 let! bodyType =
-                    typecheck body
+                    check body
                 return Type "Object"                    
             }
         | Block exprs -> 
@@ -682,22 +682,22 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
             typecheckBindings bindings body
         | Case (toCheck, cases) ->
             result {
-                let! t = typecheck toCheck
+                let! t = check toCheck
                 let! ts = mapListRes cases (fun ((_, v), (_, t), e) -> 
-                    typecheckOE (extendObjectEnv [v, Type t] objectEnv) e)
+                    checkWithObjectEnv (extendObjectEnv [v, Type t] objectEnv) e)
                 
                 return List.fold (joinTypes inhMap) (List.head ts) (List.tail ts)
             }
         | Isvoid e ->
             result {
-                let! t = typecheck e
+                let! t = check e
                 return Type "Bool"
             }
         | EQ (e1, e2) ->
             let isPrimitive = function | Type t -> List.contains t primitiveTypes | _ -> false
             result {
-                let! t1 = typecheck e1
-                let! t2 = typecheck e2
+                let! t1 = check e1
+                let! t2 = check e2
                 if (isPrimitive t1 || isPrimitive t2) && (t1 <> t2)
                 then 
                     return! Failure [EqualityPrimitiveTypeError (expr.Loc, t1, t2)]
@@ -717,21 +717,21 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
             | None -> VariableNotFound var |> fail
         | Negate e1 ->
             result {
-                let! t1 = typecheck e1
+                let! t1 = check e1
                 match t1 with
                 | Type "Int" -> return t1
                 | _ -> return! ArithmIntExpected (e1.Loc, t1) |> fail
             }
         | Not e1 ->
-            typecheck e1
+            check e1
             |> bindRes (function
                 | Type "Bool" as t1 -> ret t1
                 | t1 -> ArithmIntExpected (e1.Loc, t1) |> fail)
         | Plus (e1, e2) | Minus (e1, e2)
         | Times (e1, e2) | Divide (e1, e2) -> 
             result {
-                let! t1 = typecheck e1
-                let! t2 = typecheck e2
+                let! t1 = check e1
+                let! t2 = check e2
                 match t1, t2 with
                 | Type "Int", Type "Int" -> return t1
                 | Type "Int", _ -> return! ArithmIntExpected (e2.Loc, t2) |> fail
@@ -740,8 +740,8 @@ let rec typecheck2 c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, Typ
             }
         | LT (e1, e2) | LE (e1, e2) ->
             result {
-                let! t1 = typecheck e1
-                let! t2 = typecheck e2
+                let! t1 = check e1
+                let! t2 = check e2
                 match t1, t2 with
                 | Type "Int", Type "Int" -> return Type "Bool"
                 | Type "Int", _ -> return! ArithmIntExpected (e2.Loc, t2) |> fail
@@ -778,7 +778,7 @@ let typecheckMethod objectEnv methodEnv (c:string) (m:Id) (formals:Formal list) 
         |> extendObjectEnv ["self", SelfType c]
         |> extendObjectEnv vs 
     result {
-        let! retType = typecheck2 c objectEnv methodEnv body inhMap    
+        let! retType = typecheckExpr c objectEnv methodEnv body inhMap    
         if isInConformance inhMap retType formalRetType
         then return! Success ()
         else return! Failure [MethodReturnTypeMismatch (c, m, retType, formalRetType)]
@@ -786,7 +786,7 @@ let typecheckMethod objectEnv methodEnv (c:string) (m:Id) (formals:Formal list) 
 
 let typecheckAttributeInit objectEnv methodEnv (c:string) n tname e (inhMap:Map<string, string>) = 
     let t = Type tname
-    typecheck2 c objectEnv methodEnv e inhMap
+    typecheckExpr c objectEnv methodEnv e inhMap
     |> bindRes (fun t2 ->
         if t = t2 
         then Success ()
@@ -820,3 +820,9 @@ let typecheckAst (Ast cs as ast) =
 
 // Now need to output semantic analysis results
 //  to file and check diff with refence compiler.
+
+// Class map: Class and attributes
+//  each attribute, first inherited attributes
+// Implementation map: class and methods in order
+// Parent map
+// Annotated AST
