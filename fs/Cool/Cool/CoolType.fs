@@ -102,7 +102,7 @@ let findCycles parents =
 let primitiveTypes = ["Int";"String";"Bool"]
 let standartTypes = "Object" :: "IO" :: primitiveTypes
 
-let validateRedefinition (classes:list<string*string option>) = 
+let validateClassRedefinition (classes:list<string*string option>) = 
     let getDuplicated xs =
         xs
         |> List.countBy id
@@ -174,7 +174,7 @@ let rec mapListRes (xs:'a list) (f:'a -> Result<'b, 'e>) : Result<'b list, 'e> =
 let inheritanceMap ast =    
     ast
     |> classesFromAst
-    |> validateRedefinition
+    |> validateClassRedefinition
     |> bindRes validateCycles
     |> mapRes completeWithStandartTypes
 
@@ -559,9 +559,9 @@ let rec typecheckList typecheck = function
 let rec typecheckExpr c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, TypeError> =
     let check e = typecheckExpr c objectEnv methodEnv e inhMap
     let checkWithObjectEnv objectEnv e = typecheckExpr c objectEnv methodEnv e inhMap
-    // func : Expr list -> Result<Type list, TypeError>
     let ret = Success
     let fail = List.singleton >> Failure
+
     let rec typecheckList  = function
         | [] -> Success []
         | head :: tail ->
@@ -570,7 +570,7 @@ let rec typecheckExpr c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, 
                 let! ts = typecheckList  tail
                 return t :: ts
             }
-    let tcdp objExpr mId argsExprs (typeCast:string option) = 
+    let typecheckDispatch objExpr mId argsExprs (typeCast:string option) = 
         result {
             let! objTypeInitial =
                 check objExpr
@@ -650,12 +650,12 @@ let rec typecheckExpr c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, 
             then SelfType c |> ret
             else Type s |> ret
         | DynDispatch (objExpr, mId, argsExprs) ->
-            tcdp objExpr mId argsExprs None
+            typecheckDispatch objExpr mId argsExprs None
         | SelfDispatch (mId, argsExprs) ->
             let objExpr = { Type = None; Loc = expr.Loc; Expr = Identifier (expr.Loc, "self") } 
-            tcdp objExpr mId argsExprs None
+            typecheckDispatch objExpr mId argsExprs None
         | StatDispatch (objExpr, (_, typeCast), mId, argsExpr) ->
-            tcdp objExpr mId argsExpr (Some typeCast)
+            typecheckDispatch objExpr mId argsExpr (Some typeCast)
         | If (cond, thenExpr, elseExpr) ->
             result {
                 let! condType = 
@@ -832,3 +832,31 @@ let typecheckAst (Ast cs as ast) =
 // Implementation map: class and methods in order
 // Parent map
 // Annotated AST
+(*
+The Implementation Map
+Output implementation_map \n.
+Output the number of classes and then \n.
+Output each class in turn (in ascending alphabetical order):
+Output the name of the class and then \n.
+Output the number of methods for that class and then \n.
+ Output each method in turn (in order of appearance, 
+ with inherited or overridden methods from a superclass coming first; 
+ internal methods are defined to appear in ascending alphabetical order):
+ Output the method name and then \n.
+ Output the number of formals and then \n.
+  Output each formal's name only:
+   Output the name and then \n
+  If this method is inherited from a parent class and not overriden, 
+   output the name of the ultimate parent class that defined the method 
+   body expression and then \n. 
+  Otherwise, output the name of the current class and then \n.
+  Output the method body expression.
+*)
+type MethodBody = BodyInner of string | BodyExpr of Expr
+type MethodInfo = Id * (*formals*) string list * (*ultimate parent name*)string * MethodBody
+type SemanticInfo = {
+    Attributes : Map<string, (Id * Id * Expr option) list>
+    Methods : Map<string, MethodInfo list>
+    InheritanceMap : Map<string, string>
+    AnnotatedAst : Ast
+}

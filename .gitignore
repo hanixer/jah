@@ -11,3 +11,4 @@ h/sandbox.o
 h/eopl/ImplrefNew.hi
 *.hi
 *.o
+build*Qt*
