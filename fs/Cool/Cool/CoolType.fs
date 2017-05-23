@@ -137,10 +137,10 @@ let validateCycles classes =
     |> findCycles
     |> report
 
-let classesFromAst (Ast cs)  : (string * string option) list  =
+let ast2classes (Ast cs)  : (string * string option) list  =
     let convertToStr (Class (c, pOpt, _)) =
         id2str c, Option.map id2str pOpt
-    cs
+    cs 
     |> List.map convertToStr
 
 let completeWithStandartTypes parentsOpt =
@@ -173,7 +173,7 @@ let rec mapListRes (xs:'a list) (f:'a -> Result<'b, 'e>) : Result<'b list, 'e> =
 // TODO: add check for inheriting from primitive types
 let inheritanceMap ast =    
     ast
-    |> classesFromAst
+    |> ast2classes
     |> validateClassRedefinition
     |> bindRes validateCycles
     |> mapRes completeWithStandartTypes
@@ -355,7 +355,7 @@ let getInheritedMethodsErrors c ast inhMap : TypeError list =
     |> List.choose id
 
 let inheritanceMapUnchecked : (Ast -> Map<string,string>)= 
-    classesFromAst >> completeWithStandartTypes >> Map.ofList
+    ast2classes >> completeWithStandartTypes >> Map.ofList
 
 let validateRedefinedMethods ast =
     let inhMap = ast |> inheritanceMapUnchecked
@@ -860,3 +860,8 @@ type SemanticInfo = {
     InheritanceMap : Map<string, string>
     AnnotatedAst : Ast
 }
+
+let analyze ast =
+    ast2classes ast
+    |> validateClassRedefinition
+    Success ()
