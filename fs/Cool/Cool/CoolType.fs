@@ -5,8 +5,29 @@ open CoolAst
 type Result<'a, 'Error> = 
     | Success of 'a
     | Failure of 'Error list
+    
 module Result =
-    let bind = 0
+    let bind f = function
+        | Success x -> f x
+        | Failure errs -> Failure errs
+
+    let map f = function
+        | Success x -> f x |> Success
+        | Failure errs -> Failure errs
+
+    let ret x = function
+        | Success _ -> Success x
+        | Failure errs -> Failure errs
+
+    let rec mapList (xs:'a list) (f:'a -> Result<'b, 'e>) : Result<'b list, 'e> =
+        match xs with 
+        | [] -> Success []
+        | x :: tail ->
+            f x
+            |> bind (fun y ->
+                mapList tail f
+                |> bind (fun ys -> y :: ys |> Success))
+
 type TypeError =
     | ClassRedefined of string
     | ClassesInheritanceCircle of string list
@@ -149,34 +170,13 @@ let completeWithStandartTypes parentsOpt =
     |> List.append
     <| List.map (fun t -> t, "Object") ("IO" :: primitiveTypes)
 
-let bindRes f = function
-    | Success x -> f x
-    | Failure errs -> Failure errs
-
-let mapRes f = function
-    | Success x -> f x |> Success
-    | Failure errs -> Failure errs
-
-let ret x = function
-    | Success _ -> Success x
-    | Failure errs -> Failure errs
-
-let rec mapListRes (xs:'a list) (f:'a -> Result<'b, 'e>) : Result<'b list, 'e> =
-    match xs with 
-    | [] -> Success []
-    | x :: tail ->
-        f x
-        |> bindRes (fun y ->
-            mapListRes tail f
-            |> bindRes (fun ys -> y :: ys |> Success))
-
 // TODO: add check for inheriting from primitive types
-let inheritanceMap ast =    
+let inheritanceMapChecked ast =    
     ast
     |> ast2classes
     |> validateClassRedefinition
-    |> bindRes validateCycles
-    |> mapRes completeWithStandartTypes
+    |> Result.bind validateCycles
+    |> Result.map completeWithStandartTypes
 
 let isMethod = function
     | Method _ -> true
@@ -202,7 +202,7 @@ let validateMethodRedefinition (Ast cs) =
 
     let report duplicated =
         if List.isEmpty duplicated then
-            Success (Ast cs)
+            Success ()
         else
             duplicated
             |> List.map MethodRedefined
@@ -242,7 +242,7 @@ let validateMethodFormalsRedefinition (Ast cs) =
         |> List.map (fun (m, p) -> name, m, p)
     let report duplicated =
         if List.isEmpty duplicated then
-            Success (Ast cs)
+            Success ()
         else
             duplicated
             |> List.map MethodFormalsRedefined
@@ -253,8 +253,8 @@ let validateMethodFormalsRedefinition (Ast cs) =
 
 let ast2inheritanceGraph ast =
         ast
-        |> inheritanceMap
-        |> mapRes Graphs.edges2adjacency
+        |> inheritanceMapChecked
+        |> Result.map Graphs.edges2adjacency
 
 type MethodSignature = Id * Formal list * Id
 
@@ -361,9 +361,9 @@ let validateRedefinedMethods ast =
     let inhMap = ast |> inheritanceMapUnchecked
     ast 
     |> ast2inheritanceGraph 
-    |> mapRes Graphs.toposort
-    |> mapRes (List.collect (fun c -> getInheritedMethodsErrors c ast inhMap))
-    |> bindRes (fun errs -> 
+    |> Result.map Graphs.toposort
+    |> Result.map (List.collect (fun c -> getInheritedMethodsErrors c ast inhMap))
+    |> Result.bind (fun errs -> 
         if List.isEmpty errs then
             Success ast
         else
@@ -418,7 +418,7 @@ let validateRedefinedAttributes ast =
                 AttributeRedefined (c, a)))
     
     if List.isEmpty errors then
-        Success ast
+        Success ()
     else Failure errors
 
 type MethodType = string list * string // t1 .. tn - argument types, return type
@@ -473,7 +473,7 @@ let getObjectType v (objectEnv:ObjectEnv) =
     |> Option.map snd
 
 type ResultBuilder() =
-    member x.Bind(v, f) = bindRes f v
+    member x.Bind(v, f) = Result.bind f v
     member x.Return(v) = Success v
     member x.Delay(f) = f()
     member x.ReturnFrom(v) = v
@@ -660,7 +660,7 @@ let rec typecheckExpr c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, 
             result {
                 let! condType = 
                     check cond
-                    |> bindRes validateCondition
+                    |> Result.bind validateCondition
                         
                 let! thenType = check thenExpr
                 let! elseType = check elseExpr
@@ -670,7 +670,7 @@ let rec typecheckExpr c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, 
             result {
                 let! condType = 
                     check cond
-                    |> bindRes validateCondition
+                    |> Result.bind validateCondition
                 let! bodyType =
                     check body
                 return Type "Object"                    
@@ -689,7 +689,7 @@ let rec typecheckExpr c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, 
         | Case (toCheck, cases) ->
             result {
                 let! t = check toCheck
-                let! ts = mapListRes cases (fun ((_, v), (_, t), e) -> 
+                let! ts = Result.mapList cases (fun ((_, v), (_, t), e) -> 
                     checkWithObjectEnv (extendObjectEnv [v, Type t] objectEnv) e)
                 
                 return List.fold (joinTypes inhMap) (List.head ts) (List.tail ts)
@@ -730,7 +730,7 @@ let rec typecheckExpr c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, 
             }
         | Not e1 ->
             check e1
-            |> bindRes (function
+            |> Result.bind (function
                 | Type "Bool" as t1 -> ret t1
                 | t1 -> ArithmIntExpected (e1.Loc, t1) |> fail)
         | Plus (e1, e2) | Minus (e1, e2)
@@ -756,7 +756,7 @@ let rec typecheckExpr c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, 
             }
 
     resultType
-    |> mapRes (fun t -> 
+    |> Result.map (fun t -> 
         expr.Type <- Some t
         t)
 
@@ -793,7 +793,7 @@ let typecheckMethod objectEnv methodEnv (c:string) (m:Id) (formals:Formal list) 
 let typecheckAttributeInit objectEnv methodEnv (c:string) n tname e (inhMap:Map<string, string>) = 
     let t = Type tname
     typecheckExpr c objectEnv methodEnv e inhMap
-    |> bindRes (fun t2 ->
+    |> Result.bind (fun t2 ->
         if t = t2 
         then Success ()
         else Failure [AttributeTypeMismatch (n, t, t2)])
@@ -804,10 +804,10 @@ let typecheckClass methodEnv (Class (n, p, fs) as c) ast inhMap : Result<unit, T
     let rec go = function
         | Method (m, formals, rt, body) :: tail -> 
             typecheckMethod objectEnv methodEnv cname m formals rt body inhMap
-            |> bindRes (fun () -> go tail)
+            |> Result.bind (fun () -> go tail)
         | Attribute (n, (_, tname), Some e) :: tail ->
             typecheckAttributeInit objectEnv methodEnv cname n tname e inhMap
-            |> bindRes (fun () -> go tail)
+            |> Result.bind (fun () -> go tail)
         | _ :: tail -> go tail
         | [] -> Success ()
 
@@ -832,6 +832,17 @@ let typecheckAst (Ast cs as ast) =
 // Implementation map: class and methods in order
 // Parent map
 // Annotated AST
+(*
+The Class Map
+Output class_map \n.
+Output the number of classes and then \n.
+    Output each class in turn (in ascending alphabetical order):
+    Output the name of the class and then \n.
+    Output the number of attributes and then \n.
+        Output each attribute in turn (in order of appearance, with inherited attributes from a superclass coming first):
+        Output no_initializer \n and then the attribute name \n and then the type name \n.
+        or Output initializer \n and then the attribute name \n and then the type name \n and then the initializer expression.
+*)
 (*
 The Implementation Map
 Output implementation_map \n.
@@ -861,7 +872,25 @@ type SemanticInfo = {
     AnnotatedAst : Ast
 }
 
+let getAttributes (Ast cs as ast) inhMap =
+    let cnames =
+        cs
+        |> List.map (function | Class ((_, n), _, _) -> n)
+        |> Set.ofList
+    // for each class
+    // if class in result - skip it
+    // else check for parent of class. 
+    //   if parent already available - add parent attrs, add currentclass attributes
+    //   else recurse on parent
+    1
+    
 let analyze ast =
-    ast2classes ast
-    |> validateClassRedefinition
-    Success ()
+    result {
+        let! inhMapList = inheritanceMapChecked ast
+        let inhMap = Map.ofList inhMapList
+        do! validateMethodRedefinition ast
+        do! validateMethodFormalsRedefinition ast
+        do! validateRedefinedAttributes ast
+        do! typecheckAst ast
+        return ()  
+    }
