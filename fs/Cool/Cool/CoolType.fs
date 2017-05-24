@@ -872,17 +872,39 @@ type SemanticInfo = {
     AnnotatedAst : Ast
 }
 
+let allClassNamesWithStandart (Ast cs) =
+    cs
+    |> List.map (function | Class ((_, n), _, _) -> n)
+    |> List.append
+    <| standartTypes
+
 let getAttributes (Ast cs as ast) inhMap =
-    let cnames =
-        cs
-        |> List.map (function | Class ((_, n), _, _) -> n)
-        |> Set.ofList
+    let ownAttributes c =
+        if List.contains c standartTypes
+        then []
+        else
+            tryFindClass c ast
+            |> Option.map class2attributes
+            |> defaultArg
+            <| []
+
+    allClassNamesWithStandart ast
+    |> List.map (fun c ->
+        c,
+        getInheritedAttributes c ast inhMap
+        |> List.append
+        <| ownAttributes c)
+    |> Map.ofList
+    // let cnames =
+    //     cs
+    //     |> List.map (function | Class ((_, n), _, _) -> n)
+    //     |> Set.ofList
     // for each class
     // if class in result - skip it
     // else check for parent of class. 
     //   if parent already available - add parent attrs, add currentclass attributes
     //   else recurse on parent
-    1
+    
     
 let analyze ast =
     result {
@@ -892,5 +914,5 @@ let analyze ast =
         do! validateMethodFormalsRedefinition ast
         do! validateRedefinedAttributes ast
         do! typecheckAst ast
-        return ()  
+        return getAttributes ast inhMap
     }

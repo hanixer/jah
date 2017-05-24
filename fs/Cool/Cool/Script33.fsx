@@ -51,8 +51,7 @@ let checkFromFile (srce) =
                 printfn "Errors: "
                 printfn "%A" ers
             printfn "======================================="
-            validateRedefinedMethods ast |> printfn "%A"
-            validateMethodFormalsRedefinition ast |> printfn "%A"
+            analyze ast |> printfn "%A"
         | ParserResult.Failure _ -> printfn "parse error"
     else
         printfn "File does not exist"
