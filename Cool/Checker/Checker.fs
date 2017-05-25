@@ -109,6 +109,7 @@ let rec printExpr f (expr:Expr) =
                 printId f b
         ps "let"
         printList f printBinding bindings
+        printExpr f e
     | New n ->
         ps "new"
         printId f n
@@ -136,7 +137,7 @@ let rec printExpr f (expr:Expr) =
         printExpr f e1    
         printExpr f e2
     | LE (e1, e2) ->
-        ps "LE"
+        ps "le"
         printExpr f e1    
         printExpr f e2
     | EQ (e1, e2) ->
@@ -154,8 +155,12 @@ let rec printExpr f (expr:Expr) =
         printId f n    
     | True -> ps "true"
     | False -> ps "false"
-    | Integer n -> p "%d" n
-    | String s -> ps s
+    | Integer n -> 
+        ps "integer"
+        p "%d" n
+    | String s -> 
+        ps "string"
+        ps s
     | Case (a,b) ->
         let printCase f (x,y,z) =
             printId f x

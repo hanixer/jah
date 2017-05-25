@@ -289,9 +289,9 @@ let getClassMethods c ((Ast cs) as ast) : MethodSignature list =
             str2id "out_int", [str2id "x", str2id "Int"], str2id "SELF_TYPE" 
             str2id "out_string", [str2id "x", str2id "String"], str2id "SELF_TYPE" ]
     | "String" ->
-        [   str2id "length", [], str2id "Int"
-            str2id "concat", [str2id "s", str2id "String"], str2id "String"
-            str2id "substr", [str2id "x", str2id "Int"; str2id "y", str2id "Int"], str2id "String" ]
+        [   str2id "concat", [str2id "s", str2id "String"], str2id "String"
+            str2id "length", [], str2id "Int"
+            str2id "substr", [str2id "i", str2id "Int"; str2id "l", str2id "Int"], str2id "String" ]
             
     | _ -> 
         methods ()
@@ -307,9 +307,9 @@ let standartMethods =
             str2id "out_int", [str2id "x", str2id "Int"], str2id "SELF_TYPE" 
             str2id "out_string", [str2id "x", str2id "String"], str2id "SELF_TYPE" ]
         "String",
-        [   str2id "length", [], str2id "Int"
-            str2id "concat", [str2id "s", str2id "String"], str2id "String"
-            str2id "substr", [str2id "x", str2id "Int"; str2id "y", str2id "Int"], str2id "String" ] ]
+        [   str2id "concat", [str2id "s", str2id "String"], str2id "String"
+            str2id "length", [], str2id "Int"
+            str2id "substr", [str2id "i", str2id "Int"; str2id "l", str2id "Int"], str2id "String" ] ]
     |> Map.ofList
             
 
@@ -614,7 +614,7 @@ let rec typecheckExpr c objectEnv methodEnv (expr : Expr) inhMap : Result<Type, 
                 <| Success()
             let formalRetType = 
                 match snd methodType with
-                | "SELF_TYPE" -> objType 
+                | "SELF_TYPE" -> objTypeInitial
                 | _ -> methodType |> snd |> Type
 
             return formalRetType
