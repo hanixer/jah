@@ -261,4 +261,6 @@ module Deserialize =
 let parse (s:string) : Ast option =
     match FParsec.CharParsers.run Deserialize.pAst s with
     | FParsec.CharParsers.ParserResult.Success (ast, _, _) -> Some (Ast ast)
-    | _ -> None
+    | FParsec.CharParsers.ParserResult.Failure (err, _, _) -> 
+        printfn "%s" err
+        None

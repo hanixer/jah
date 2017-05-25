@@ -296,6 +296,24 @@ let getClassMethods c ((Ast cs) as ast) : MethodSignature list =
     | _ -> 
         methods ()
 
+let standartMethods =
+    [   "Object",
+        [   str2id "abort", [], str2id "Object"
+            str2id "type_name", [], str2id "String"
+            str2id "copy", [], str2id "SELF_TYPE" ]
+        "IO",
+        [   str2id "out_string", [str2id "x", str2id "String"], str2id "SELF_TYPE"
+            str2id "out_int", [str2id "x", str2id "Int"], str2id "SELF_TYPE"
+            str2id "in_string", [], str2id "String"
+            str2id "in_int", [], str2id "Int" ]
+        "String",
+        [   str2id "length", [], str2id "Int"
+            str2id "concat", [str2id "s", str2id "String"], str2id "String"
+            str2id "substr", [str2id "x", str2id "Int"; str2id "y", str2id "Int"], str2id "String" ] ]
+    |> Map.ofList
+            
+
+
 let mergeMethods currMethods baseMethods =
     currMethods
     |> List.filter (fun ((_, m1), _, _) ->
@@ -824,46 +842,8 @@ let typecheckAst (Ast cs as ast) =
     
     go cs
 
-// Now need to output semantic analysis results
-//  to file and check diff with refence compiler.
 
-// Class map: Class and attributes
-//  each attribute, first inherited attributes
-// Implementation map: class and methods in order
-// Parent map
-// Annotated AST
-(*
-The Class Map
-Output class_map \n.
-Output the number of classes and then \n.
-    Output each class in turn (in ascending alphabetical order):
-    Output the name of the class and then \n.
-    Output the number of attributes and then \n.
-        Output each attribute in turn (in order of appearance, with inherited attributes from a superclass coming first):
-        Output no_initializer \n and then the attribute name \n and then the type name \n.
-        or Output initializer \n and then the attribute name \n and then the type name \n and then the initializer expression.
-*)
-(*
-The Implementation Map
-Output implementation_map \n.
-Output the number of classes and then \n.
-Output each class in turn (in ascending alphabetical order):
-Output the name of the class and then \n.
-Output the number of methods for that class and then \n.
-    Output each method in turn (in order of appearance, 
-    with inherited or overridden methods from a superclass coming first; 
-    internal methods are defined to appear in ascending alphabetical order):
-        Output the method name and then \n.
-        Output the number of formals and then \n.
-        Output each formal's name only:
-        Output the name and then \n
-        If this method is inherited from a parent class and not overriden, 
-        output the name of the ultimate parent class that defined the method 
-        body expression and then \n. 
-        Otherwise, output the name of the current class and then \n.
-        Output the method body expression.
-*)
-type MethodBody = BodyInner of string | BodyExpr of Expr
+type MethodBody = BodyInner of (*ret type*)string * (*class name*)string | BodyExpr of Expr
 type MethodInfo = Id * (*formals*) string list * (*ultimate parent name*)string * MethodBody
 type SemanticInfo = {
     Attributes : Map<string, (Id * Id * Expr option) list>
@@ -896,16 +876,7 @@ let getAttributes (Ast cs as ast) inhMap =
         <| ownAttributes c)
     |> Map.ofList
 
-//  For each class c
-//      Get parent methods by recursion.    
-//      If parent is internal? What to do??
-//      Merge
-//          Replace parent methods by child methods with the same name
-//
-
 let getClass2methodsMapping (Ast cs as ast) (inhMap:Map<string, string>) =
-    // merge methods
-    // parentMethods -> currMethods -> merged
     let merge parentMethods currMethods =
         parentMethods
         |> List.fold (fun (result, currMethods) ((_, p), _, _, _ as parentMethod) ->
@@ -914,28 +885,47 @@ let getClass2methodsMapping (Ast cs as ast) (inhMap:Map<string, string>) =
                 method :: result, List.filter ((<>) method) currMethods
             | None ->
                 parentMethod :: result, currMethods) ([], currMethods)
-        |> fst
-        |> List.rev
+        |> (fun (x, y) -> List.append (List.rev x) y)
 
-    let rec go currOpt remainingClasses class2methods =
+    let ownMethods c : MethodInfo list =
+        match Map.tryFind c standartMethods with
+        | Some ms ->
+            ms
+            |> List.map (fun (m,formals,rt) ->
+                m, List.map formalName formals, c, BodyInner (snd rt, c))
+        | None ->
+            tryFindClass c ast
+            |> Option.map methodsOf
+            |> defaultArg 
+            <| []
+            |> List.map (fun (m, formals, rt, expr) ->
+                m, List.map formalName formals, c, BodyExpr expr)
+
+    let rec go currOpt (remainingClasses:Set<string>) (class2methods:Map<string, MethodInfo list>) =
         match currOpt, Seq.tryHead remainingClasses with
-        | Some c, _ | None, Some c->
+        | Some c, _ | None, Some c ->
             match Map.tryFind c inhMap with
             | Some p ->
+                // parent is present
                 match Map.tryFind p class2methods with
                 | Some parentMethods ->
-                    class2methods
-                    printfn "parent ready"
+                    ownMethods c
+                    |> merge parentMethods
+                    |> Map.add c
+                    <| class2methods
+                    |> go None (Set.remove c remainingClasses)
                 | None ->
-                    printfn "parent is not ready yet"
-                printfn "Here we have parent"
+                    go (Some p) remainingClasses class2methods
             | None ->
-                printfn "Here we don't have parent"
-            Map.empty
+                // no parent
+                ownMethods c
+                |> Map.add c
+                <| class2methods
+                |> go None (Set.remove c remainingClasses)
         | _ -> 
             class2methods
 
-    2
+    go None (allClassNamesWithStandart ast |> Set.ofList) Map.empty
     
 let analyze ast =
     result {
@@ -945,6 +935,10 @@ let analyze ast =
         do! validateMethodFormalsRedefinition ast
         do! validateRedefinedAttributes ast
         do! typecheckAst ast
-        let attrs = getAttributes ast inhMap
-        return getAttributes ast inhMap
+        return {
+            Attributes = getAttributes ast inhMap
+            Methods = getClass2methodsMapping ast inhMap
+            InheritanceMap = inhMap
+            AnnotatedAst = ast
+        }
     }

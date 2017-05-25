@@ -1,6 +1,5 @@
 source https://www.nuget.org/api/v2
 nuget FAKE
+nuget FParsec
 nuget FParsecCS
 nuget FSharp.Core
-nuget FParsec
-nuget Fantomas

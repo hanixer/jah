@@ -51,9 +51,10 @@ let checkFromFile (srce) =
                 printfn "Errors: "
                 printfn "%A" ers
             printfn "======================================="
-            analyze ast |> printfn "%A"
+            File.WriteAllText("scriptOut.txt", analyze ast |> sprintf "%A")
+            
         | ParserResult.Failure _ -> printfn "parse error"
     else
         printfn "File does not exist"
 
-checkFromFile ("arith")
+checkFromFile ("5-inheritance")

@@ -1,0 +1,234 @@
+module Checker
+
+open System.IO
+open CoolAst
+open CoolType
+
+
+type ProcessResult = { exitCode : int; stdout : string; stderr : string }
+
+let executeProcess (exe,cmdline) =
+    let psi = System.Diagnostics.ProcessStartInfo(exe,cmdline) 
+    psi.UseShellExecute <- false
+    psi.RedirectStandardOutput <- true
+    psi.RedirectStandardError <- true
+    psi.CreateNoWindow <- true        
+    let p = System.Diagnostics.Process.Start(psi) 
+    let output = System.Text.StringBuilder()
+    let error = System.Text.StringBuilder()
+    p.OutputDataReceived.Add(fun args -> output.Append(args.Data) |> ignore)
+    p.ErrorDataReceived.Add(fun args -> error.Append(args.Data) |> ignore)
+    p.BeginErrorReadLine()
+    p.BeginOutputReadLine()
+    p.WaitForExit()
+    { exitCode = p.ExitCode; stdout = output.ToString(); stderr = error.ToString() }
+
+let getAst (srce) =
+    let src = srce + ".cl"
+    let out = srce
+    let astFile = out + ".cl-ast"
+    let args = "--parse --out " + out + " " + src
+    let cool = System.Environment.GetEnvironmentVariable("COOLEXE")
+    printfn "out = %s" out
+
+    if File.Exists(astFile) then File.Delete(astFile)
+     
+    executeProcess (cool, args) |> printfn "Process executed: \n%A"
+    if File.Exists(astFile) then
+        let text = File.ReadAllText(astFile)
+        File.Delete(astFile)
+        CoolAst.parse text
+    else
+        printfn "File does not exist"
+        None
+
+let printId f (loc, n) = fprintf f "%d\n%s\n" loc n
+
+let printList f printer xs =
+    List.length xs |> fprintfn f "%d\n"
+    for x in xs do
+        printer f x
+
+let rec printExpr f (expr:Expr) =
+    let p = fprintfn f
+    let ps = fprintfn f "%s"
+    p "%d" expr.Loc
+
+    match expr.Type with
+    | Some (Type t) ->
+        ps t
+    | Some (SelfType _) | Some SelfTypeFree ->
+        ps "SELF_TYPE"
+    | _ -> ignore 1
+
+    match expr.Expr with
+    | Assign (n, e) -> 
+        ps "assign"
+        printId f n
+        printExpr f e
+    | DynDispatch (a,b,c) ->
+        ps "dynamic_dispatch"
+        printExpr f a
+        printId f b
+        printList f printExpr c
+    | StatDispatch (a,b,c,d) ->
+        ps "static_dispatch"
+        printExpr f a
+        printId f b
+        printId f c
+        printList f printExpr d
+    | SelfDispatch (a, b) ->
+        ps "self_dispatch"
+        printId f a
+        printList f printExpr b
+    | If (a,b,c) ->
+        ps "if"
+        printExpr f a
+        printExpr f b
+        printExpr f c
+    | While (a,b) ->
+        ps "while"
+        printExpr f a
+        printExpr f b
+    | Block xs ->
+        ps "block"        
+        printList f printExpr xs
+    | Let (bindings, e) ->
+        let printBinding f (a,b,c) =
+            match c with
+            | Some cc ->
+                ps "let_binding_init"
+                printId f a
+                printId f b
+                printExpr f cc
+            | None ->
+                ps "let_binding_no_init"
+                printId f a
+                printId f b
+        ps "let"
+        printList f printBinding bindings
+    | New n ->
+        ps "new"
+        printId f n
+    | Isvoid e ->
+        ps "isvoid"
+        printExpr f e
+    | Plus (e1, e2) ->
+        ps "plus"
+        printExpr f e1    
+        printExpr f e2
+    | Minus (e1, e2) ->
+        ps "minus"
+        printExpr f e1    
+        printExpr f e2
+    | Times (e1, e2) ->
+        ps "times"
+        printExpr f e1    
+        printExpr f e2
+    | Divide (e1, e2) ->
+        ps "divide"
+        printExpr f e1    
+        printExpr f e2
+    | LT (e1, e2) ->
+        ps "lt"
+        printExpr f e1    
+        printExpr f e2
+    | LE (e1, e2) ->
+        ps "LE"
+        printExpr f e1    
+        printExpr f e2
+    | EQ (e1, e2) ->
+        ps "eq"
+        printExpr f e1    
+        printExpr f e2
+    | Not e ->
+        ps "not"
+        printExpr f e
+    | Negate e ->
+        ps "negate"
+        printExpr f e
+    | Identifier n ->
+        ps "identifier"
+        printId f n    
+    | True -> ps "true"
+    | False -> ps "false"
+    | Integer n -> p "%d" n
+    | String s -> ps s
+    | Case (a,b) ->
+        let printCase f (x,y,z) =
+            printId f x
+            printId f y
+            printExpr f z
+        ps "case"
+        printExpr f a
+        printList f printCase b
+    ()
+
+let printFormal f ((a,b):Formal) =
+    printId f a
+    printId f b
+
+let printFeature f (feat:Feature) =
+    let p = fprintfn f
+    let ps = fprintfn f "%s"
+    match feat with
+    | Method (a,b,c,d) ->
+        ps "method"
+        printId f a
+        printList f printFormal b
+        printId f c
+        printExpr f d
+    | Attribute (a, b, Some c) ->
+        ps "attribute_init"
+        printId f a
+        printId f b
+        printExpr f c
+    | Attribute (a, b, None) ->
+        ps "attribute_no_init"
+        printId f a
+        printId f b
+
+let printClass f (Class (a,b,c)) = 
+    let p = fprintfn f
+    let ps = fprintfn f "%s"
+    printId f a
+    match b with
+    | Some p ->
+        ps "inherits"
+        printId f p
+    | None ->
+        ps "no_inherits"
+    printList f printFeature c
+
+let printAttribute f ((_,a), b, c) =
+    let ps = fprintfn f "%s"
+    match c with
+    | Some cc ->
+        ps "initializer"
+        ps a
+
+
+let printClassesAndAttributes f attrs =
+    fprintfn f "%s" "class_map"
+    fprintfn f "%d" (Seq.length attrs)
+    1
+
+let printSemanticInfo f semInfo =
+    1
+
+[<EntryPoint>]
+let main argv =
+    use f = File.CreateText("testing.txt")
+    printExpr f {Loc = 5; Type = None; Expr = True}
+    match argv with
+    | [|arg|] ->
+        match getAst arg with
+        | Some ast ->
+            
+            0
+        | None ->
+            printfn "Parse error"
+            1
+    | _ -> 
+        printfn "Wrong invocation. Expected exactly one argument"
+        -1
