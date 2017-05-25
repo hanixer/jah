@@ -5,9 +5,16 @@ open CoolType
 
 module Backery =
     let f x y z c = x + c |> y |> z
+    let briliantConstant = 20234234234.2342
+
+let banIt = 200
+
+let rec strangeNameForUselessFunction x acc =
+    if x < 200 then acc else strangeNameForUselessFunction (x + 1) (x + acc)
 
 [<EntryPoint>]
 let main argv = 
+    strangeNameForUselessFunction 22 0
     // let astBadTypes = 
     //  Ast
     //     [Class
@@ -29,5 +36,3 @@ let main argv =
     //     inheritanceMap astBadTypes
     //     |> mapRes (Map.ofList >> 
     //         getInheritedMethodsErrors "C" astBadTypes)
-
-    0 // return an integer exit code

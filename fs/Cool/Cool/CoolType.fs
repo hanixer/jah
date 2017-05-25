@@ -850,18 +850,18 @@ Output the number of classes and then \n.
 Output each class in turn (in ascending alphabetical order):
 Output the name of the class and then \n.
 Output the number of methods for that class and then \n.
- Output each method in turn (in order of appearance, 
- with inherited or overridden methods from a superclass coming first; 
- internal methods are defined to appear in ascending alphabetical order):
- Output the method name and then \n.
- Output the number of formals and then \n.
-  Output each formal's name only:
-   Output the name and then \n
-  If this method is inherited from a parent class and not overriden, 
-   output the name of the ultimate parent class that defined the method 
-   body expression and then \n. 
-  Otherwise, output the name of the current class and then \n.
-  Output the method body expression.
+    Output each method in turn (in order of appearance, 
+    with inherited or overridden methods from a superclass coming first; 
+    internal methods are defined to appear in ascending alphabetical order):
+        Output the method name and then \n.
+        Output the number of formals and then \n.
+        Output each formal's name only:
+        Output the name and then \n
+        If this method is inherited from a parent class and not overriden, 
+        output the name of the ultimate parent class that defined the method 
+        body expression and then \n. 
+        Otherwise, output the name of the current class and then \n.
+        Output the method body expression.
 *)
 type MethodBody = BodyInner of string | BodyExpr of Expr
 type MethodInfo = Id * (*formals*) string list * (*ultimate parent name*)string * MethodBody
@@ -895,16 +895,47 @@ let getAttributes (Ast cs as ast) inhMap =
         |> List.append
         <| ownAttributes c)
     |> Map.ofList
-    // let cnames =
-    //     cs
-    //     |> List.map (function | Class ((_, n), _, _) -> n)
-    //     |> Set.ofList
-    // for each class
-    // if class in result - skip it
-    // else check for parent of class. 
-    //   if parent already available - add parent attrs, add currentclass attributes
-    //   else recurse on parent
-    
+
+//  For each class c
+//      Get parent methods by recursion.    
+//      If parent is internal? What to do??
+//      Merge
+//          Replace parent methods by child methods with the same name
+//
+
+let getClass2methodsMapping (Ast cs as ast) (inhMap:Map<string, string>) =
+    // merge methods
+    // parentMethods -> currMethods -> merged
+    let merge parentMethods currMethods =
+        parentMethods
+        |> List.fold (fun (result, currMethods) ((_, p), _, _, _ as parentMethod) ->
+            match List.tryFind (fun ((_, m), _, _, _) -> m = p) currMethods with 
+            | Some method ->
+                method :: result, List.filter ((<>) method) currMethods
+            | None ->
+                parentMethod :: result, currMethods) ([], currMethods)
+        |> fst
+        |> List.rev
+
+    let rec go currOpt remainingClasses class2methods =
+        match currOpt, Seq.tryHead remainingClasses with
+        | Some c, _ | None, Some c->
+            match Map.tryFind c inhMap with
+            | Some p ->
+                match Map.tryFind p class2methods with
+                | Some parentMethods ->
+                    class2methods
+                    printfn "parent ready"
+                | None ->
+                    printfn "parent is not ready yet"
+                printfn "Here we have parent"
+            | None ->
+                printfn "Here we don't have parent"
+            Map.empty
+        | _ -> 
+            class2methods
+
+    2
     
 let analyze ast =
     result {
@@ -914,5 +945,6 @@ let analyze ast =
         do! validateMethodFormalsRedefinition ast
         do! validateRedefinedAttributes ast
         do! typecheckAst ast
+        let attrs = getAttributes ast inhMap
         return getAttributes ast inhMap
     }
