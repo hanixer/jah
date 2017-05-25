@@ -281,13 +281,13 @@ let getClassMethods c ((Ast cs) as ast) : MethodSignature list =
     match c with
     | "Object" ->
         [   str2id "abort", [], str2id "Object"
-            str2id "type_name", [], str2id "String"
-            str2id "copy", [], str2id "SELF_TYPE" ]
+            str2id "copy", [], str2id "SELF_TYPE"
+            str2id "type_name", [], str2id "String" ]
     | "IO" -> 
-        [   str2id "out_string", [str2id "x", str2id "String"], str2id "SELF_TYPE"
-            str2id "out_int", [str2id "x", str2id "Int"], str2id "SELF_TYPE"
+        [   str2id "in_int", [], str2id "Int"
             str2id "in_string", [], str2id "String"
-            str2id "in_int", [], str2id "Int" ]
+            str2id "out_int", [str2id "x", str2id "Int"], str2id "SELF_TYPE" 
+            str2id "out_string", [str2id "x", str2id "String"], str2id "SELF_TYPE" ]
     | "String" ->
         [   str2id "length", [], str2id "Int"
             str2id "concat", [str2id "s", str2id "String"], str2id "String"
@@ -299,13 +299,13 @@ let getClassMethods c ((Ast cs) as ast) : MethodSignature list =
 let standartMethods =
     [   "Object",
         [   str2id "abort", [], str2id "Object"
-            str2id "type_name", [], str2id "String"
-            str2id "copy", [], str2id "SELF_TYPE" ]
+            str2id "copy", [], str2id "SELF_TYPE"
+            str2id "type_name", [], str2id "String" ]
         "IO",
-        [   str2id "out_string", [str2id "x", str2id "String"], str2id "SELF_TYPE"
-            str2id "out_int", [str2id "x", str2id "Int"], str2id "SELF_TYPE"
+        [   str2id "in_int", [], str2id "Int"
             str2id "in_string", [], str2id "String"
-            str2id "in_int", [], str2id "Int" ]
+            str2id "out_int", [str2id "x", str2id "Int"], str2id "SELF_TYPE" 
+            str2id "out_string", [str2id "x", str2id "String"], str2id "SELF_TYPE" ]
         "String",
         [   str2id "length", [], str2id "Int"
             str2id "concat", [str2id "s", str2id "String"], str2id "String"
@@ -881,8 +881,8 @@ let getClass2methodsMapping (Ast cs as ast) (inhMap:Map<string, string>) =
         parentMethods
         |> List.fold (fun (result, currMethods) ((_, p), _, _, _ as parentMethod) ->
             match List.tryFind (fun ((_, m), _, _, _) -> m = p) currMethods with 
-            | Some method ->
-                method :: result, List.filter ((<>) method) currMethods
+            | Some meth ->
+                meth :: result, List.filter ((<>) meth) currMethods
             | None ->
                 parentMethod :: result, currMethods) ([], currMethods)
         |> (fun (x, y) -> List.append (List.rev x) y)

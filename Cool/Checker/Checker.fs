@@ -7,6 +7,8 @@ open CoolType
 
 type ProcessResult = { exitCode : int; stdout : string; stderr : string }
 
+let ps f = fprintfn f "%s"
+
 let executeProcess (exe,cmdline) =
     let psi = System.Diagnostics.ProcessStartInfo(exe,cmdline) 
     psi.UseShellExecute <- false
@@ -45,7 +47,7 @@ let getAst (srce) =
 let printId f (loc, n) = fprintf f "%d\n%s\n" loc n
 
 let printList f printer xs =
-    List.length xs |> fprintfn f "%d\n"
+    List.length xs |> fprintfn f "%d"
     for x in xs do
         printer f x
 
@@ -206,26 +208,78 @@ let printAttribute f ((_,a), b, c) =
     | Some cc ->
         ps "initializer"
         ps a
-
+        ps (snd b)
+        printExpr f cc
+    | None ->
+        ps "no_initializer"
+        ps a
+        ps (snd b)
 
 let printClassesAndAttributes f attrs =
+    let ps = fprintfn f "%s"
     fprintfn f "%s" "class_map"
     fprintfn f "%d" (Seq.length attrs)
-    1
+    attrs
+    |> Map.iter (fun k v ->
+        ps k
+        printList f printAttribute v)
 
-let printSemanticInfo f semInfo =
-    1
+// Id * string list * (*ultimate parent name*)string * MethodBody
+let printMethod f (a, b, c, d) =
+    ps f (snd a)
+    printList f ps b
+    ps f c
+    match d with
+    | BodyInner (typ, cl) ->
+        fprintfn f "0"
+        ps f typ
+        ps f "internal"
+        ps f (cl + "." + (snd a))
+    | BodyExpr expr ->
+        printExpr f expr
+
+
+let printImplementationMap f implMap =
+    ps f "implementation_map"
+    fprintfn f "%d" (Seq.length implMap)
+    implMap
+    |> Map.iter (fun k v ->
+        ps f k
+        printList f printMethod v)
+
+let printParentMap f parMap =
+    ps f "parent_map"
+    parMap
+    |> Map.toList
+    |> printList f (fun f (c, p) ->
+        ps f c
+        ps f p) 
+
+let printSemanticInfo f (semInfo:SemanticInfo) =    
+    printClassesAndAttributes f semInfo.Attributes
+    printImplementationMap f semInfo.Methods
+    printParentMap f semInfo.InheritanceMap    
+    match semInfo.AnnotatedAst with
+    | Ast cs -> printList f printClass cs
 
 [<EntryPoint>]
 let main argv =
+    let outFilename = "out.cl-ast"
     use f = File.CreateText("testing.txt")
     printExpr f {Loc = 5; Type = None; Expr = True}
     match argv with
     | [|arg|] ->
         match getAst arg with
         | Some ast ->
-            
-            0
+            match analyze ast with
+            | Success semInfo ->
+                use fout = File.CreateText(outFilename)
+                printSemanticInfo fout semInfo
+                0
+            | Failure errs ->
+                printfn "Semantic errors happend!"
+                printfn "%A" errs
+                -1
         | None ->
             printfn "Parse error"
             1
