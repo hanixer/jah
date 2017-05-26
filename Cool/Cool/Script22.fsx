@@ -7,5 +7,22 @@
 
 open Parser
 open FParsec
+open System
+(*
+let t = run (regex "\"[^\n]*\"") "\"\""
+run pCoolInt "2147483648"
 
-run (regex "\"[^\n]*\"") "\"123123\n123\" \n"
+let ws = spaces
+let str_ws s = pstring s >>. ws
+
+let opp = new OperatorPrecedenceParser<float,unit,unit>()
+let expr = opp.ExpressionParser
+let term = (pfloat .>> ws) <|> between (str_ws "(") (str_ws ")") expr
+opp.TermParser <- term
+
+type Assoc = Associativity
+
+opp.AddOperator(InfixOperator("+", ws, 1, Assoc.Left, fun x y -> x + y))
+opp.AddOperator(InfixOperator("*", ws, 2, Assoc.Left, fun x y -> x * y))
+*)
+run expr "1+2*3+5"
