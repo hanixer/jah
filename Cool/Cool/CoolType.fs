@@ -540,11 +540,13 @@ let joinTypes inhMap t1 t2 : Type =
     let r1 = List.take minLen r1
     let r2 = List.take minLen r2
 
-    List.zip r1 r2
-    |> List.takeWhile (fun (x, y) ->x = y)
-    |> List.last
-    |> fst 
-    |> Type
+    if t1 = t2 then t1
+    else
+        List.zip r1 r2
+        |> List.takeWhile (fun (x, y) ->x = y)
+        |> List.last
+        |> fst 
+        |> Type
 
 //func : ts1 -> ts2 -> class -> 
 let tryFindArgumentsError (loc:int) inhMap (argsTypes:Type list) (formalsTypes:Type list) : TypeError option =

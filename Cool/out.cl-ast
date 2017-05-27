@@ -3658,7 +3658,7 @@ class_type
 var
 Main
 320
-Main
+SELF_TYPE
 case
 320
 A
@@ -3861,7 +3861,7 @@ identifier
 346
 avar
 347
-Main
+SELF_TYPE
 if
 347
 Bool
@@ -4342,7 +4342,7 @@ String
 string
 g
 381
-Main
+SELF_TYPE
 if
 381
 Bool
@@ -7079,7 +7079,7 @@ A
 319
 SELF_TYPE
 320
-Main
+SELF_TYPE
 case
 320
 A
@@ -7291,7 +7291,7 @@ identifier
 346
 avar
 347
-Main
+SELF_TYPE
 if
 347
 Bool
@@ -7772,7 +7772,7 @@ String
 string
 g
 381
-Main
+SELF_TYPE
 if
 381
 Bool
