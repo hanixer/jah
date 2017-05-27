@@ -8,6 +8,7 @@
 open Parser
 open FParsec
 open System
+open System.IO
 (*
 let t = run (regex "\"[^\n]*\"") "\"\""
 run pCoolInt "2147483648"
@@ -25,4 +26,20 @@ type Assoc = Associativity
 opp.AddOperator(InfixOperator("+", ws, 1, Assoc.Left, fun x y -> x + y))
 opp.AddOperator(InfixOperator("*", ws, 2, Assoc.Left, fun x y -> x * y))
 *)
-run expr "1+2*3+5"
+
+let doit s =
+    use file = File.CreateText("testoutput.txt")
+    match run cool s with
+    | Success (r, _, _) ->
+        fprintf file "%A" r
+    | Failure (ss, _, _) -> printfn "%A" ss
+let doite s =
+    use file = File.CreateText("testoutput.txt")
+    match run expr s with
+    | Success (r, _, _) ->
+        fprintf file "%A" r
+    | Failure (ss, _, _) -> printfn "%A" ss
+
+doite "\"\"abort(){1;2;3;}if i = 9 then \"9\" else
+	{ abort(); \"\"; }"
+doit (File.ReadAllText(@"tests\arith.cl"))

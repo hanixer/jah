@@ -4,7 +4,6 @@ open System.IO
 open CoolAst
 open CoolType
 
-
 type ProcessResult = { exitCode : int; stdout : string; stderr : string }
 
 let ps f = fprintfn f "%s"
@@ -26,22 +25,10 @@ let executeProcess (exe,cmdline) =
     { exitCode = p.ExitCode; stdout = output.ToString(); stderr = error.ToString() }
 
 let getAst (srce) =
-    let src = srce + ".cl"
-    let out = srce
-    let astFile = out + ".cl-ast"
-    let args = "--parse --out " + out + " " + src
-    let cool = System.Environment.GetEnvironmentVariable("COOLEXE")
-    printfn "out = %s" out
-
-    if File.Exists(astFile) then File.Delete(astFile)
-     
-    executeProcess (cool, args) |> printfn "Process executed: \n%A"
-    if File.Exists(astFile) then
-        let text = File.ReadAllText(astFile)
-        File.Delete(astFile)
-        CoolAst.parse text
+    if File.Exists(srce) then
+        Parser.parse (File.ReadAllText(srce))
     else
-        printfn "File does not exist"
+        printfn "File %s does not exist" srce
         None
 
 let printId f (loc, n) = fprintf f "%d\n%s\n" loc n
