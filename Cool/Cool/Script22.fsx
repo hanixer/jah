@@ -40,6 +40,5 @@ let doite s =
         fprintf file "%A" r
     | Failure (ss, _, _) -> printfn "%A" ss
 
-doite "\"\"abort(){1;2;3;}if i = 9 then \"9\" else
-	{ abort(); \"\"; }"
+doite "{avar <- (new A).method1(avar.value()) \t\t\t\n;1;}"
 doit (File.ReadAllText(@"tests\arith.cl"))

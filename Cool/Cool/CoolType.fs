@@ -55,6 +55,25 @@ type MethodEnv = Map<string,Map<string,(string list * string)>>
 
 type ObjectEnv = (string * Type) list
 
+
+type MethodBody = 
+    | BodyInner of (*ret type*)string * (*class name*)string * (*method name*) string
+    | BodyExpr of Expr
+
+type MethodInfo = 
+    Id * (*formals*) string list * (*ultimate parent name*)string * MethodBody
+
+type ImplMap = Map<string, MethodInfo list>
+type InheritanceMap = Map<string, string>
+
+type SemanticInfo = 
+    { Attributes : Map<string, (Id * Id * Expr option) list>
+      Methods : ImplMap
+      InheritanceMap : InheritanceMap
+      AnnotatedAst : Ast }
+    member x.ApplyImplMap c m =
+        Map.find c x.Methods |> List.find (fun ((_, m2), _, _, _) -> m2 = m)
+
 // TODO: add checks for whether the type is declared
 //       if SELF_TYPE is used whether it is permitted to use
 // Uses of SELF_TYPE:
@@ -62,6 +81,10 @@ type ObjectEnv = (string * Type) list
 // as the return type of a method, 
 // as the declared type of a let variable, or 
 // as the declared type of an attribute. 
+
+// Undefined types:
+//      new expr
+// Check for main method
 
 let id2str = snd
 
@@ -271,31 +294,6 @@ let tryFindClass c (Ast cs) =
     cs
     |> List.tryFind (fun (Class ((_, c2), _, _)) -> c = c2)
 
-let getClassMethods c ((Ast cs) as ast) : MethodSignature list =
-    let methods () = 
-        match tryFindClass c ast with
-        | Some cl ->
-            class2methodsSignatures cl
-        | None -> 
-            []
-    match c with
-    | "Object" ->
-        [   str2id "abort", [], str2id "Object"
-            str2id "copy", [], str2id "SELF_TYPE"
-            str2id "type_name", [], str2id "String" ]
-    | "IO" -> 
-        [   str2id "in_int", [], str2id "Int"
-            str2id "in_string", [], str2id "String"
-            str2id "out_int", [str2id "x", str2id "Int"], str2id "SELF_TYPE" 
-            str2id "out_string", [str2id "x", str2id "String"], str2id "SELF_TYPE" ]
-    | "String" ->
-        [   str2id "concat", [str2id "s", str2id "String"], str2id "String"
-            str2id "length", [], str2id "Int"
-            str2id "substr", [str2id "i", str2id "Int"; str2id "l", str2id "Int"], str2id "String" ]
-            
-    | _ -> 
-        methods ()
-
 let standartMethods =
     [   "Object",
         [   str2id "abort", [], str2id "Object"
@@ -311,6 +309,17 @@ let standartMethods =
             str2id "length", [], str2id "Int"
             str2id "substr", [str2id "i", str2id "Int"; str2id "l", str2id "Int"], str2id "String" ] ]
     |> Map.ofList
+
+let getClassMethods c ((Ast cs) as ast) : MethodSignature list =
+    let methods () = 
+        match tryFindClass c ast with
+        | Some cl ->
+            class2methodsSignatures cl
+        | None -> 
+            []
+    match Map.tryFind c standartMethods with
+    | Some m -> m
+    | _ -> methods ()
             
 
 
@@ -844,15 +853,8 @@ let typecheckAst (Ast cs as ast) =
     
     go cs
 
-
-type MethodBody = BodyInner of (*ret type*)string * (*class name*)string | BodyExpr of Expr
-type MethodInfo = Id * (*formals*) string list * (*ultimate parent name*)string * MethodBody
-type SemanticInfo = {
-    Attributes : Map<string, (Id * Id * Expr option) list>
-    Methods : Map<string, MethodInfo list>
-    InheritanceMap : Map<string, string>
-    AnnotatedAst : Ast
-}
+let applyImplMap c m implMap =
+    Map.find c implMap |> List.find (fun ((_, m2), _, _) -> m2 = m)
 
 let allClassNamesWithStandart (Ast cs) =
     cs
@@ -894,7 +896,7 @@ let getClass2methodsMapping (Ast cs as ast) (inhMap:Map<string, string>) =
         | Some ms ->
             ms
             |> List.map (fun (m,formals,rt) ->
-                m, List.map formalName formals, c, BodyInner (snd rt, c))
+                m, List.map formalName formals, c, BodyInner (snd m, snd rt, c))
         | None ->
             tryFindClass c ast
             |> Option.map methodsOf

@@ -222,7 +222,7 @@ let printMethod f (a, b, c, d) =
     printList f ps b
     ps f c
     match d with
-    | BodyInner (typ, cl) ->
+    | BodyInner (_, typ, cl) ->
         fprintfn f "0"
         ps f typ
         ps f "internal"
