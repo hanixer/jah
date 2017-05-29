@@ -13,6 +13,21 @@ open System
 open System.IO
 open Interpreter
 
+let dointerp semInfo body =
+    try
+    Interpreter.evaluate 
+        semInfo 
+        (ObjectVal ("Main", Map.empty)) 
+        { NewLoc = 0; Dict = System.Collections.Generic.Dictionary<Loc, Value>() }
+        Map.empty
+        body
+    |> Some
+    with
+    | e -> 
+        printfn "Evaluation failed! Exception: %A" e
+        Some VoidVal
+
+
 let doit s =
     use file = File.CreateText("testoutput.txt")
     match Parser.parse (File.ReadAllText(s)) with
@@ -28,13 +43,7 @@ let doit s =
                         fs
                         |> List.pick (function
                             | Method ((_, "main"),_,_,body) ->
-                                Interpreter.evaluate 
-                                    semInfo 
-                                    (ObjectVal ("Main", Map.empty)) 
-                                    { NewLoc = 0; Dict = System.Collections.Generic.Dictionary<Loc, Value>() }
-                                    Map.empty
-                                    body
-                                |> Some
+                                dointerp semInfo body
                             | _ -> None)
                         |> Some
                     else None))
@@ -45,4 +54,4 @@ let doit s =
 
 // printfn "%s - current dir" System.Environment.CurrentDirectory
 let s=System.IO.File.ReadAllText("tests\\arith.cl") 
-doit "tests\\1.cl"
+doit "tests\\arith.cl"

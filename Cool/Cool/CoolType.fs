@@ -524,28 +524,27 @@ let methodSignature2methodType ((_, m), formals, rt) =
 
 let ast2methodEnvironment (Ast cs as ast) : MethodEnv =
     let inhMap = ast |> inheritanceMapUnchecked
+    let accumulateMethods meth2type ((_, m), formals, rt) =
+        meth2type
+        |> Map.add m  
+            (formals |> List.map formal2type, snd rt)
     let extractFromClass = fun c ->
         Map.empty
-        |> List.fold (fun meth2type ((_, m), formals, rt) ->
-            meth2type
-            |> Map.add m  
-                (formals |> List.map formal2type, snd rt)) 
+        |> List.fold accumulateMethods
         <| getAllClassMethods (class2name c) ast inhMap
+    let extractMethInfo (m, fs, rt) =
+        snd m, fs |> List.map snd        
+    let stdMethods =
+        standartMethods
+        |> Map.fold (fun class2methods c ms ->
+            let v = ms |> List.fold accumulateMethods Map.empty
+            class2methods |> Map.add c v) Map.empty
 
-    let stringMethods =             
-        [    "length", ([],  "Int")
-             "concat", (["String"],  "String")
-             "substr", (["Int";  "Int"],  "String") ]
-
-    let withStringMethods = 
-        Map.empty
-        |> Map.add "String" (Map.ofList stringMethods)
-        
-    withStringMethods
-    |> List.fold (fun class2map c -> 
-        class2map 
+    cs
+    |> List.fold (fun class2map c ->
+        class2map
         |> Map.add (class2name c) (extractFromClass c))
-    <| cs
+        stdMethods
 
 let getMethodType c m (methEnv:MethodEnv) : MethodType option = 
     methEnv
@@ -988,7 +987,7 @@ let getClass2methodsMapping (Ast cs as ast) (inhMap:Map<string, string>) =
         | Some ms ->
             ms
             |> List.map (fun (m,formals,rt) ->
-                m, List.map formalName formals, c, BodyInner (snd m, snd rt, c))
+                m, List.map formalName formals, c, BodyInner (snd rt, c, snd m))
         | None ->
             tryFindClass c ast
             |> Option.map methodsOf
