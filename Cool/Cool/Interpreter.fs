@@ -90,6 +90,27 @@ let internalMethod c m object args =
             let s = match args with | [StringVal (_, s')] -> s' | _ -> ""
             s.Replace("\\n", "\n").Replace("\\t", "\t") |> printfn "%s"
             object
+        | "out_int" ->
+            let n = match args with | [IntVal m] -> m | _ -> 0
+            printfn "%d" n
+            object
+        | "in_string" ->
+            let s = System.Console.ReadLine()
+            let lenStr = 
+                if s.IndexOf(0 |> char) >= 0 then
+                    (0, "")
+                else
+                    (s.Length, s)
+            StringVal lenStr
+        | "in_int" ->
+            let line = System.Console.ReadLine()            
+            let v = 
+                try
+                    int32 line
+                with
+                | _ -> 0
+            IntVal v
+                
         | _ -> failwithf "There is no method %s for IO" m
     | _ ->
         c |> failwithf "Unknown class %s"

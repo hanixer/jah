@@ -54,4 +54,4 @@ let doit s =
 
 // printfn "%s - current dir" System.Environment.CurrentDirectory
 let s=System.IO.File.ReadAllText("tests\\arith.cl") 
-doit "tests\\arith.cl"
+doit "tests\\7-read-string.cl"
