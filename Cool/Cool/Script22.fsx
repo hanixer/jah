@@ -4,41 +4,45 @@
 #load "CoolAst.fs"
 #load "CoolType.fs"
 #load "Parser.fs"
+#load "Interpreter.fs"
 
+open CoolAst
 open Parser
 open FParsec
 open System
 open System.IO
-(*
-let t = run (regex "\"[^\n]*\"") "\"\""
-run pCoolInt "2147483648"
-
-let ws = spaces
-let str_ws s = pstring s >>. ws
-
-let opp = new OperatorPrecedenceParser<float,unit,unit>()
-let expr = opp.ExpressionParser
-let term = (pfloat .>> ws) <|> between (str_ws "(") (str_ws ")") expr
-opp.TermParser <- term
-
-type Assoc = Associativity
-
-opp.AddOperator(InfixOperator("+", ws, 1, Assoc.Left, fun x y -> x + y))
-opp.AddOperator(InfixOperator("*", ws, 2, Assoc.Left, fun x y -> x * y))
-*)
+open Interpreter
 
 let doit s =
     use file = File.CreateText("testoutput.txt")
-    match run cool s with
-    | Success (r, _, _) ->
-        fprintf file "%A" r
-    | Failure (ss, _, _) -> printfn "%A" ss
-let doite s =
-    use file = File.CreateText("testoutput.txt")
-    match run expr s with
-    | Success (r, _, _) ->
-        fprintf file "%A" r
-    | Failure (ss, _, _) -> printfn "%A" ss
+    match Parser.parse (File.ReadAllText(s)) with
+    | Some ast ->
+        fprintf file "%A" ast
+        CoolType.analyze ast
+        |> CoolType.Result.map (fun (semInfo:CoolType.SemanticInfo) ->
+            match semInfo.AnnotatedAst with 
+            | Ast cs ->
+                cs
+                |> List.pick (fun (Class ((_, n), _, fs)) -> 
+                    if n = "Main" then
+                        fs
+                        |> List.pick (function
+                            | Method ((_, "main"),_,_,body) ->
+                                Interpreter.evaluate 
+                                    semInfo 
+                                    (ObjectVal ("Main", Map.empty)) 
+                                    { NewLoc = 0; Dict = System.Collections.Generic.Dictionary<Loc, Value>() }
+                                    Map.empty
+                                    body
+                                |> Some
+                            | _ -> None)
+                        |> Some
+                    else None))
+    | None -> 
+        printfn "NONONONONON"
+        CoolType.Result.Failure []
+    // | None -> printfn "Parser failed"
 
-doite "{avar <- (new A).method1(avar.value()) \t\t\t\n;1;}"
-doit (File.ReadAllText(@"tests\arith.cl"))
+// printfn "%s - current dir" System.Environment.CurrentDirectory
+let s=System.IO.File.ReadAllText("tests\\arith.cl") 
+doit "tests\\1.cl"

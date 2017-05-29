@@ -22,6 +22,7 @@ type Store =
 type RuntimeError =
     | Uninitilized
     | LocationNotFound of int * Loc
+    | VariableNotFound of int * string
     | AbortCalled
 
 exception InterpreterException of RuntimeError
@@ -33,6 +34,8 @@ let applyStore (store:Store) loc =
         Some store.Dict.[loc]
     else
         None
+
+let applyEnv = Map.tryFind
 
 let newLocation (store:Store) = 
     let loc = store.NewLoc
@@ -77,12 +80,27 @@ let internalMethod c m object args =
             StringVal (t.Length, t)
         | _ -> failwithf "There is no method %s for Object" m
     | "IO" ->
-        VoidVal
-
+        match m with
+        | "out_string" ->
+            let s = match args with | [StringVal (_, s')] -> s' | _ -> ""
+            s.Replace("\\n", "\n").Replace("\\t", "\t") |> printfn "%s"
+            object
+        | _ -> failwithf "There is no method %s for IO" m
 
 let rec evaluate (semInfo:SemanticInfo) (so:Value) (store:Store) env (expr:Expr) : Value =
     let eval so env expr = evaluate semInfo so store env expr
     match expr.Expr with
+    | Identifier v ->
+        match snd v with
+        | "self" -> so
+        | _ -> 
+            match applyEnv (snd v) with
+            | Some loc -> 
+                match applyStore store loc with
+                | Some value -> value
+                | None -> runtimeErr 
+
+    | String s -> StringVal (s.Length, s)
     | Integer n -> IntVal n
     | New (_, t) ->
         let t' = if t = "SELF_TYPE" then typeOf so else t
@@ -120,5 +138,7 @@ let rec evaluate (semInfo:SemanticInfo) (so:Value) (store:Store) env (expr:Expr)
         match body with
         | BodyExpr bodyExpr -> eval objVal newEnv bodyExpr
         | _ -> StringVal (0, "internal")
+    | _ ->
+        failwithf "Unknown expression %A" expr
         
         
