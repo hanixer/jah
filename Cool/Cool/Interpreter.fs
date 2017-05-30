@@ -28,6 +28,8 @@ type RuntimeError =
     | BlockExpressionIsEmpty of int
     | CaseWithoutMatchingBranch of int * Value
     | CaseOnVoid of int
+    | DivisionByZero of int
+    | SubstringOutOfRange of string * int * int
 
 exception InterpreterException of RuntimeError
 
@@ -39,7 +41,11 @@ let applyStore (store:Store) loc =
     else
         None
 
-let applyEnv = Map.tryFind
+let applyEnv v env = 
+    match Map.tryFind (snd v) env with
+    | Some loc -> loc        
+    | None -> VariableNotFound v |> runtimeErr
+
 let extendEnv = Map.add
 
 let newLocation (store:Store) = 
@@ -72,28 +78,29 @@ let valueAttributes = function
     | ObjectVal (_, attrs) -> attrs
     | _ -> Map.empty
 
-let internalMethod c m object args =
+let internalMethod c m objVal args =
     match c with
     | "Object" ->
         match m with
         | "abort" ->
             runtimeErr AbortCalled
         | "copy" ->
-            object
+            objVal
         | "type_name" ->
-            let t = typeOf object
+            let t = typeOf objVal
             StringVal (t.Length, t)
         | _ -> failwithf "There is no method %s for Object" m
+
     | "IO" ->
         match m with
         | "out_string" ->
             let s = match args with | [StringVal (_, s')] -> s' | _ -> ""
-            s.Replace("\\n", "\n").Replace("\\t", "\t") |> printfn "%s"
-            object
+            s.Replace("\\n", "\n").Replace("\\t", "\t") |> printf "%s"
+            objVal
         | "out_int" ->
             let n = match args with | [IntVal m] -> m | _ -> 0
-            printfn "%d" n
-            object
+            printf "%d" n
+            objVal
         | "in_string" ->
             let s = System.Console.ReadLine()
             let lenStr = 
@@ -109,11 +116,35 @@ let internalMethod c m object args =
                     int32 line
                 with
                 | _ -> 0
-            IntVal v
-                
+            IntVal v                
         | _ -> failwithf "There is no method %s for IO" m
+
+    | "String" ->
+        match m with
+        | "length" ->
+            match objVal with
+            | StringVal (l, _) -> IntVal l
+            | _ -> IntVal 0
+        | "concat" ->
+            match objVal, args with
+            | StringVal (_, s1), [ StringVal (_, s2) ] ->
+                let s = s1 + s2
+                StringVal (s.Length, s)
+            | _ -> StringVal (0, "")
+        | "substr" ->
+            match objVal, args with
+            | StringVal (l, s), [ IntVal index; IntVal length ] ->
+                try
+                    let newStr = s.Substring(index, length) 
+                    StringVal (newStr.Length, newStr)
+                with
+                | :? System.ArgumentOutOfRangeException ->
+                    SubstringOutOfRange (s, index, length) |> runtimeErr
+            | _ -> StringVal (0, "")
+        | _ -> failwithf "There is no method %s for String" m
+
     | _ ->
-        c |> failwithf "Unknown class %s"
+        c |> failwithf "Unknown internal class %s"
 
 let tryFindCaseBranch inhMap (ancestors : (Id * Id * Expr) list) c : (Id * Id * Expr) option = 
     let rec path x =
@@ -138,8 +169,33 @@ let tryFindCaseBranch inhMap (ancestors : (Id * Id * Expr) list) c : (Id * Id * 
         |> fst
         |> Some
 
-let rec evaluate (semInfo:SemanticInfo) (so:Value) (store:Store) env (expr:Expr) : Value =
-    let eval so env expr = evaluate semInfo so store env expr
+let createNewObject semInfo store enclosingType objectType eval = 
+    let t' = 
+        match objectType with
+        | "SELF_TYPE" -> enclosingType
+        | _ -> objectType
+    let initAttribute ((_, v), (_, t), e) =
+        let loc = newLocation store
+        defaultValue t |> setLocationValue store loc 
+        v, loc, e
+    let attrs = 
+        semInfo.Attributes.[t']
+        |> List.map initAttribute
+    let ob = 
+        t', attrs 
+            |> List.map (fun (v,loc,e) -> v,loc) 
+            |> Map.ofList
+    let objVal = ObjectVal ob
+    attrs 
+    |> List.iter (fun (v, loc, eOpt) ->
+        eOpt
+        |> Option.iter (fun initExpr -> 
+            eval objVal (ob |> snd) initExpr
+            |> setLocationValue store loc))
+    ob
+
+let rec evaluate (semInfo:SemanticInfo) (store:Store) (so:Value) env (expr:Expr) : Value =
+    let eval so env expr = evaluate semInfo store so env expr
 
     let evalDispatch objVal objType args meth =
         if objVal = VoidVal then
@@ -161,35 +217,36 @@ let rec evaluate (semInfo:SemanticInfo) (so:Value) (store:Store) env (expr:Expr)
         | BodyExpr bodyExpr -> 
             eval objVal newEnv bodyExpr
         | BodyInner (rt, c, m) -> 
-            try
-                internalMethod c m objVal argVals
-            with 
-            | e -> 
-                printfn "Exception in %A" expr
-                reraise()
+            internalMethod c m objVal argVals
+
+    let evalArithmetic op e1 e2 =
+        match eval so env e1, eval so env e2 with
+        | IntVal n1, IntVal n2 ->
+            op n1 n2 |> IntVal
+        | _ -> failwith "integer is expected in arithmetic operation"
 
     match expr.Expr with
     | Assign (lhs, rhs) ->
-        match applyEnv (snd lhs) env with
-        | Some loc ->
-            let rhsVal = eval so env rhs 
-            setLocationValue store loc rhsVal
-            rhsVal
-        | None ->
-            VariableNotFound lhs |> runtimeErr
+        let loc = applyEnv lhs env
+        let rhsVal = eval so env rhs 
+        setLocationValue store loc rhsVal
+        rhsVal
     | Let (bindings, body) ->
+        let accumulateEnv envAcc ((_, v), (_, t), rhsOpt) =
+            let rhsVal =                 
+                match rhsOpt with
+                | Some rhs ->
+                    eval so env rhs
+                | None ->
+                    defaultValue t
+            let loc = newLocationInit store rhsVal
+            extendEnv v loc envAcc
         let envNew =
             bindings
-            |> List.fold (fun envAcc ((_, v), (_, t), rhsOpt) ->
-                let rhsVal =                 
-                    match rhsOpt with
-                    | Some rhs ->
-                        eval so env rhs
-                    | None ->
-                        defaultValue t
-                let loc = newLocationInit store rhsVal
-                extendEnv v loc envAcc) env
+            |> List.fold accumulateEnv env
+
         eval so envNew body
+
     | Block exprs ->
         if exprs.IsEmpty then
             BlockExpressionIsEmpty expr.Loc |> runtimeErr
@@ -203,35 +260,15 @@ let rec evaluate (semInfo:SemanticInfo) (so:Value) (store:Store) env (expr:Expr)
         match snd v with
         | "self" -> so
         | _ -> 
-            match applyEnv (snd v) env with
-            | Some loc -> 
-                match applyStore store loc with
-                | Some value -> value
-                | None -> LocationNotFound (expr.Loc, loc) |> runtimeErr 
-            | None ->
-                VariableNotFound v |> runtimeErr
+            let loc = applyEnv v env
+            match applyStore store loc with
+            | Some value -> value
+            | None -> LocationNotFound (expr.Loc, loc) |> runtimeErr 
     | String s -> StringVal (s.Length, s)
     | Integer n -> IntVal n
     | New (_, t) ->
-        let t' = if t = "SELF_TYPE" then typeOf so else t
-        let attrs = 
-            semInfo.Attributes.[t']
-            |> List.map (fun ((_, v), (_, t), e) -> 
-                let loc = newLocation store
-                defaultValue t |> setLocationValue store loc 
-                v, loc, e)
-        let object = 
-            t', attrs 
-                |> List.map (fun (v,t,e) -> v,t) 
-                |> Map.ofList
-        let objVal = ObjectVal object
-        attrs 
-        |> List.iter (fun (v, loc, eOpt) ->
-            eOpt
-            |> Option.iter (fun initExpr -> 
-                eval objVal (object |> snd) initExpr
-                |> setLocationValue store loc))
-        object |> ObjectVal
+        createNewObject semInfo store (typeOf so) t eval
+        |> ObjectVal
     | Case (target, cases) ->
         let value = eval so env target
         if value = VoidVal then
@@ -256,5 +293,71 @@ let rec evaluate (semInfo:SemanticInfo) (so:Value) (store:Store) env (expr:Expr)
         let objVal = eval so env objExpr
         evalDispatch objVal t args meth
 
-    | _ ->
-        failwithf "Unknown expression %A" expr
+    | If (condExpr, thenExpr, elseExpr) ->        
+        match eval so env condExpr with
+        | BoolVal true ->
+            eval so env thenExpr
+        | BoolVal false ->
+            eval so env elseExpr
+        | _ ->
+            failwith "Condition of if does not evaluate to Bool"
+    | While (condExpr, body) ->
+        match eval so env condExpr with
+        | BoolVal true ->
+            eval so env body |> ignore
+            eval so env expr
+        | BoolVal false ->
+            VoidVal
+        | _ -> 
+            failwith "Condition of while does not evaluate to Bool"
+    | Not e ->
+        match eval so env e with
+        | BoolVal b -> BoolVal (not b)
+        | _ -> failwith "bool is expected in Not"
+    | Negate e ->
+        match eval so env e with
+        | IntVal i -> IntVal (-i)
+        | _ -> failwith "wrong type in negate"
+    | Plus (e1, e2) -> evalArithmetic (+) e1 e2
+    | Minus (e1, e2) -> evalArithmetic (-) e1 e2
+    | Times (e1, e2) -> evalArithmetic (*) e1 e2
+    | Divide (e1, e2) ->
+        try
+            evalArithmetic (/) e1 e2
+        with
+        | :? System.DivideByZeroException ->
+            DivisionByZero expr.Loc |> runtimeErr
+    | EQ (e1, e2) ->
+        if eval so env e1 = eval so env e2 then
+            BoolVal true
+        else 
+            BoolVal false
+    | LT (e1, e2) ->
+        match eval so env e1, eval so env e2 with
+        | IntVal n1, IntVal n2 -> n1 < n2 |> BoolVal
+        | StringVal (_, s1), StringVal (_, s2) -> s1 < s2 |> BoolVal
+        | BoolVal b1, BoolVal b2 -> b1 < b2 |> BoolVal
+        | _ -> BoolVal false
+    | LE (e1, e2) ->
+        match eval so env e1, eval so env e2 with
+        | IntVal n1, IntVal n2 -> n1 <= n2 |> BoolVal
+        | StringVal (_, s1), StringVal (_, s2) -> s1 <= s2 |> BoolVal
+        | BoolVal b1, BoolVal b2 -> b1 <= b2 |> BoolVal
+        | _ -> BoolVal false
+    | Isvoid e ->
+        match eval so env e with
+        | VoidVal -> BoolVal true
+        | _ -> BoolVal false
+
+let execute (semInfo : SemanticInfo) =
+    let store = 
+        { NewLoc = 0
+          Dict = System.Collections.Generic.Dictionary<Loc, Value>() }
+    let eval = evaluate semInfo store
+    let mainObject = createNewObject semInfo store "Main" "Main" eval
+    try
+        eval (ObjectVal mainObject) (snd mainObject) semInfo.MainMethodBody
+        |> Success
+    with
+    | InterpreterException rerr ->
+        Failure [rerr]

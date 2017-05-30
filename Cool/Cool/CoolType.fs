@@ -76,7 +76,8 @@ type SemanticInfo =
     { Attributes : Map<string, (Id * Id * Expr option) list>
       Methods : ImplMap
       InheritanceMap : InheritanceMap
-      AnnotatedAst : Ast }
+      AnnotatedAst : Ast
+      MainMethodBody : Expr }
     member x.ApplyImplMap c m =
         Map.find c x.Methods |> List.find (fun ((_, m2), _, _, _) -> m2 = m)
 
@@ -85,10 +86,6 @@ let id2str = snd
 let className (Class (id, _, _)) = snd id
 let parentName (Class (_, p, _)) = p |> defaultArg <| (0, "Object") |> snd
 
-let checkNoRedefinition (classes : string list) = false
-let checkAllParentsValid (classes : string list) (parents : string list) = true
-
-    
 let parents classes =
     let handle c = className c, parentName c
     classes
@@ -888,7 +885,6 @@ let getObjectEnv c ast inhMap : ObjectEnv =
         snd n, if tp = "SELF_TYPE" then SelfType (class2name c) else Type tp)
     |> List.rev
 
-// TODO: probably add check for SELF_TYPE
 let typecheckMethod (ctx:TypecheckCtx) (c:string) (m:Id) (formals:Formal list) rt body =
     let formalRetType = 
         match rt with
@@ -910,6 +906,11 @@ let typecheckMethod (ctx:TypecheckCtx) (c:string) (m:Id) (formals:Formal list) r
 
 let typecheckAttributeInit (ctx : TypecheckCtx) (c : string) n tname e  = 
     let t = Type tname
+    let objectEnv = 
+        ctx.ObjectEnv 
+        |> extendObjectEnv ["self", SelfType c]
+    let ctx = 
+        { ctx with ObjectEnv = objectEnv }
     typecheckExpr ctx c e
     |> Result.bind (fun t2 ->
         if t = t2 
@@ -1022,27 +1023,26 @@ let getClass2methodsMapping (Ast cs as ast) (inhMap:Map<string, string>) =
 
     go None (allClassNamesWithStandart ast |> Set.ofList) Map.empty
     
-let validateEntryPoint (Ast cs) =
+let getEntryPointBody (Ast cs) =
     let toResult = function
-        | Some _ -> Success ()
+        | Some body -> Success body
         | None -> Failure [NoMainMethod]
 
     cs
-    |> List.tryFind (fun (Class ((_, c), _, fs)) ->
+    |> List.tryPick (fun (Class ((_, c), _, fs)) ->
         if c = "Main" then
             fs
-            |> List.tryFind (function 
-                | Method ((_, "main"), _, _, _) -> true
-                | _ -> false)
-            |> Option.isSome
-        else false)
+            |> List.tryPick (function 
+                | Method ((_, "main"), _, _, body) -> Some body
+                | _ -> None)
+        else None)
     |> toResult
 
 
 let analyze ast =
     result {
         do! validateInheritance ast
-        do! validateEntryPoint ast
+        let! mainMethodBody = getEntryPointBody ast
         let! inhMapList = inheritanceMapChecked ast
         let inhMap = Map.ofList inhMapList
         do! validateMethodRedefinition ast
@@ -1056,5 +1056,6 @@ let analyze ast =
             Methods = getClass2methodsMapping ast inhMap
             InheritanceMap = inhMap
             AnnotatedAst = ast
+            MainMethodBody = mainMethodBody
         }
     }

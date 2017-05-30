@@ -6,29 +6,28 @@
 
 class A {
 
-   var : Int <- 0;
+  var : Int <- 0;
 
-   value() : Int { var };
+  value() : Int { var };
 
-   set_var(num : Int) : SELF_TYPE {
-      {
-         var <- num;
-         self;
-      }
-   };
+  set_var(num : Int) : SELF_TYPE { 
+    {
+      var <- num;
+      self;
+    } 
+  };
 
-   method1(num : Int) : SELF_TYPE {  -- same
-      self
-   };
+  method1(num : Int) : SELF_TYPE {  -- same
+    self
+  };
 
-   method2(num1 : Int, num2 : Int) : B {  -- plus
-      (let x : Int in
-	 {
-            x <- num1 + num2;
-	    (new B).set_var(x);
-	 }
-      )
-   };
+  method2(num1 : Int, num2 : Int) : B {  -- plus
+    let x : Int in
+    {
+      x <- num1 + num2;
+      (new B).set_var(x);
+    }
+  };
 
    method3(num : Int) : C {  -- negate
       (let x : Int in
@@ -256,37 +255,37 @@ class Main inherits IO {
    flag : Bool <- true;
 
 
-   menu() : String {
-      {
-         out_string("\n\tTo add a number to ");
-         print(avar);
-         out_string("...enter a:\n");
-         out_string("\tTo negate ");
-         print(avar);
-         out_string("...enter b:\n");
-         out_string("\tTo find the difference between ");
-         print(avar);
-         out_string("and another number...enter c:\n");
-         out_string("\tTo find the factorial of ");
-         print(avar);
-         out_string("...enter d:\n");
-         out_string("\tTo square ");
-         print(avar);
-         out_string("...enter e:\n");
-         out_string("\tTo cube ");
-         print(avar);
-         out_string("...enter f:\n");
-         out_string("\tTo find out if ");
-         print(avar);
-         out_string("is a multiple of 3...enter g:\n");
-         out_string("\tTo divide ");
-         print(avar);
-         out_string("by 8...enter h:\n");
-	 out_string("\tTo get a new number...enter j:\n");
-	 out_string("\tTo quit...enter q:\n\n");
-         in_string();
-      }
-   };
+  menu() : String {
+    {
+      out_string("\n\tTo add a number to ");
+      print(avar);
+      out_string("...enter a:\n");
+      out_string("\tTo negate ");
+      print(avar);
+      out_string("...enter b:\n");
+      out_string("\tTo find the difference between ");
+      print(avar);
+      out_string("and another number...enter c:\n");
+      out_string("\tTo find the factorial of ");
+      print(avar);
+      out_string("...enter d:\n");
+      out_string("\tTo square ");
+      print(avar);
+      out_string("...enter e:\n");
+      out_string("\tTo cube ");
+      print(avar);
+      out_string("...enter f:\n");
+      out_string("\tTo find out if ");
+      print(avar);
+      out_string("is a multiple of 3...enter g:\n");
+      out_string("\tTo divide ");
+      print(avar);
+      out_string("by 8...enter h:\n");
+      out_string("\tTo get a new number...enter j:\n");
+      out_string("\tTo quit...enter q:\n\n");
+      in_string();
+    }
+  };
 
    prompt() : String {
       {
@@ -336,37 +335,37 @@ class Main inherits IO {
      )
    };
 
-   main() : Object {
+  main() : Object {
+    {
+      avar <- (new A);
+      while flag loop
       {
-         avar <- (new A);
-         while flag loop
-            {
-	       -- avar <- (new A).set_var(get_int());
-	       out_string("number ");
-	       print(avar);
-	       if is_even(avar.value()) then
-	          out_string("is even!\n")
-	       else
-	          out_string("is odd!\n")
-	       fi;
-	       -- print(avar); -- prints out answer
-	       class_type(avar);
-	       char <- menu();
-                  if char = "a" then -- add
-                     {
-                        a_var <- (new A).set_var(get_int());
-	                avar <- (new B).method2(avar.value(), a_var.value());
-	             } else
-                  if char = "b" then -- negate
-                     case avar of
-	                   c : C => avar <- c.method6(c.value());
-	                   a : A => avar <- a.method3(a.value());
-	                   o : Object => {
-		                  out_string("Oooops\n");
-		                  abort(); 0;
-		               };
-                     esac else
-                  if char = "c" then -- diff
+        -- avar <- (new A).set_var(get_int());
+        out_string("number ");
+        print(avar);
+        if is_even(avar.value()) then
+          out_string("is even!\n")
+        else
+          out_string("is odd!\n")
+        fi;
+        -- print(avar); -- prints out answer
+        class_type(avar);
+        char <- menu();
+        if char = "a" then -- add
+        {
+          a_var <- (new A).set_var(get_int());
+          avar <- (new B).method2(avar.value(), a_var.value());
+	      } 
+        else if char = "b" then -- negate
+          case avar of
+            c : C => avar <- c.method6(c.value());
+            a : A => avar <- a.method3(a.value());
+            o : Object => {
+              out_string("Oooops\n");
+              abort(); 0;
+            };
+          esac 
+        else if char = "c" then -- diff
                      {
                         a_var <- (new A).set_var(get_int());
 	                avar <- (new D).method4(avar.value(), a_var.value());

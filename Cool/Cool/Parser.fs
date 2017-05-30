@@ -305,8 +305,15 @@ let cool =
 
 
 let parse (s:string) : Ast option =
-    match FParsec.CharParsers.run cool s with
-    | FParsec.CharParsers.ParserResult.Success (ast, _, _) -> Some ast
-    | FParsec.CharParsers.ParserResult.Failure (err, _, _) -> 
-        printfn "%s" err
+    try
+        printfn "Parsing started!"
+        match FParsec.CharParsers.run cool s with
+        | FParsec.CharParsers.ParserResult.Success (ast, _, _) -> Some ast
+        | FParsec.CharParsers.ParserResult.Failure (err, _, _) -> 
+            printfn "%s" err
+            None
+    with
+    | :? System.StackOverflowException as e->
+        printfn "Stack overflow during parsing."
+        printfn "%s" e.StackTrace
         None
