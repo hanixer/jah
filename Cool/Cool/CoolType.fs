@@ -615,7 +615,6 @@ let joinTypes inhMap t1 t2 : Type =
         |> fst 
         |> Type
 
-//func : ts1 -> ts2 -> class -> 
 let tryFindArgumentsError (loc:int) inhMap (argsTypes:Type list) (formalsTypes:Type list) : TypeError option =
     let rec go = function
         | (i, argType, formalType) :: tail ->

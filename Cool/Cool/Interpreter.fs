@@ -361,3 +361,6 @@ let execute (semInfo : SemanticInfo) =
     with
     | InterpreterException rerr ->
         Failure [rerr]
+    | e ->
+        printfn "Other exception occured: %A" e
+        Failure []

@@ -29,8 +29,9 @@ Target "Build" (fun _ ->
 
 Target "Deploy" (fun _ ->
     !! (buildDir + "/**/*.*")
+    ++ "/tests/*.*"
     -- "*.zip"
-    |> Zip buildDir (deployDir + "ApplicationName." + version + ".zip")
+    |> Zip buildDir (deployDir + "Cool." + version + ".zip")
 )
 
 // Build order

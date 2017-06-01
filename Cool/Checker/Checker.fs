@@ -27,9 +27,8 @@ let executeProcess (exe,cmdline) =
 let getAst (srce) =
     if File.Exists(srce) then
         Parser.parse (File.ReadAllText(srce))
-    else
-        printfn "File %s does not exist" srce
-        None
+    else        
+        Failure [sprintf "File %s does not exist" srce]
 
 let printId f (loc, n) = fprintf f "%d\n%s\n" loc n
 
@@ -262,7 +261,7 @@ let main argv =
     match argv with
     | [|arg|] ->
         match getAst arg with
-        | Some ast ->
+        | Success ast ->
             match analyze ast with
             | Success semInfo ->
                 use fout = File.CreateText(outFilename)
@@ -272,8 +271,8 @@ let main argv =
                 printfn "Semantic errors happend!"
                 printfn "%A" errs
                 -1
-        | None ->
-            printfn "Parse error"
+        | Failure errs ->
+            printfn "Parse error.\n%A" errs
             1
     | _ -> 
         printfn "Wrong invocation. Expected exactly one argument"

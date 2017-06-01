@@ -62,8 +62,27 @@ let keywords =
         "not"
         "true" ]
 
+
+let generateUpperLower (s : string) : string list =
+    let accumulate elt acc  = 
+        match acc with
+        | [] -> [ [ System.Char.ToLower(elt) ]; [ System.Char.ToUpper(elt) ] ]
+        | _ ->
+            let l1 = 
+                (acc |> List.map (fun tails -> System.Char.ToLower(elt) :: tails))
+            let l2 =
+                (acc |> List.map (fun tails -> System.Char.ToUpper(elt) :: tails))
+            List.append l1 l2
+
+    s
+    |> List.ofSeq
+    |> (fun cs -> List.foldBack accumulate cs [])
+    |> List.map  (Array.ofList >> System.String.Concat)
+
 let keyword s = 
-    pstring s
+    generateUpperLower s
+    |> List.map pstring
+    |> choice
     .>> notFollowedBy letter
     .>> notFollowedBy digit
     .>> notFollowedBy (pchar '_')
@@ -93,7 +112,7 @@ let pType: P<Id> = parse {
 }
 
 let pNew: P<ExprInner> =
-    stringWs "new" >>.
+    keyword "new" >>.
     (wsSurround pId) |>> New
 
 let expr, exprRef = createParserForwardedToRef()
@@ -304,16 +323,15 @@ let cool =
     ws >>. many (wsSurround (pclass .>> stringWs ";")) |>> Ast
 
 
-let parse (s:string) : Ast option =
+let parse (s:string) =
     try
-        printfn "Parsing started!"
         match FParsec.CharParsers.run cool s with
-        | FParsec.CharParsers.ParserResult.Success (ast, _, _) -> Some ast
+        | FParsec.CharParsers.ParserResult.Success (ast, _, _) -> 
+            CoolType.Success ast
         | FParsec.CharParsers.ParserResult.Failure (err, _, _) -> 
-            printfn "%s" err
-            None
+            CoolType.Failure [err]
     with
     | :? System.StackOverflowException as e->
         printfn "Stack overflow during parsing."
         printfn "%s" e.StackTrace
-        None
+        CoolType.Failure []
