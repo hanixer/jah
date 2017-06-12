@@ -105,6 +105,7 @@ let rec pprExpr e =
                   iStr " "; iIdent (pprAlts altr) ]
     | ELam (vars, expr) ->
         iConcat [ iStr "\ "; pprVars vars; iStr " . "; pprExpr expr ]
+    | _ -> INil
     
 and pprAlts alts = 
     List.map (fun a -> iConcat [ pprAlt a; iStr " ;" ]) alts 
@@ -145,7 +146,7 @@ let rec clex = function
         let rest = List.skipWhile pred cs
         idTok :: (clex rest)
     | c :: cs -> [c] :: clex cs
-
+(*
 let rec clex2 line = function
     | [] -> []
     | '|' :: '|' :: cs ->
@@ -166,15 +167,16 @@ let rec clex2 line = function
         let rest = List.skipWhile pred cs
         (line, idTok) :: clex2 line rest
     | c :: cs -> (line, [c]) :: clex2 line cs
+*)
+// type Parser<'a> = Token list -> 'a * (Token List) list
 
-type Parser<'a> = Token list -> 'a * (Token List) list
-
-let pLit s = function
+let psat func = function
     | [] -> []
-    | tok :: toks when s = tok -> [s, toks]
-    | tok :: toks -> []
+    | tok :: toks when func tok ->
+        [tok, toks]
+    | _ -> []
 
-let pLitHelp s = pLit (List.ofSeq s)
+let pLitHelp s = psat ((=) s)
 
 let keywords = 
     [ "let" 
@@ -183,12 +185,13 @@ let keywords =
       "in"
       "of"
       "Pack"
-    ] |> List.map List.ofSeq
+    ] //|>  Seq.ofList //|> List.map List.ofSeq
 
-let pVar = function
+let pVar toks = 
+    match toks with
     | [] -> []
-    | (c :: cs as tok) :: toks 
-        when System.Char.IsLetter c && List.contains tok keywords |> not ->
+    | tok :: toks 
+        when Seq.head tok |> System.Char.IsLetter && List.contains tok keywords |> not ->
         [tok, toks]
     | _ -> []
 
@@ -233,15 +236,9 @@ let rec pOneOrMoreWithSep p pSep =
     let pSepAndP = pThen (fun _ x -> x) pSep p
     pThen (fun x xs -> x :: xs) p (pZeroOrMore pSepAndP)
 
-let psat func = function
-    | [] -> []
-    | tok :: toks when func tok ->
-        [tok, toks]
-    | _ -> []
-
-let pNum =
-    psat (function | c :: cs when System.Char.IsNumber c -> true | _ -> false )
-    |> pApply <| (fun x -> System.String.Concat(Array.ofList x) |> int32)
+let pNum : string list -> (int * string list) list =
+    psat (Seq.head >> System.Char.IsNumber)
+    |> pApply <| int
 
 let pBetween pLeft pCore pRight  =
     pThen3 (fun _ x _ -> x) pLeft pCore pRight
@@ -249,10 +246,10 @@ let pBetween pLeft pCore pRight  =
 
 let pPack<'a> =
     pThen (fun _ x -> EConstr x) 
-        (pLit ("Pack" |> List.ofSeq)) 
-        (pBetween (pLit ['{']) 
-            (pThen3 (fun x _ y -> x, y) pNum (pLit [',']) pNum) 
-            (pLit ['}']))
+        (pLitHelp "Pack")
+        (pBetween (pLitHelp "{") 
+            (pThen3 (fun x _ y -> x, y) pNum (pLitHelp ",") pNum) 
+            (pLitHelp "}"))
 
 
 let pLet pExpr = 
@@ -273,7 +270,6 @@ let pLet pExpr =
 let pCase pExpr =
     let pAltern = 
         pThen4 (fun num vars _ expr -> 
-                printfn "Alter: %d" num
                 num, vars, expr)
             (pBetween (pLitHelp "<") pNum (pLitHelp ">"))
             (pZeroOrMore pVar)
@@ -296,7 +292,7 @@ let  pAexpr pExpr =
     (pApply pVar EVar) |>pAlt<| 
     (pApply pNum ENum) |>pAlt<|
     pPack |>pAlt<|
-    pBetween (pLit ['(']) pExpr (pLit [')']) 
+    pBetween (pLitHelp "(") pExpr (pLitHelp ")") 
 
 type PartialExpr =
     | NoOp
@@ -317,21 +313,34 @@ let rec pChainl pElt pOp =
 
 let pMult pExpr =
     pChainl (pApplic pExpr) 
-        (pApply (pLitHelp "*") (fun _ -> fun x y -> EAp (EAp (EVar ['*'], x), y)))
+        (pApply (pLitHelp "*") (fun _ -> fun x y -> EAp (EAp (EVar "*", x), y)))
 
-let rec pExpr<'a> = 
-    let p = (fun toks -> pExpr toks)
-    pLet p |>pAlt<|
-    pCase p |>pAlt<|
-    pLambda p |>pAlt<|
-    pMult p
+let rec pExpr<'a> =
+    let parserReference = ref (fun _ -> [ENum 2, []])
+    let p = (fun toks -> !parserReference toks)
+    parserReference := 
+        pLet p |>pAlt<|
+        pCase p |>pAlt<|
+        pLambda p |>pAlt<|
+        pMult p
+    
+    !parserReference
+
+    
 
 let pSc = 
     let mkSc name args _ expr = (name, args, expr)
-    pThen4 mkSc pVar (pZeroOrMore pVar) (pLit ['=']) pExpr
+    pThen4 mkSc pVar (pZeroOrMore pVar) (pLitHelp "=") pExpr
 
 let pProgram =
     pOneOrMoreWithSep pSc (pLitHelp ";")
 
-let parse s = s |> List.ofSeq |> clex |> pProgram
-let parseExpr s = s |> List.ofSeq |> clex |> pExpr
+let parse s = 
+    s 
+    |> List.ofSeq 
+    |> clex |> List.map (List.toArray >> System.String)
+    |> pProgram 
+    |> List.tryHead |> Option.map fst
+    |> defaultArg <| []
+
+// let parseExpr s = s |> List.ofSeq |> clex |> pExpr
