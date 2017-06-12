@@ -48,7 +48,7 @@ type Iseq =
     | IIdent of Iseq
     | INewline
 
-let space n = System.String(' ', n)
+let space n = if n >= 0 then  System.String(' ', n) else ""
 
 
 let iNil = INil
@@ -59,7 +59,7 @@ let iAppend a b =
     | _ -> IAppend (a,b)
 let iStr = IStr
 let iNewline = INewline
-let iIdent iseq = IIdent iseq
+let iIndent iseq = IIdent iseq
 let iConcat xs = 
     xs |> List.fold iAppend INil
 let rec iInterleave sep = function
@@ -89,6 +89,17 @@ let rec flatten col = function
 
 let iDisplay seq = flatten 0 [seq, 0]
 
+let iNum n = iStr (string n)
+
+let iFWNum width n =
+    let digits = string n
+    iStr (space (width - Seq.length digits) + digits)
+
+let iLayn seqs = 
+    let layItem n iseq = 
+        iConcat [ iFWNum 4 n; iStr ") "; iIndent iseq; iNewline ]
+    iConcat (List.mapi layItem seqs)
+
 let pprVars vars = List.map iStr vars |> iConcat
 
 let rec pprExpr e = 
@@ -98,13 +109,13 @@ let rec pprExpr e =
     | ELet (isrec, defns, expr) ->
         let keyword = if isrec then "let" else "letrec"
         iConcat [ iStr keyword; iNewline;
-                  iStr " "; iIdent (pprDefns defns); iNewline;
+                  iStr " "; iIndent (pprDefns defns); iNewline;
                   iStr "in "; pprExpr expr ]
     | ECase (expr, altr) ->
         iConcat [ iStr "case"; pprExpr expr; iStr "of"; iNewline;
-                  iStr " "; iIdent (pprAlts altr) ]
+                  iStr " "; iIndent (pprAlts altr) ]
     | ELam (vars, expr) ->
-        iConcat [ iStr "\ "; pprVars vars; iStr " . "; pprExpr expr ]
+        iConcat [ iStr "\\ "; pprVars vars; iStr " . "; pprExpr expr ]
     | _ -> INil
     
 and pprAlts alts = 
@@ -112,14 +123,14 @@ and pprAlts alts =
     |> iConcat
 and pprAlt (num, vars, expr) =
     iConcat [ iStr "<"; iStr (string num); iStr ">"; iStr " "; pprVars vars; iStr "->"; iNewline;
-              iStr " "; iIdent (pprExpr expr) ]
+              iStr " "; iIndent (pprExpr expr) ]
 and pprDefns defns = 
     let sep = iConcat [ iStr ";"; iNewline ]
     defns
     |> List.map pprDefn 
     |> iInterleave sep
 and pprDefn (name, expr) =
-    iConcat [ iStr name; iStr " = "; iIdent (pprExpr expr) ]
+    iConcat [ iStr name; iStr " = "; iIndent (pprExpr expr) ]
 
     
 

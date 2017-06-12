@@ -4,43 +4,10 @@
 open Language
 open Compile
 
-let s = "
-once upon
-a time || there was 
-a scooter 23423
-but"
+let src = "main = S K K 3"
 
-let toks = 
-    [
-        "Pack"
-        "{"
-        "1"
-        ","
-        "2"
-        "}"
-        "1"
-        ","
-        "2"
-        ","
-        "3"
-        "a"
-        ","
-        "a"
-        "werwerwererwerwea"
-        "a"
-        "b"
-        "231"
-        "we"
-    ] //|> List.map List.ofSeq
+let g () =
+    use f = System.IO.File.CreateText("output.txt")
+    runProg src |> fprintf f "%s"
 
-// pZeroOrMore pVar toks
-let input = "
-f x y = case x of
-<1> -> case y of
-<1> -> 1;
-<2> -> 2 "
-let inp2 = "
-f x = x;
-x e = e e"
-inp2 |> List.ofSeq |> clex |> List.map (List.toArray >> string) |> pExpr
-parse inp2
+g()
