@@ -265,7 +265,7 @@ let pPack<'a> =
 
 let pLet pExpr = 
     let pDefn = pThen3 (fun name _ body -> name, body) pVar (pLitHelp "=") pExpr
-    let pDefns = pOneOrMoreWithSep pDefn (pLitHelp ",")
+    let pDefns = pOneOrMoreWithSep pDefn (pLitHelp ";")
 
     (pThen4 (fun _ defns _ body -> ELet (false, defns, body))
         (pLitHelp "let")
