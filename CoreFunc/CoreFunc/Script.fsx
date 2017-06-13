@@ -15,15 +15,10 @@ f x y = letrec
     in
     fst (snd (snd (snd a))) ;
 main = f 3 4"
-let src4 = "
-f x y = letrec
-    a = pair x b ;
-    b = pair y a
-    in
-    fst (snd (snd (snd a))) ;
-main = f 3 4"
+let src4 = "main = letrec f = f x in f"
+
 let g () =
     use f = System.IO.File.CreateText("output.txt")
     runProg src3 |> fprintf f "%s"
 
-runProg src3
+runProg src4 

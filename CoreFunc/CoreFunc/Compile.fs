@@ -45,6 +45,8 @@ let heapLookup heap addr =
 let heapTryLookup heap addr = Map.tryFind addr heap
 let heapUpdate heap addr newValue =
     Map.add addr newValue heap
+let heapRemove heap addr =
+    Map.remove addr heap
 
 let allocateSc heap (name, args, body) =
     let heap', addr = heapAlloc heap (NSc (name, args, body))
@@ -92,26 +94,46 @@ let tiFinal = function
 let instantiateConstr tag arity heap env =
     failwith "Can't instantiate constr now"
 
+let showHeap2 (heap : TiHeap) =
+    let showAddr = string >> iStr
+    let showNode = function
+        | NNum n -> iStr "NNum " |>iAppend<| iNum n
+        | NAp (a1, a2) -> 
+            iConcat [ iStr "NAp "; showAddr a1; iStr " "; showAddr a2 ]
+        | NSc (name, args, body) -> iStr ("NSc " + name)
+    let showHeapElt (addr, node) =
+        iConcat [
+            iStr "("; iFWNum 4 addr; iStr ") ";
+            showNode node; iNewline
+        ]
+
+    Map.toList heap
+    |> List.map showHeapElt
+    |> iConcat
+    
 
 let rec instantiate expr heap env =
-    match expr with
-    | ENum n ->
-        heapAlloc heap (NNum n)
-    | EAp (e1, e2) ->
-        let heap1, a1 = instantiate e1 heap env
-        let heap2, a2 = instantiate e2 heap1 env
-        heapAlloc heap2 (NAp (a1, a2))
-    | EVar name ->
-        match List.tryFind (fst >> ((=) name)) env with
-        | Some (_, x) ->
-            heap, x
-        | None -> failwithf "Variable %s is not found in instantiation!(%A)" name env
-    | ELet (isrec, defs, body) ->
-        instantiateLet isrec defs body heap env
-    | EConstr (a, b) ->
-        instantiateConstr a b heap env
-    | ECase _ -> 
-        failwith "Can't instantiate case expression!"
+    let heap', addr =
+        match expr with
+        | ENum n ->
+            heapAlloc heap (NNum n)
+        | EAp (e1, e2) ->
+            let heap1, a1 = instantiate e1 heap env
+            let heap2, a2 = instantiate e2 heap1 env
+            heapAlloc heap2 (NAp (a1, a2))
+        | EVar name ->
+            match List.tryFind (fst >> ((=) name)) env with
+            | Some (_, x) ->
+                heap, x
+            | None -> failwithf "Variable %s is not found in instantiation!(%A)" name env
+        | ELet (isrec, defs, body) ->
+            instantiateLet isrec defs body heap env
+        | EConstr (a, b) ->
+            instantiateConstr a b heap env
+        | ECase _ -> 
+            failwith "Can't instantiate case expression!"
+    heap', addr
+    
 
 and instantiateLet isrec defs body heap env =
     match isrec with
@@ -120,17 +142,25 @@ and instantiateLet isrec defs body heap env =
             let heap', addr = heapAlloc heap (NNum 1)
             (arg, addr) :: env, heap'
 
-        let newEnv, _ = List.fold allocateDummyArg (env, heap) defs 
-
+        let envDummy, heapDummy = List.fold allocateDummyArg (env, heap) defs 
+        
         let allocateDef heap (name, expr) =
-            let heap', addr = instantiate expr heap env
-            let node = heapLookup heap' addr
-            let addr' = List.find (fst >> ((=) name)) newEnv |> snd
-            heapUpdate heap addr' node            
+            let heap', addr = instantiate expr heap envDummy
+            heap', (name, addr)
 
-        let newHeap = List.fold allocateDef heap defs
+        let heapWithReal, envWithReal = mapAccumul allocateDef heapDummy defs
 
-        instantiate body newHeap newEnv
+        let envCreatedVars = List.take (envDummy.Length - env.Length) envDummy
+
+        let substituteDummyByReal heap (name, dummyAddr) =
+            let _, realAddr = List.find (fst >> ((=) name)) envWithReal
+            let realNode = heapLookup heapWithReal realAddr
+            let heap' = heapUpdate heap dummyAddr realNode
+            heapRemove heap' realAddr
+
+        let heapFinal = List.fold substituteDummyByReal heapWithReal envCreatedVars
+
+        instantiate body heapFinal envDummy
     | false ->
         let allocateDef heap (name, expr) =
             let heap', addr = instantiate expr heap env
@@ -157,8 +187,9 @@ let scStep (state : TiState) scName argNames body =
     let requiredLength = List.length argNames + 1
     if List.length state.Stack < requiredLength then
         failwith "Stack contains less entries that are required for supercombinator"
-
-    let argBindings = List.zip argNames (getArgs state.Heap state.Stack)
+    let args = getArgs state.Heap state.Stack
+    let minLen = min args.Length argNames.Length
+    let argBindings = List.zip (List.take minLen argNames) (List.take minLen args)
     let env = argBindings |>List.append<| state.Globals
     let newHeap, resultAddr = instantiate body state.Heap env
     let newStack = 
@@ -173,17 +204,6 @@ let step state =
     | NNum n -> numStep state n
     | NAp (a1, a2) -> apStep state a1 a2
     | NSc (name, args, body) -> scStep state name args body
-
-let rec eval state = 
-    let restStates = 
-        if tiFinal state then []
-        else
-            state |> step |> doAdmin |> eval
-    state :: restStates
-
-let showStats state =
-    iConcat [ iNewline; iNewline; iStr "Total number of steps = "; 
-              iNum (tiStatGetSteps state.Stats) ]
 
 let showFWAddr addr = 
     let str = string addr
@@ -230,6 +250,17 @@ let showState (state : TiState) =
         showStack state.Heap state.Stack; iNewline;
         showHeap state.Heap; iNewline 
     ]
+
+let rec eval state = 
+    let restStates = 
+        if tiFinal state then []
+        else
+            state |> step |> doAdmin |> eval
+    state :: restStates
+
+let showStats state =
+    iConcat [ iNewline; iNewline; iStr "Total number of steps = "; 
+              iNum (tiStatGetSteps state.Stats) ]
 
 let showResults states =
     iConcat [
