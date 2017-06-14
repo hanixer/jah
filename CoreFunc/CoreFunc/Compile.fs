@@ -49,6 +49,9 @@ let heapUpdate heap addr newValue =
 let heapRemove heap addr =
     Map.remove addr heap
 
+let envTryLookup env name =
+    List.tryFind (fst >> ((=) name)) env
+
 let allocateSc heap (name, args, body) =
     let heap', addr = heapAlloc heap (NSc (name, args, body))
     heap', (name, addr)
@@ -79,14 +82,15 @@ let compile program =
 
 let doAdmin state = applyToStats tiStatIncSteps state
 
-let isDataNode node =
-    match node with
+let rec isDataNode heap addr =
+    match heapLookup heap addr with
     | NNum n -> true
+    | NInd addr2 -> isDataNode heap addr2
     | _ -> false
 
 let tiFinal = function
     | { Stack = [soleAddr]; Heap = heap } ->
-        heapLookup heap soleAddr |> isDataNode
+        isDataNode heap soleAddr
     | { Stack = [] } -> 
         failwith "Empty stack!"
     | _ -> 
@@ -133,6 +137,8 @@ let rec instantiate expr heap env =
             instantiateConstr a b heap env
         | ECase _ -> 
             failwith "Can't instantiate case expression!"
+        | ELam _ ->
+            failwith "Con't instantiate lambda expression"
     heap', addr
     
 
@@ -171,6 +177,29 @@ and instantiateLet isrec defs body heap env =
         let newEnv = allocatedDefs |>List.append<| env
         instantiate body newHeap newEnv
 
+let instantiateAndUpdate expr updAddr heap env =
+    match expr with
+    | EAp (e1, e2) ->
+        let heap1, a1 = instantiate e1 heap env
+        let heap2, a2 = instantiate e2 heap1 env
+        heapUpdate heap2 updAddr (NAp (a1, a2))
+    | ENum n ->
+        heapUpdate heap updAddr (NNum n)
+    | EVar name ->
+        match envTryLookup env name with
+        | Some (_, addr) ->
+            heapUpdate heap updAddr (NInd addr)
+        | None ->
+            failwith "Variable %s is not found!" name
+    | ELet (isrec, defs, body) ->
+        let heap1, addr' = instantiateLet isrec defs body heap env
+        let node = heapLookup heap1 addr'
+        let heap2 = heapUpdate heap1 updAddr node
+        let heap3 = heapRemove heap2 addr'
+        heap3
+
+    | _ ->
+        failwith "Con't instantiate lambda expression, case or constructor"
     
 let numStep (state : TiState) n = failwith "Number applied as a function!"
 
@@ -198,24 +227,16 @@ let scStep (state : TiState) scName argNames body =
     let env = argBindings |>List.append<| state.Globals
 
     let rootAddr = getRootAddr state.Stack argNames
-    let heap1, resultAddr = instantiate body state.Heap env
-    let heap2 = heapUpdate heap1 rootAddr (NInd resultAddr)
+    let heap1 = instantiateAndUpdate body rootAddr state.Heap env
     let newStack = 
-        resultAddr :: (List.skip requiredLength state.Stack)
+        rootAddr :: (List.skip requiredLength state.Stack)
 
     { state with
         Stack = newStack
-        Heap = heap2 }
+        Heap = heap1 }
 
 let indStep state addr =
-    { state with Stack = addr :: state.Stack }
-
-let step state = 
-    match heapLookup state.Heap (List.head state.Stack) with
-    | NNum n -> numStep state n
-    | NAp (a1, a2) -> apStep state a1 a2
-    | NSc (name, args, body) -> scStep state name args body
-    | NInd addr -> indStep state addr
+    { state with Stack = addr :: (List.tail state.Stack) }
 
 let showFWAddr addr = 
     let str = string addr
@@ -263,6 +284,13 @@ let showState (state : TiState) =
         showStack state.Heap state.Stack; iNewline;
         showHeap state.Heap; iNewline 
     ]
+
+let step state = 
+    match heapLookup state.Heap (List.head state.Stack) with
+    | NNum n -> numStep state n
+    | NAp (a1, a2) -> apStep state a1 a2
+    | NSc (name, args, body) -> scStep state name args body
+    | NInd addr -> indStep state addr
 
 let rec eval state = 
     let restStates = 
