@@ -4,13 +4,17 @@ open Language
 open Util
 
 type TiStack = Addr list
-type TiDump = DummyDump
+type TiDump = TiStack list
+
+type Primitive = Neg | Add | Sub | Mul | Div
 
 type Node =
     | NAp of Addr * Addr
     | NSc of Name * Name list * CoreExpr
     | NNum of int
     | NInd of Addr
+    | NPrimitive of Name * Primitive
+    | NData of int * (Addr list)
 
 type TiHeap = Heap<Node>
 
@@ -25,7 +29,7 @@ type TiState =
       Globals : TiGlobals
       Stats : TiStats }
 
-let initialTiDump = DummyDump
+let initialTiDump = []
 
 let tiStatInitial = 0
 let tiStatIncSteps s = s + 1
@@ -35,6 +39,14 @@ let applyToStats func state =
 
 let extraPreludeDefs = []
 
+let primitives = [ 
+    "negate", Neg
+    "+", Add
+    "-", Sub
+    "*", Mul 
+    "/", Div
+    ]
+
 let envTryLookup env name =
     List.tryFind (fst >> ((=) name)) env
 
@@ -42,8 +54,14 @@ let allocateSc heap (name, args, body) =
     let heap', addr = heapAlloc heap (NSc (name, args, body))
     heap', (name, addr)
 
+let allocatePrim heap (name, prim) =
+    let heap', addr = heapAlloc heap (NPrimitive (name, prim))
+    heap', (name, addr)
+
 let buildInitialHeap scDefns = 
-    mapAccumul allocateSc Map.empty scDefns
+    let heap1, scAddrs = mapAccumul allocateSc Map.empty scDefns
+    let heap2, primAddrs = mapAccumul allocatePrim heap1 primitives
+    heap2, scAddrs |>List.append<| primAddrs
 
 let compile program = 
     let scDefs = program |>List.append<| preludeDefs |>List.append<| extraPreludeDefs
@@ -69,7 +87,7 @@ let rec isDataNode heap addr =
     | _ -> false
 
 let tiFinal = function
-    | { Stack = [soleAddr]; Heap = heap } ->
+    | { Stack = [soleAddr]; Heap = heap; Dump = [] } ->
         isDataNode heap soleAddr
     | { Stack = [] } -> 
         failwith "Empty stack!"
@@ -78,24 +96,6 @@ let tiFinal = function
 
 let instantiateConstr tag arity heap env =
     failwith "Can't instantiate constr now"
-
-let showHeap2 (heap : TiHeap) =
-    let showAddr = string >> iStr
-    let showNode = function
-        | NNum n -> iStr "NNum " |>iAppend<| iNum n
-        | NAp (a1, a2) -> 
-            iConcat [ iStr "NAp "; showAddr a1; iStr " "; showAddr a2 ]
-        | NSc (name, args, body) -> iStr ("NSc " + name)
-    let showHeapElt (addr, node) =
-        iConcat [
-            iStr "("; iFWNum 4 addr; iStr ") ";
-            showNode node; iNewline
-        ]
-
-    Map.toList heap
-    |> List.map showHeapElt
-    |> iConcat
-    
 
 let rec instantiate expr heap env =
     let heap', addr =
@@ -170,7 +170,7 @@ let instantiateAndUpdate expr updAddr heap env =
         | Some (_, addr) ->
             heapUpdate heap updAddr (NInd addr)
         | None ->
-            failwith "Variable %s is not found!" name
+            failwithf "Variable %s is not found!" name
     | ELet (isrec, defs, body) ->
         let heap1, addr' = instantiateLet isrec defs body heap env
         let node = heapLookup heap1 addr'
@@ -180,11 +180,6 @@ let instantiateAndUpdate expr updAddr heap env =
 
     | _ ->
         failwith "Con't instantiate lambda expression, case or constructor"
-    
-let numStep (state : TiState) n = failwith "Number applied as a function!"
-
-let apStep (state : TiState) a1 a2 =
-    { state with Stack = a1 :: state.Stack }
 
 let getArgs heap stack =
     let rec getArg addr = 
@@ -195,7 +190,75 @@ let getArgs heap stack =
     List.map getArg (List.tail stack)
 
 let getRootAddr stack argNames =
-    List.nth stack (List.length argNames)
+    List.item (List.length argNames) stack 
+
+let rec getNodeNotInderect heap addr =
+    match heapLookup heap addr with
+    | NInd addr' -> getNodeNotInderect heap addr'
+    | n -> n
+
+let evalNodeOnNewStack state nodeAddr =
+    { state with
+        Stack = [nodeAddr] 
+        Dump = state.Stack :: state.Dump }
+
+let primNeg (state : TiState) =
+    let argAddr = getArgs state.Heap (List.take 2 state.Stack) |> List.head
+    match isDataNode state.Heap argAddr with
+    | true -> 
+        let rootAddr = List.item 1 state.Stack
+        match getNodeNotInderect state.Heap argAddr with
+        | NNum n -> 
+            let newHeap = heapUpdate state.Heap rootAddr (NNum -n)
+            let newStack = List.tail state.Stack
+            { state with
+                Stack = newStack
+                Heap = newHeap }
+        | _ -> failwith "number node is expected"
+    | false ->
+        evalNodeOnNewStack state argAddr
+
+let primArith (state : TiState) (func : int -> int -> int) : TiState =
+    let argAddrs = getArgs state.Heap (List.take 3 state.Stack)
+    match List.map (isDataNode state.Heap) argAddrs with
+    | [true; true] ->
+        let rootAddr = List.item 2 state.Stack
+        let nodes = List.map (getNodeNotInderect state.Heap) argAddrs
+        match nodes with
+        | [NNum n1; NNum n2] ->
+            let newNode = func n1 n2 |> NNum
+            let newHeap = heapUpdate state.Heap rootAddr newNode
+            let newStack = List.skip 2 state.Stack
+            { state with
+                Stack = newStack 
+                Heap = newHeap }
+        | _ ->
+            failwith "Two number nodes are expected"
+    | [false; _] ->
+        evalNodeOnNewStack state (List.item 0 argAddrs)
+    | [_; false] ->
+        evalNodeOnNewStack state (List.item 1 argAddrs)
+    | _ ->
+        failwith "wrong arg addresses"
+
+let primStep (state : TiState) = function
+    | Neg -> primNeg state
+    | Add -> primArith state (+)
+    | Sub -> primArith state (-)
+    | Div -> primArith state (/)
+    | Mul -> primArith state (*)
+    
+let numStep (state : TiState) n = 
+    match state.Stack with
+    | [addr] when isDataNode state.Heap addr ->
+        { state with
+            Stack = List.head state.Dump 
+            Dump = List.tail state.Dump }
+    | _ -> 
+        failwith "Expected in numStep to have stack with only num node on the top"
+
+let apStep (state : TiState) a1 a2 =
+    { state with Stack = a1 :: state.Stack }
 
 let scStep (state : TiState) scName argNames body =
     let requiredLength = List.length argNames + 1
@@ -228,6 +291,10 @@ let showNode = function
         iConcat [ iStr "NAp "; showAddr a1; iStr " "; showAddr a2 ]
     | NSc (name, args, body) -> iStr ("NSc " + name)
     | NInd addr -> iStr "NInd " |>iAppend<| iNum addr
+    | NPrimitive (name, prim) -> 
+        iConcat [
+            iStr "NPrimitive "; iStr name;
+        ]
 
 let showStackNode heap = function
     | NAp (funAddr, argAddr) -> 
@@ -269,6 +336,7 @@ let step state =
     | NAp (a1, a2) -> apStep state a1 a2
     | NSc (name, args, body) -> scStep state name args body
     | NInd addr -> indStep state addr
+    | NPrimitive (name, prim) -> primStep state prim
 
 let rec eval state = 
     let restStates = 

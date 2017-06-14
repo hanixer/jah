@@ -17,8 +17,7 @@ f x y = letrec
 main = f 3 4"
 let src4 = "main = letrec f = f x in f"
 
-let src5 = "id x = x ;
-main = twice twice id 3"
+let src5 = "main = 2 * 3 * 342"
 let src = "id = S K K ;
 main = twice twice twice id 3"
 
