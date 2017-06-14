@@ -11,6 +11,7 @@ type Node =
     | NAp of Addr * Addr
     | NSc of Name * Name list * CoreExpr
     | NNum of int
+    | NInd of Addr
 
 type Heap<'a> = Map<Addr, 'a>
 type TiHeap = Heap<Node>
@@ -177,11 +178,15 @@ let apStep (state : TiState) a1 a2 =
     { state with Stack = a1 :: state.Stack }
 
 let getArgs heap stack =
-    let getArg addr = 
+    let rec getArg addr = 
         match heapLookup heap addr with
         | NAp (func, arg) -> arg
-        | _ -> failwith "NAp node is expected"
+        | NInd addr -> getArg addr
+        | n -> failwithf "NAp node is expected, but got [%d ; %A] stack %A"  addr n stack
     List.map getArg (List.tail stack)
+
+let getRootAddr stack argNames =
+    List.nth stack (List.length argNames)
 
 let scStep (state : TiState) scName argNames body =
     let requiredLength = List.length argNames + 1
@@ -191,19 +196,26 @@ let scStep (state : TiState) scName argNames body =
     let minLen = min args.Length argNames.Length
     let argBindings = List.zip (List.take minLen argNames) (List.take minLen args)
     let env = argBindings |>List.append<| state.Globals
-    let newHeap, resultAddr = instantiate body state.Heap env
+
+    let rootAddr = getRootAddr state.Stack argNames
+    let heap1, resultAddr = instantiate body state.Heap env
+    let heap2 = heapUpdate heap1 rootAddr (NInd resultAddr)
     let newStack = 
         resultAddr :: (List.skip requiredLength state.Stack)
 
     { state with
         Stack = newStack
-        Heap = newHeap }
+        Heap = heap2 }
+
+let indStep state addr =
+    { state with Stack = addr :: state.Stack }
 
 let step state = 
     match heapLookup state.Heap (List.head state.Stack) with
     | NNum n -> numStep state n
     | NAp (a1, a2) -> apStep state a1 a2
     | NSc (name, args, body) -> scStep state name args body
+    | NInd addr -> indStep state addr
 
 let showFWAddr addr = 
     let str = string addr
@@ -216,6 +228,7 @@ let showNode = function
     | NAp (a1, a2) -> 
         iConcat [ iStr "NAp "; showAddr a1; iStr " "; showAddr a2 ]
     | NSc (name, args, body) -> iStr ("NSc " + name)
+    | NInd addr -> iStr "NInd " |>iAppend<| iNum addr
 
 let showStackNode heap = function
     | NAp (funAddr, argAddr) -> 

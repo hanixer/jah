@@ -17,8 +17,11 @@ f x y = letrec
 main = f 3 4"
 let src4 = "main = letrec f = f x in f"
 
+let src5 = "id x = x ;
+main = twice twice id 3"
+
 let g () =
     use f = System.IO.File.CreateText("output.txt")
-    runProg src3 |> fprintf f "%s"
+    runProg src5 |> fprintf f "%s"
 
-runProg src4 
+g()

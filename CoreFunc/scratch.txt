@@ -1,0 +1,24 @@
+id x = x ;
+main = twice twice id 3
+|
+twice twice id 3
+|
+compose twice twice id 3
+|
+compose twice twice id 3
+|
+twice (twice id) 3
+|
+compose (twice id) (twice id) 3
+|
+(twice id) ((twice id) 3)
+|
+compose id id ((twice id) 3)
+|
+id (id ((twice id) 3))
+|
+(id ((twice id) 3))
+|
+((twice id) 3)
+
+
