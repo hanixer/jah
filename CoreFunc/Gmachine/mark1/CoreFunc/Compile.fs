@@ -6,7 +6,19 @@ open Util
 type TiStack = Addr list
 type TiDump = TiStack list
 
-type Primitive = Neg | Add | Sub | Mul | Div
+type Primitive =
+    | Neg
+    | Add
+    | Sub
+    | Mul
+    | Div
+    | If
+    | Greater
+    | GreaterEq
+    | Less
+    | LessEq
+    | Eq
+    | NotEq
 
 type Node =
     | NAp of Addr * Addr
@@ -95,6 +107,7 @@ let tiFinal = function
         false
 
 let instantiateConstr tag arity heap env =
+    
     failwith "Can't instantiate constr now"
 
 let rec instantiate expr heap env =
@@ -294,6 +307,10 @@ let showNode = function
     | NPrimitive (name, prim) -> 
         iConcat [
             iStr "NPrimitive "; iStr name;
+        ]
+    | NData (tag, addrs) -> 
+        iConcat [ 
+            iStr "NData"; iNum tag; iStr " len"; iNum (List.length addrs) 
         ]
 
 let showStackNode heap = function
