@@ -1,8 +1,7 @@
 module Compile 
 
 open Language
-
-type Addr = int
+open Util
 
 type TiStack = Addr list
 type TiDump = DummyDump
@@ -13,7 +12,6 @@ type Node =
     | NNum of int
     | NInd of Addr
 
-type Heap<'a> = Map<Addr, 'a>
 type TiHeap = Heap<Node>
 
 type TiGlobals = (Name * Addr) list
@@ -37,30 +35,12 @@ let applyToStats func state =
 
 let extraPreludeDefs = []
 
-let heapAlloc heap value =
-    let addr = (heap |> Map.toSeq |> Seq.map fst |> Seq.append [0] |> Seq.max) + 1
-    Map.add addr value heap, addr    
-
-let heapLookup heap addr = 
-    Map.find addr heap
-let heapTryLookup heap addr = Map.tryFind addr heap
-let heapUpdate heap addr newValue =
-    Map.add addr newValue heap
-let heapRemove heap addr =
-    Map.remove addr heap
-
 let envTryLookup env name =
     List.tryFind (fst >> ((=) name)) env
 
 let allocateSc heap (name, args, body) =
     let heap', addr = heapAlloc heap (NSc (name, args, body))
     heap', (name, addr)
-
-let mapAccumul (f : 'acc -> 'a -> 'acc * 'b) (initialAcc : 'acc) (xs : 'a list) : 'acc * 'b list =
-    xs 
-    |> List.fold (fun (acc, ys) elt ->
-        let acc', y = f acc elt
-        acc', y :: ys) (initialAcc, [])
 
 let buildInitialHeap scDefns = 
     mapAccumul allocateSc Map.empty scDefns

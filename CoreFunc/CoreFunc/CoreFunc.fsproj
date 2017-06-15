@@ -41,7 +41,9 @@
   <ItemGroup>
     <None Include="App.config" />
     <Compile Include="Language.fs" />
+    <Compile Include="Util.fs" />
     <Compile Include="Compile.fs" />
+    <Compile Include="Gm.fs" />
     <Compile Include="CoreFunc.fs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
