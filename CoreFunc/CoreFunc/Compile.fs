@@ -222,8 +222,6 @@ let showFWAddr addr =
     let str = string addr
     iStr (space (4 - Seq.length str) + str)
 
-let showAddr = string >> iStr
-
 let showNode = function
     | NNum n -> iStr "NNum " |>iAppend<| iNum n
     | NAp (a1, a2) -> 

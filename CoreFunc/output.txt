@@ -1,678 +1,220 @@
-   0) Stk [   2: NSc main ]
-      (   1) NSc id
-      (   2) NSc main
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      
-      
-   1) Stk [   2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 8 8
-      (  10) NAp 9 1
-      (  11) NNum 3
-      
-      
-   2) Stk [  10: NAp    9    1 (NSc id)
-              2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 8 8
-      (  10) NAp 9 1
-      (  11) NNum 3
-      
-      
-   3) Stk [   9: NAp    8    8 (NSc twice)
-             10: NAp    9    1 (NSc id)
-              2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 8 8
-      (  10) NAp 9 1
-      (  11) NNum 3
-      
-      
-   4) Stk [   8: NSc twice
-              9: NAp    8    8 (NSc twice)
-             10: NAp    9    1 (NSc id)
-              2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 8 8
-      (  10) NAp 9 1
-      (  11) NNum 3
-      
-      
-   5) Stk [   9: NAp   12    8 (NSc twice)
-             10: NAp    9    1 (NSc id)
-              2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 9 1
-      (  11) NNum 3
-      (  12) NAp 7 8
-      
-      
-   6) Stk [  12: NAp    7    8 (NSc twice)
-              9: NAp   12    8 (NSc twice)
-             10: NAp    9    1 (NSc id)
-              2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 9 1
-      (  11) NNum 3
-      (  12) NAp 7 8
-      
-      
-   7) Stk [   7: NSc compose
-             12: NAp    7    8 (NSc twice)
-              9: NAp   12    8 (NSc twice)
-             10: NAp    9    1 (NSc id)
-              2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 9 1
-      (  11) NNum 3
-      (  12) NAp 7 8
-      
-      
-   8) Stk [  10: NAp    8   13 (NAp 8 1)
-              2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 8 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 8 1
-      
-      
-   9) Stk [   8: NSc twice
-             10: NAp    8   13 (NAp 8 1)
-              2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 8 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 8 1
-      
-      
-  10) Stk [  10: NAp   14   13 (NAp 8 1)
-              2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 8 1
-      (  14) NAp 7 13
-      
-      
-  11) Stk [  14: NAp    7   13 (NAp 8 1)
-             10: NAp   14   13 (NAp 8 1)
-              2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 8 1
-      (  14) NAp 7 13
-      
-      
-  12) Stk [   7: NSc compose
-             14: NAp    7   13 (NAp 8 1)
-             10: NAp   14   13 (NAp 8 1)
-              2: NAp   10   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NAp 10 11
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 8 1
-      (  14) NAp 7 13
-      
-      
-  13) Stk [   2: NAp   13   15 (NAp 13 11) ]
-      (   1) NSc id
-      (   2) NAp 13 15
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 8 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      
-      
-  14) Stk [  13: NAp    8    1 (NSc id)
-              2: NAp   13   15 (NAp 13 11) ]
-      (   1) NSc id
-      (   2) NAp 13 15
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 8 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      
-      
-  15) Stk [   8: NSc twice
-             13: NAp    8    1 (NSc id)
-              2: NAp   13   15 (NAp 13 11) ]
-      (   1) NSc id
-      (   2) NAp 13 15
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 8 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      
-      
-  16) Stk [  13: NAp   16    1 (NSc id)
-              2: NAp   13   15 (NAp 13 11) ]
-      (   1) NSc id
-      (   2) NAp 13 15
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      
-      
-  17) Stk [  16: NAp    7    1 (NSc id)
-             13: NAp   16    1 (NSc id)
-              2: NAp   13   15 (NAp 13 11) ]
-      (   1) NSc id
-      (   2) NAp 13 15
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      
-      
-  18) Stk [   7: NSc compose
-             16: NAp    7    1 (NSc id)
-             13: NAp   16    1 (NSc id)
-              2: NAp   13   15 (NAp 13 11) ]
-      (   1) NSc id
-      (   2) NAp 13 15
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      
-      
-  19) Stk [   2: NAp    1   17 (NAp 1 15) ]
-      (   1) NSc id
-      (   2) NAp 1 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      (  17) NAp 1 15
-      
-      
-  20) Stk [   1: NSc id
-              2: NAp    1   17 (NAp 1 15) ]
-      (   1) NSc id
-      (   2) NAp 1 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      (  17) NAp 1 15
-      
-      
-  21) Stk [   2: NInd 17 ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      (  17) NAp 1 15
-      
-      
-  22) Stk [  17: NAp    1   15 (NAp 13 11) ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      (  17) NAp 1 15
-      
-      
-  23) Stk [   1: NSc id
-             17: NAp    1   15 (NAp 13 11) ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      (  17) NAp 1 15
-      
-      
-  24) Stk [  17: NInd 15 ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      (  17) NInd 15
-      
-      
-  25) Stk [  15: NAp   13   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      (  17) NInd 15
-      
-      
-  26) Stk [  13: NAp   16    1 (NSc id)
-             15: NAp   13   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      (  17) NInd 15
-      
-      
-  27) Stk [  16: NAp    7    1 (NSc id)
-             13: NAp   16    1 (NSc id)
-             15: NAp   13   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      (  17) NInd 15
-      
-      
-  28) Stk [   7: NSc compose
-             16: NAp    7    1 (NSc id)
-             13: NAp   16    1 (NSc id)
-             15: NAp   13   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 13 11
-      (  16) NAp 7 1
-      (  17) NInd 15
-      
-      
-  29) Stk [  15: NAp    1   18 (NAp 1 11) ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 1 18
-      (  16) NAp 7 1
-      (  17) NInd 15
-      (  18) NAp 1 11
-      
-      
-  30) Stk [   1: NSc id
-             15: NAp    1   18 (NAp 1 11) ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NAp 1 18
-      (  16) NAp 7 1
-      (  17) NInd 15
-      (  18) NAp 1 11
-      
-      
-  31) Stk [  15: NInd 18 ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NInd 18
-      (  16) NAp 7 1
-      (  17) NInd 15
-      (  18) NAp 1 11
-      
-      
-  32) Stk [  18: NAp    1   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NInd 18
-      (  16) NAp 7 1
-      (  17) NInd 15
-      (  18) NAp 1 11
-      
-      
-  33) Stk [   1: NSc id
-             18: NAp    1   11 (NNum 3) ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NInd 18
-      (  16) NAp 7 1
-      (  17) NInd 15
-      (  18) NAp 1 11
-      
-      
-  34) Stk [  18: NInd 11 ]
-      (   1) NSc id
-      (   2) NInd 17
-      (   3) NSc I
-      (   4) NSc K
-      (   5) NSc K1
-      (   6) NSc S
-      (   7) NSc compose
-      (   8) NSc twice
-      (   9) NAp 12 8
-      (  10) NAp 14 13
-      (  11) NNum 3
-      (  12) NAp 7 8
-      (  13) NAp 16 1
-      (  14) NAp 7 13
-      (  15) NInd 18
-      (  16) NAp 7 1
-      (  17) NInd 15
-      (  18) NInd 11
+Supercombinator definitions
+Code for main
+    Code:{Pushglobal "twice"
+          Pushglobal "twice"
+          Mkap
+          Pushglobal "twice"
+          Mkap
+          Pushglobal "id"
+          Mkap
+          Pushint 3
+          Mkap
+          Slide 1
+          Unwind}
+
+
+
+Code for id
+    Code:{Pushglobal "S"
+          Pushglobal "K"
+          Mkap
+          Pushglobal "K"
+          Mkap
+          Slide 1
+          Unwind}
+
+
+
+Code for twice
+    Code:{Pushglobal "compose"
+          Push 1
+          Mkap
+          Push 1
+          Mkap
+          Slide 2
+          Unwind}
+
+
+
+Code for compose
+    Code:{Push 0
+          Push 2
+          Push 4
+          Mkap
+          Mkap
+          Slide 4
+          Unwind}
+
+
+
+Code for S
+    Code:{Push 0
+          Push 3
+          Mkap
+          Push 2
+          Push 4
+          Mkap
+          Mkap
+          Slide 4
+          Unwind}
+
+
+
+Code for K1
+    Code:{Push 1
+          Slide 3
+          Unwind}
+
+
+
+Code for K
+    Code:{Push 0
+          Slide 3
+          Unwind}
+
+
+
+Code for I
+    Code:{Push 0
+          Slide 2
+          Unwind}
+
+
+
+
+State transitions
+
+   0)  Stack:[]
+          Code:{Pushglobal "main"
+                Unwind}
+      
+      
+   1)  Stack:[8: Global main]
+          Code:{Unwind}
+      
+      
+   2)  Stack:[8: Global main]
+          Code:{Pushglobal "twice"
+                Pushglobal "twice"
+                Mkap
+                Pushglobal "twice"
+                Mkap
+                Pushglobal "id"
+                Mkap
+                Pushint 3
+                Mkap
+                Slide 1
+                Unwind}
+      
+      
+   3)  Stack:[8: Global main
+              6: Global twice]
+          Code:{Pushglobal "twice"
+                Mkap
+                Pushglobal "twice"
+                Mkap
+                Pushglobal "id"
+                Mkap
+                Pushint 3
+                Mkap
+                Slide 1
+                Unwind}
+      
+      
+   4)  Stack:[8: Global main
+              6: Global twice
+              6: Global twice]
+          Code:{Mkap
+                Pushglobal "twice"
+                Mkap
+                Pushglobal "id"
+                Mkap
+                Pushint 3
+                Mkap
+                Slide 1
+                Unwind}
+      
+      
+   5)  Stack:[8: Global main
+              9: Ap 6 6]
+          Code:{Pushglobal "twice"
+                Mkap
+                Pushglobal "id"
+                Mkap
+                Pushint 3
+                Mkap
+                Slide 1
+                Unwind}
+      
+      
+   6)  Stack:[8: Global main
+              9: Ap 6 6
+              6: Global twice]
+          Code:{Mkap
+                Pushglobal "id"
+                Mkap
+                Pushint 3
+                Mkap
+                Slide 1
+                Unwind}
+      
+      
+   7)  Stack:[8: Global main
+              10: Ap 6 9]
+          Code:{Pushglobal "id"
+                Mkap
+                Pushint 3
+                Mkap
+                Slide 1
+                Unwind}
+      
+      
+   8)  Stack:[8: Global main
+              10: Ap 6 9
+              7: Global id]
+          Code:{Mkap
+                Pushint 3
+                Mkap
+                Slide 1
+                Unwind}
+      
+      
+   9)  Stack:[8: Global main
+              11: Ap 7 10]
+          Code:{Pushint 3
+                Mkap
+                Slide 1
+                Unwind}
+      
+      
+  10)  Stack:[8: Global main
+              11: Ap 7 10
+              12: 3]
+          Code:{Mkap
+                Slide 1
+                Unwind}
+      
+      
+  11)  Stack:[8: Global main
+              13: Ap 12 11]
+          Code:{Slide 1
+                Unwind}
+      
+      
+  12)  Stack:[13: Ap 12 11]
+          Code:{Unwind}
+      
+      
+  13)  Stack:[13: Ap 12 11
+              12: 3]
+          Code:{Unwind}
+      
+      
+  14)  Stack:[13: Ap 12 11
+              12: 3]
+          Code:{}
       
       
 
 
-Total number of steps = 34
+Steps taken:14

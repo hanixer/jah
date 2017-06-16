@@ -26,6 +26,8 @@ type GmHeap = Heap<Node>
 
 type GmStats = int
 
+type GmEnvironment = Name * int list
+
 type GmState =
     { Code : GmCode
       Heap : GmHeap
@@ -34,10 +36,13 @@ type GmState =
       Stats : GmStats }
 
 type CompiledSC = Name * int * GmCode
+type GmCompiler = CoreExpr -> GmEnvironment -> GmCode
 
 let statInitial = 0
 let statIncSteps s = s + 1
 let statGetSteps s = s
+
+let compiledPrimitives = []
 
 let allocateSc heap (name, nargs, is) =
     let heap', addr = heapAlloc heap (NGlobal (nargs, is))
@@ -45,12 +50,48 @@ let allocateSc heap (name, nargs, is) =
 
 let initialCode = [ Pushglobal "main"; Unwind ]
 
-let buildInitialHeap scDefns = 
-    mapAccumul allocateSc Map.empty scDefns
+let argOffset n env =
+    List.map (fun (name, m) -> (name, m + n)) env
 
+let rec compileC expr env =
+    match expr with
+    | EVar v ->
+        match List.tryFind (fst >> ((=) v)) env with
+        | Some (_, n) -> [Push n]
+        | None -> [Pushglobal v]
+    | ENum n -> [Pushint n]
+    | EAp (e1, e2) ->
+        List.concat
+            [ compileC e1 env
+              compileC e2 (argOffset 1 env)
+              [Mkap] ]
+    | _ ->
+        failwithf "cannot compile %A" expr
+
+let compileR expr env = 
+    compileC expr env 
+    |> List.append
+    <| [ Slide (env.Length + 1); Unwind ]
+
+let compileSc (name, env, body) =
+    printfn "sc compil %s" name
+    let newEnv = List.mapi (fun i x -> x, i) env
+    let compiled = compileR body newEnv 
+    name, env.Length, compiled
+
+let buildInitialHeap program = 
+    let compiled = 
+        List.map compileSc (List.append preludeDefs program)
+        |> List.append compiledPrimitives
+    mapAccumul allocateSc Map.empty compiled
 
 let compile program =
-    failwith "unimplemented"    
+    let heap, globals = buildInitialHeap program
+    { Code = initialCode
+      Heap = heap
+      Globals = globals
+      Stats = statInitial
+      Stack = [] }
 
 
 let gmFinal (s : GmState) =
@@ -72,9 +113,9 @@ let pushint (n : int) (s : GmState) =
 
 let mkap (s : GmState) =
     match s.Stack with
-    | a1 :: a2 :: addrs ->
+    | a1 :: a2 :: stackTail ->
         let newHeap, a = heapAlloc s.Heap (NAp (a1, a2))
-        let newStack =  a :: addrs
+        let newStack =  a :: stackTail
         { s with 
             Stack = newStack
             Heap = newHeap }
@@ -136,7 +177,64 @@ let rec eval state =
             state |> step |> doAdmin |> eval 
     state :: restStates
 
+let showInstruction i = sprintf "%A" i |> iStr
+
+let showInstructions code =
+    iConcat 
+        [ iStr "    Code:{";
+          code |> List.map showInstruction |> iInterleave iNewline |> iIndent;
+          iStr "}"; iNewline ]
+
+let showSc s (name, addr) =
+    let arity, code = 
+        match heapLookup s.Heap addr with 
+        | NGlobal (x,y) -> x,y
+        | _ -> failwith "wrong node, expected global"
+    iConcat 
+        [ iStr "Code for "; iStr name; iNewline;
+          showInstructions code; iNewline; iNewline ]
+
+let showNode s a = function
+    | NNum n -> iNum n
+    | NGlobal (n, g) ->
+        let v, _ = List.find (snd >> ((=) a)) s.Globals
+        iConcat
+            [ iStr "Global "; iStr v ]
+    | NAp (a1, a2) ->
+        iConcat
+            [ iStr "Ap "; showAddr a1;
+              iStr " "; showAddr a2 ]
+
+let showStackItem s a =
+    iConcat
+        [ showAddr a; iStr ": ";
+          heapLookup s.Heap a |> showNode s a ]
+
+let showStack s =
+    iConcat
+        [ iStr " Stack:[";
+          s.Stack |> List.rev 
+          |> List.map (showStackItem s) 
+          |> iInterleave iNewline |> iIndent;
+          iStr "]"; ]
+
+let showState s =
+    iConcat
+        [ showStack s; iNewline; 
+          showInstructions s.Code; iNewline ]
+
+let showStats s =
+    iConcat 
+        [ iStr "Steps taken:"; s.Stats |> statGetSteps |> iNum ]
+
 let showResults states =
-    failwith "unimplemented"
+    let s  = List.head states
+    iConcat   
+        [ iStr "Supercombinator definitions"; iNewline;
+          iInterleave iNewline (List.map (showSc s) s.Globals); iNewline; iNewline; 
+          iStr "State transitions"; iNewline; iNewline;
+          iLayn (List.map showState states); iNewline; iNewline;
+          showStats (List.last states) ]
+    |> iDisplay
 
 let runProg<'p> = parse >> compile >> eval >> showResults

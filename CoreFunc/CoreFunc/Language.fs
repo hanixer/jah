@@ -67,6 +67,8 @@ let rec iInterleave sep = function
     | [iseq] -> iseq
     | iseq :: rest -> iseq |>iAppend<| sep |>iAppend<| (iInterleave sep rest)
 
+let showAddr = string >> iStr
+
 let rec flatten col = function
     | [] -> ""
     | (INewline, indent) :: iseqs ->
