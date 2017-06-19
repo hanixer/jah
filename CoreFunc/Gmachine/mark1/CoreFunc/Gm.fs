@@ -96,19 +96,29 @@ let compile program =
 let gmFinal (s : GmState) =
     s.Code.IsEmpty
 
+let tryFindGlobal s name =
+    List.tryFind (fst >> ((=) name)) s.Globals
+
 let pushglobal f (s : GmState) =
-    match List.tryFind (fst >> ((=) f)) s.Globals with
+    match tryFindGlobal s f with
     | Some (_, x) ->
         { s with Stack = x :: s.Stack }
     | _ ->
         failwithf "cannot find global %s" f
 
 let pushint (n : int) (s : GmState) =
-    let newHeap, a = heapAlloc s.Heap (NNum n)
-    let newStack = a :: s.Stack
-    { s with
-        Heap = newHeap
-        Stack = newStack }
+    let name = (string n)
+    match tryFindGlobal s name with
+    | Some (_, x) -> 
+        { s with Stack = x :: s.Stack }
+    | None ->
+        let newHeap, a = heapAlloc s.Heap (NNum n)
+        let newGlobals = (name, a) :: s.Globals
+        let newStack = a :: s.Stack
+        { s with
+            Heap = newHeap
+            Globals = newGlobals
+            Stack = newStack }
 
 let mkap (s : GmState) =
     match s.Stack with

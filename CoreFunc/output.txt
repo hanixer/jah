@@ -9,7 +9,8 @@ Code for main
           Mkap
           Pushint 3
           Mkap
-          Slide 1
+          Update 0
+          Pop 0
           Unwind}
 
 
@@ -20,7 +21,8 @@ Code for id
           Mkap
           Pushglobal "K"
           Mkap
-          Slide 1
+          Update 0
+          Pop 0
           Unwind}
 
 
@@ -31,7 +33,8 @@ Code for twice
           Mkap
           Push 1
           Mkap
-          Slide 2
+          Update 1
+          Pop 1
           Unwind}
 
 
@@ -42,7 +45,8 @@ Code for compose
           Push 4
           Mkap
           Mkap
-          Slide 4
+          Update 3
+          Pop 3
           Unwind}
 
 
@@ -55,28 +59,32 @@ Code for S
           Push 4
           Mkap
           Mkap
-          Slide 4
+          Update 3
+          Pop 3
           Unwind}
 
 
 
 Code for K1
     Code:{Push 1
-          Slide 3
+          Update 2
+          Pop 2
           Unwind}
 
 
 
 Code for K
     Code:{Push 0
-          Slide 3
+          Update 2
+          Pop 2
           Unwind}
 
 
 
 Code for I
     Code:{Push 0
-          Slide 2
+          Update 1
+          Pop 1
           Unwind}
 
 
@@ -103,7 +111,8 @@ State transitions
                 Mkap
                 Pushint 3
                 Mkap
-                Slide 1
+                Update 0
+                Pop 0
                 Unwind}
       
       
@@ -117,7 +126,8 @@ State transitions
                 Mkap
                 Pushint 3
                 Mkap
-                Slide 1
+                Update 0
+                Pop 0
                 Unwind}
       
       
@@ -131,7 +141,8 @@ State transitions
                 Mkap
                 Pushint 3
                 Mkap
-                Slide 1
+                Update 0
+                Pop 0
                 Unwind}
       
       
@@ -143,7 +154,8 @@ State transitions
                 Mkap
                 Pushint 3
                 Mkap
-                Slide 1
+                Update 0
+                Pop 0
                 Unwind}
       
       
@@ -155,7 +167,8 @@ State transitions
                 Mkap
                 Pushint 3
                 Mkap
-                Slide 1
+                Update 0
+                Pop 0
                 Unwind}
       
       
@@ -165,7 +178,8 @@ State transitions
                 Mkap
                 Pushint 3
                 Mkap
-                Slide 1
+                Update 0
+                Pop 0
                 Unwind}
       
       
@@ -175,7 +189,8 @@ State transitions
           Code:{Mkap
                 Pushint 3
                 Mkap
-                Slide 1
+                Update 0
+                Pop 0
                 Unwind}
       
       
@@ -183,7 +198,8 @@ State transitions
               11: Ap 7 10]
           Code:{Pushint 3
                 Mkap
-                Slide 1
+                Update 0
+                Pop 0
                 Unwind}
       
       
@@ -191,27 +207,28 @@ State transitions
               11: Ap 7 10
               12: 3]
           Code:{Mkap
-                Slide 1
+                Update 0
+                Pop 0
                 Unwind}
       
       
   11)  Stack:[8: Global main
               13: Ap 12 11]
-          Code:{Slide 1
+          Code:{Update 0
+                Pop 0
                 Unwind}
       
       
-  12)  Stack:[13: Ap 12 11]
+  12)  Stack:[8: Ind 13]
+          Code:{Pop 0
+                Unwind}
+      
+      
+  13)  Stack:[8: Ind 13]
           Code:{Unwind}
       
       
-  13)  Stack:[13: Ap 12 11
-              12: 3]
-          Code:{Unwind}
-      
-      
-  14)  Stack:[13: Ap 12 11
-              12: 3]
+  14)  Stack:[13: Ap 12 11]
           Code:{}
       
       

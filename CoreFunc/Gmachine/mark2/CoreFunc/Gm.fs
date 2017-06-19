@@ -11,7 +11,8 @@ type Instruction =
     | Pushint of int
     | Push of int
     | Mkap
-    | Slide of int
+    | Update of int
+    | Pop of int
 
 type GmCode = Instruction list
 
@@ -21,6 +22,7 @@ type Node =
     | NAp of Addr * Addr
     | NNum of int
     | NGlobal of int * GmCode
+    | NInd of Addr
 
 type GmHeap = Heap<Node>
 
@@ -69,9 +71,10 @@ let rec compileC expr env =
         failwithf "cannot compile %A" expr
 
 let compileR expr env = 
+    let d = List.length env
     compileC expr env 
     |> List.append
-    <| [ Slide (env.Length + 1); Unwind ]
+    <| [ Update d; Pop d; Unwind ]
 
 let compileSc (name, env, body) =
     let newEnv = List.mapi (fun i x -> x, i) env
@@ -96,19 +99,29 @@ let compile program =
 let gmFinal (s : GmState) =
     s.Code.IsEmpty
 
+let tryFindGlobal s name =
+    List.tryFind (fst >> ((=) name)) s.Globals
+
 let pushglobal f (s : GmState) =
-    match List.tryFind (fst >> ((=) f)) s.Globals with
+    match tryFindGlobal s f with
     | Some (_, x) ->
         { s with Stack = x :: s.Stack }
     | _ ->
         failwithf "cannot find global %s" f
 
 let pushint (n : int) (s : GmState) =
-    let newHeap, a = heapAlloc s.Heap (NNum n)
-    let newStack = a :: s.Stack
-    { s with
-        Heap = newHeap
-        Stack = newStack }
+    let name = (string n)
+    match tryFindGlobal s name with
+    | Some (_, x) -> 
+        { s with Stack = x :: s.Stack }
+    | None ->
+        let newHeap, a = heapAlloc s.Heap (NNum n)
+        let newGlobals = (name, a) :: s.Globals
+        let newStack = a :: s.Stack
+        { s with
+            Heap = newHeap
+            Globals = newGlobals
+            Stack = newStack }
 
 let mkap (s : GmState) =
     match s.Stack with
@@ -148,6 +161,21 @@ let unwind s =
             failwith "Unwinding with two few arguments"
         else
             { s with Code = c }
+    | NInd a ->
+        { s with Stack = a :: List.tail s.Stack }
+
+let updateInstr n s =
+    let a = List.head s.Stack
+    let tail = List.tail s.Stack
+    let an = List.item n tail
+    let newHeap = heapUpdate s.Heap an (NInd a)
+    { s with
+        Stack = tail
+        Heap = newHeap }
+
+let pop n s =
+    { s with
+        Stack = List.skip n s.Stack }
 
 let dispatch (i : Instruction) =
     match i with
@@ -155,9 +183,9 @@ let dispatch (i : Instruction) =
     | Pushint n -> pushint n
     | Mkap -> mkap
     | Push n -> push n
-    | Slide n -> slide n
+    | Update n -> updateInstr n
+    | Pop n -> pop n
     | Unwind -> unwind
-    | _ -> failwith "unimpl"
 
 let step (s : GmState) = 
     match s.Code with
@@ -203,6 +231,9 @@ let showNode s a = function
         iConcat
             [ iStr "Ap "; showAddr a1;
               iStr " "; showAddr a2 ]
+    | NInd a ->
+        iConcat
+            [ iStr "Ind "; showAddr a ]
 
 let showStackItem s a =
     iConcat
