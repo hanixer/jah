@@ -62,8 +62,8 @@ let rec compileC expr env =
     | ENum n -> [Pushint n]
     | EAp (e1, e2) ->
         List.concat
-            [ compileC e1 env
-              compileC e2 (argOffset 1 env)
+            [ compileC e2 env
+              compileC e1 (argOffset 1 env)
               [Mkap] ]
     | _ ->
         failwithf "cannot compile %A" expr

@@ -64,8 +64,8 @@ let rec compileC expr env =
     | ENum n -> [Pushint n]
     | EAp (e1, e2) ->
         List.concat
-            [ compileC e1 env
-              compileC e2 (argOffset 1 env)
+            [ compileC e2 env
+              compileC e1 (argOffset 1 env)
               [Mkap] ]
     | _ ->
         failwithf "cannot compile %A" expr
@@ -162,7 +162,9 @@ let unwind s =
         else
             { s with Code = c }
     | NInd a ->
-        { s with Stack = a :: List.tail s.Stack }
+        { s with 
+            Stack = a :: List.tail s.Stack
+            Code = [Unwind] }
 
 let updateInstr n s =
     let a = List.head s.Stack
@@ -196,13 +198,14 @@ let doAdmin (s : GmState) =
     { s with 
         Stats = statIncSteps s.Stats}
 
-let rec eval state =
-    let restStates =
+let rec eval state =        
+    let rec go state states =
         if gmFinal state then
-            []
+            states
         else
-            state |> step |> doAdmin |> eval 
-    state :: restStates
+            let newState = state |> step |> doAdmin
+            go newState (state :: states)
+    go state [] |> List.rev
 
 let showInstruction i = sprintf "%A" i |> iStr
 
