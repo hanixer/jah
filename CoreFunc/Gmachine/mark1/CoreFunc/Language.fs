@@ -38,7 +38,7 @@ let preludeDefs =
         ("K1",["x";"y"], EVar "y")
         ("S", ["f";"g";"x"], EAp (EAp ((EVar "f"), (EVar "x")), EAp ((EVar "g"), (EVar "x"))))
         ("compose", ["f";"g";"x"], EAp (EVar "f", EAp (EVar "g", EVar "x")))
-        ("twice", ["f"], EAp (EAp (EVar "compose", EVar "f"), (EVar "f"))) 
+        ("twice", ["f"], EAp (EAp (EVar "compose", EVar "f"), (EVar "f")))
     ]
 
 type Iseq = 
@@ -301,17 +301,18 @@ let pLambda pExpr =
         (pOneOrMore pVar)
         (pLitHelp ".")
         pExpr
+
 let  pAexpr pExpr =
+    pPack |>pAlt<|
     (pApply pVar EVar) |>pAlt<| 
     (pApply pNum ENum) |>pAlt<|
-    pPack |>pAlt<|
     pBetween (pLitHelp "(") pExpr (pLitHelp ")") 
 
 type PartialExpr =
     | NoOp
     | FoundOp of Name * CoreExpr
 
-let pApplic pExpr = 
+let pApplication pExpr = 
     pOneOrMore (pAexpr pExpr) |>pApply<|
     (fun xs -> List.fold (fun acc elt -> EAp (acc, elt)) (List.head xs) (List.tail xs))
     
@@ -324,9 +325,38 @@ let rec pChainl pElt pOp =
             pOp
             pElt))
 
+let pBinaryl pExpr primitive ops =
+    let ops = List.map pLitHelp ops
+    let pCombined =
+        if List.length ops = 1 then List.head ops
+        else List.fold pAlt ops.Head ops.Tail
+    pChainl (primitive pExpr) 
+        (pApply pCombined (fun op -> fun x y -> EAp (EAp (EVar op, x), y)))
+
 let pMult pExpr =
-    pChainl (pApplic pExpr) 
-        (pApply (pLitHelp "*") (fun _ -> fun x y -> EAp (EAp (EVar "*", x), y)))
+    pBinaryl pExpr pApplication ["*"; "/"]
+
+let pAdd pExpr =
+    pBinaryl pExpr pMult ["+"; "-"]
+
+//relop → < | <= | == | ˜= | >= | > Comparison
+
+let pRelop =
+    let ops = ["<="; "<"; "=="; "~="; ">="; ">"] |> List.map pLitHelp
+    List.fold pAlt ops.Head ops.Tail
+
+let pRelopExpr pExpr =
+    let p1 =
+        pThen3 (fun x op y -> EAp (EAp (EVar op, x), y))
+            (pAdd pExpr) pRelop (pAdd pExpr)
+    let p2 = pAdd pExpr
+    p1 |>pAlt<| p2
+
+let pAnd pExpr =
+    pBinaryl pExpr pRelopExpr ["&"]
+
+let pOr pExpr =
+    pBinaryl pExpr pAnd ["|"]
 
 let rec pExpr<'a> =
     let parserReference = ref (fun _ -> [ENum 2, []])
@@ -335,7 +365,8 @@ let rec pExpr<'a> =
         pLet p |>pAlt<|
         pCase p |>pAlt<|
         pLambda p |>pAlt<|
-        pMult p
+        pOr p
+        // pAdd p
     
     !parserReference
 

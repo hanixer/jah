@@ -39,8 +39,8 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
     <Compile Include="Language.fs" />
+    <None Include="App.config" />
     <Compile Include="Util.fs" />
     <Compile Include="Compile.fs" />
     <Compile Include="Gm.fs" />

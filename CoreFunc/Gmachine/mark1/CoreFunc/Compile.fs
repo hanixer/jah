@@ -19,6 +19,7 @@ type Primitive =
     | LessEq
     | Eq
     | NotEq
+    | PConstr of int * int
 
 type Node =
     | NAp of Addr * Addr
@@ -57,6 +58,7 @@ let primitives = [
     "-", Sub
     "*", Mul 
     "/", Div
+    "if", If
     ]
 
 let envTryLookup env name =
@@ -108,7 +110,7 @@ let tiFinal = function
 
 let instantiateConstr tag arity heap env =
     
-    failwith "Can't instantiate constr now"
+    failwith ""
 
 let rec instantiate expr heap env =
     let heap', addr =
@@ -202,6 +204,13 @@ let getArgs heap stack =
         | n -> failwithf "NAp node is expected, but got [%d ; %A] stack %A"  addr n stack
     List.map getArg (List.tail stack)
 
+let getArg heap a =
+    match heapLookup heap a with
+    | NAp (_, a1) -> a1
+    | _ ->
+        failwith "Application node is expected"
+
+
 let getRootAddr stack argNames =
     List.item (List.length argNames) stack 
 
@@ -213,46 +222,77 @@ let rec getNodeNotInderect heap addr =
 let evalNodeOnNewStack state nodeAddr =
     { state with
         Stack = [nodeAddr] 
-        Dump = state.Stack :: state.Dump }
+        Dump = (List.tail state.Stack) :: state.Dump }
 
 let primNeg (state : TiState) =
+    assert (state.Stack.Length = 2) // a :: a1 :: []
+
     let argAddr = getArgs state.Heap (List.take 2 state.Stack) |> List.head
-    match isDataNode state.Heap argAddr with
-    | true -> 
+    match heapLookup state.Heap argAddr with
+    | NNum n -> 
         let rootAddr = List.item 1 state.Stack
-        match getNodeNotInderect state.Heap argAddr with
-        | NNum n -> 
-            let newHeap = heapUpdate state.Heap rootAddr (NNum -n)
-            let newStack = List.tail state.Stack
-            { state with
-                Stack = newStack
-                Heap = newHeap }
-        | _ -> failwith "number node is expected"
-    | false ->
+        let newHeap = heapUpdate state.Heap rootAddr (NNum -n)
+        let newStack = List.tail state.Stack
+        { state with
+            Stack = newStack
+            Heap = newHeap }
+    | _ ->
         evalNodeOnNewStack state argAddr
 
 let primArith (state : TiState) (func : int -> int -> int) : TiState =
-    let argAddrs = getArgs state.Heap (List.take 3 state.Stack)
-    match List.map (isDataNode state.Heap) argAddrs with
-    | [true; true] ->
-        let rootAddr = List.item 2 state.Stack
-        let nodes = List.map (getNodeNotInderect state.Heap) argAddrs
-        match nodes with
-        | [NNum n1; NNum n2] ->
-            let newNode = func n1 n2 |> NNum
-            let newHeap = heapUpdate state.Heap rootAddr newNode
-            let newStack = List.skip 2 state.Stack
-            { state with
-                Stack = newStack 
-                Heap = newHeap }
+    let lookup (x, y) = (heapLookup state.Heap x, heapLookup state.Heap y)
+    match state.Stack with
+    | a :: a1 :: [a2] ->
+        match lookup (a1, a2) with
+        | NAp (_, b1), NAp (_, b2) ->
+            match lookup (b1, b2) with
+            | NNum n1, NNum n2 ->
+                let n3 = func n1 n2
+                let newHeap = heapUpdate state.Heap a2 (NNum n3)
+                { state with 
+                    Stack = [a2] 
+                    Heap = newHeap }
+            | NNum n1, _ ->
+                { state with
+                    Stack = [b2]
+                    Dump = [a2] :: state.Dump }
+            | _, _ ->
+                { state with
+                    Stack = [b1]
+                    Dump = [a2] :: state.Dump }
         | _ ->
-            failwith "Two number nodes are expected"
-    | [false; _] ->
-        evalNodeOnNewStack state (List.item 0 argAddrs)
-    | [_; false] ->
-        evalNodeOnNewStack state (List.item 1 argAddrs)
+            failwith "Two application are expected in stack for arithmetic"
     | _ ->
-        failwith "wrong arg addresses"
+        failwith "wrong arguments to arithmetic"
+
+let primConstr state t n =
+    let bs = getArgs state.Heap state.Stack
+    let newStack = List.skip n state.Stack
+    let an = List.head newStack
+    let newHeap = heapUpdate state.Heap an (NData (t, bs))
+    { state with 
+        Stack = newStack
+        Heap = newHeap }
+
+let ifStep state =
+    match state.Stack with
+    | [a0; a1; a2; a3] ->
+        let b = getArg state.Heap a1
+        match heapLookup state.Heap b with
+        | NData (2, []) ->
+            let addrThen = getArg state.Heap a2
+            { state with
+                Stack = [addrThen] }
+        | NData (1, []) ->
+            let addrElse = getArg state.Heap a3
+            { state with
+                Stack = [addrElse] }
+        | _ ->
+            { state with
+                Stack = [b]
+                Dump = [a3] :: state.Dump }
+    | _ ->
+        failwith "Wrong arguments for If"
 
 let primStep (state : TiState) = function
     | Neg -> primNeg state
@@ -260,6 +300,9 @@ let primStep (state : TiState) = function
     | Sub -> primArith state (-)
     | Div -> primArith state (/)
     | Mul -> primArith state (*)
+    | PConstr (t, a) -> primConstr state t a
+    | If -> ifStep state
+    | _ -> failwith "wrong function primitive"
     
 let numStep (state : TiState) n = 
     match state.Stack with
@@ -270,8 +313,12 @@ let numStep (state : TiState) n =
     | _ -> 
         failwith "Expected in numStep to have stack with only num node on the top"
 
-let apStep (state : TiState) a1 a2 =
-    { state with Stack = a1 :: state.Stack }
+let apStep (state : TiState) a a1 a2 =
+    match heapLookup state.Heap a2 with
+    | NInd a3 ->
+        { state with Heap = heapUpdate state.Heap a (NAp (a1, a3)) }
+    | _ ->        
+        { state with Stack = a1 :: state.Stack }
 
 let scStep (state : TiState) scName argNames body =
     let requiredLength = List.length argNames + 1
@@ -348,15 +395,19 @@ let showState (state : TiState) =
     ]
 
 let step state = 
-    match heapLookup state.Heap (List.head state.Stack) with
+    let a = (List.head state.Stack)
+    match heapLookup state.Heap a with
     | NNum n -> numStep state n
-    | NAp (a1, a2) -> apStep state a1 a2
+    | NAp (a1, a2) -> apStep state a a1 a2
     | NSc (name, args, body) -> scStep state name args body
     | NInd addr -> indStep state addr
     | NPrimitive (name, prim) -> primStep state prim
 
 let rec eval state = 
+    printfn "%s %d" (showState state |> iDisplay) state.Stack.Length
     let restStates = 
+        // if state.Stats > 100 then []
+        // else  
         if tiFinal state then []
         else
             state |> step |> doAdmin |> eval
