@@ -343,18 +343,21 @@ let primConstr state t n =
         Heap = newHeap }
 
 let ifStep state =
+    let condEvaluated root apAddr = 
+        let addr = getArg state.Heap apAddr
+        let node = heapLookup state.Heap addr
+        let newHeap = heapUpdate state.Heap root node
+        { state with
+            Stack = [root]
+            Heap = newHeap }
     match state.Stack with
     | [a0; a1; a2; a3] ->
         let b = getArg state.Heap a1
         match heapLookup state.Heap b with
         | NData (2, []) ->
-            let addrThen = getArg state.Heap a2
-            { state with
-                Stack = [addrThen] }
+            condEvaluated a3 a2
         | NData (1, []) ->
-            let addrElse = getArg state.Heap a3
-            { state with
-                Stack = [addrElse] }
+            condEvaluated a3 a3
         | _ ->
             { state with
                 Stack = [b]
