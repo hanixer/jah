@@ -71,6 +71,12 @@ let primitives = [
     "-", Sub
     "*", Mul 
     "/", Div
+    ">", Greater
+    ">=", GreaterEq
+    "<", Less
+    "<=", LessEq
+    "==", Eq
+    "~=", NotEq
     "if", If
     ]
 
@@ -113,6 +119,12 @@ let rec isDataNode heap addr =
     | NData _ -> true
     | NInd addr2 -> isDataNode heap addr2
     | _ -> false
+
+let isDataNodeSimple = function
+    | NNum n -> true
+    | NData _ -> true
+    | _ -> false
+
 
 let tiFinal = function
     | { Stack = [soleAddr]; Heap = heap; Dump = [] } ->
@@ -255,23 +267,20 @@ let primNeg (state : TiState) =
     | _ ->
         evalNodeOnNewStack state argAddr
 
-// let primDyadic (state : TiState) (func : Node -> Node -> Node) : TiState =
-
-
-let primArith (state : TiState) (func : int -> int -> int) : TiState =
+let primDyadic (state : TiState) (func : Node -> Node -> Node) : TiState =
     let lookup (x, y) = (heapLookup state.Heap x, heapLookup state.Heap y)
     match state.Stack with
     | a :: a1 :: [a2] ->
         match lookup (a1, a2) with
         | NAp (_, b1), NAp (_, b2) ->
             match lookup (b1, b2) with
-            | NNum n1, NNum n2 ->
+            | n1, n2 when isDataNodeSimple n1 && isDataNodeSimple n2->
                 let n3 = func n1 n2
-                let newHeap = heapUpdate state.Heap a2 (NNum n3)
+                let newHeap = heapUpdate state.Heap a2 n3
                 { state with 
                     Stack = [a2] 
                     Heap = newHeap }
-            | NNum n1, _ ->
+            | n1, _ when isDataNodeSimple n1 ->
                 { state with
                     Stack = [b2]
                     Dump = [a2] :: state.Dump }
@@ -280,9 +289,49 @@ let primArith (state : TiState) (func : int -> int -> int) : TiState =
                     Stack = [b1]
                     Dump = [a2] :: state.Dump }
         | _ ->
-            failwith "Two application are expected in stack for arithmetic"
+            failwith "Two application are expected in stack for primitive ops dyadic"
     | _ ->
-        failwith "wrong arguments to arithmetic"
+        failwith "wrong arguments to primitive dyadic"
+
+let primArith (state : TiState) (func : int -> int -> int) : TiState =
+    let func2 n1 n2 = 
+        match n1, n2 with
+        | NNum n1, NNum n2 -> func n1 n2 |> NNum
+        | _ -> failwith "two number nodes are expected for arithmetic op"
+    primDyadic state func2
+
+let boxBool = function
+    | true -> NData (2, [])
+    | false -> NData (1, [])
+
+let unboxBool = function
+    | NData (2, []) -> true 
+    |  NData (1, []) -> false
+    | _ -> failwith "boolx expected"
+
+let isBool = function
+    | NData (2, []) |  NData (1, []) -> true
+    | _ -> false
+
+let primComp (state : TiState) (func : int -> int -> bool) : TiState =
+    let func2 n1 n2 = 
+        match n1, n2 with
+        | NNum n1, NNum n2 -> 
+            func n1 n2 |> boxBool
+        | _ -> failwith "two number nodes are expected for arithmetic op"
+    primDyadic state func2
+
+let primEq (state : TiState) (eq : bool) : TiState =
+    let negate x = if eq then x else not x
+    let func2 n1 n2 = 
+        match n1, n2 with
+        | NNum n1, NNum n2 -> 
+            n1 = n2 |> negate |> boxBool 
+        | n1, n2 when isBool n1 && isBool n2 ->
+            (unboxBool n1) = (unboxBool n2) |> negate |> boxBool
+        | _ -> failwith "two number nodes are expected for arithmetic op"
+    primDyadic state func2
+
 
 let primConstr state t n =
     let bs = getArgs state.Heap state.Stack
@@ -319,6 +368,12 @@ let primStep (state : TiState) = function
     | Sub -> primArith state (-)
     | Div -> primArith state (/)
     | Mul -> primArith state (*)
+    | Greater -> primComp state (>)  
+    | GreaterEq -> primComp state (>=)
+    | Less -> primComp state (<)
+    | LessEq -> primComp state (<=)
+    | Eq -> primEq state true
+    | NotEq -> primEq state false
     | PConstr (t, a) -> primConstr state t a
     | If -> ifStep state
     | _ -> failwith "wrong function primitive"
@@ -326,6 +381,7 @@ let primStep (state : TiState) = function
 let apStep (state : TiState) a a1 a2 =
     match heapLookup state.Heap a2 with
     | NInd a3 ->
+        printfn "replace inderaction node to %d in application" a3
         { state with Heap = heapUpdate state.Heap a (NAp (a1, a3)) }
     | _ ->        
         { state with Stack = a1 :: state.Stack }
@@ -400,9 +456,17 @@ let showHeap (heap : TiHeap) =
     |> List.map showHeapElt
     |> iConcat
 
+let showDump (state : TiState) =
+    iConcat [
+        iStr "Dump: [[";
+        List.map (fun x -> List.take (min 3 (List.length x)) x |> (showStack state.Heap)) state.Dump |> iInterleave iNewline |> iIndent;
+        iStr "]]"
+    ]
+
 let showState (state : TiState) =
     iConcat [ 
         showStack state.Heap state.Stack; iNewline;
+        showDump state; iNewline;
         showHeap state.Heap; iNewline 
     ]
 
