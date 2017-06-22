@@ -40,6 +40,55 @@ type GmState =
 type CompiledSC = Name * int * GmCode
 type GmCompiler = CoreExpr -> GmEnvironment -> GmCode
 
+let showInstruction i = sprintf "%A" i |> iStr
+
+let showInstructions code =
+    iConcat 
+        [ iStr "    Code:{";
+          code |> List.map showInstruction |> iInterleave iNewline |> iIndent;
+          iStr "}"; iNewline ]
+
+let showSc s (name, addr) =
+    let arity, code = 
+        match heapLookup s.Heap addr with 
+        | NGlobal (x,y) -> x,y
+        | _ -> failwith "wrong node, expected global"
+    iConcat 
+        [ iStr "Code for "; iStr name; iNewline;
+          showInstructions code; iNewline; iNewline ]
+
+let showNode s a = function
+    | NNum n -> iNum n
+    | NGlobal (n, g) ->
+        let v, _ = List.find (snd >> ((=) a)) s.Globals
+        iConcat
+            [ iStr "Global "; iStr v ]
+    | NAp (a1, a2) ->
+        iConcat
+            [ iStr "Ap "; showAddr a1;
+              iStr " "; showAddr a2 ]
+    | NInd a ->
+        iConcat
+            [ iStr "Ind "; showAddr a ]
+
+let showStackItem s a =
+    iConcat
+        [ showAddr a; iStr ": ";
+          heapLookup s.Heap a |> showNode s a ]
+
+let showStack s =
+    iConcat
+        [ iStr " Stack:[";
+          s.Stack |> List.rev 
+          |> List.map (showStackItem s) 
+          |> iInterleave iNewline |> iIndent;
+          iStr "]"; ]
+
+let showState s =
+    iConcat
+        [ showStack s; iNewline; 
+          showInstructions s.Code; iNewline ]
+
 let statInitial = 0
 let statIncSteps s = s + 1
 let statGetSteps s = s
@@ -54,6 +103,10 @@ let initialCode = [ Pushglobal "main"; Unwind ]
 
 let argOffset n env =
     List.map (fun (name, m) -> (name, m + n)) env
+
+let getArg = function
+    | NAp (_, a) -> a
+    | _ -> failwith "application node is expected"
 
 let rec compileC expr env =
     match expr with
@@ -133,18 +186,19 @@ let mkap (s : GmState) =
             Heap = newHeap }
     | _ -> failwith "Two arguments expected in stack!"
 
-let getArg = function
-    | NAp (_, a) -> a
-    | _ -> failwith "application node is expected"
-
 let push n s =
-    let argAddr = s.Stack |> List.item (n + 1) |> heapLookup s.Heap |> getArg
+    let argAddr = s.Stack |> List.item n
     { s with Stack = argAddr :: s.Stack }
 
 let slide n s =
     let a = List.head s.Stack
     let rest = List.skip (n + 1) s.Stack
     { s with Stack = a :: rest }
+
+let rearrange n heap stack =
+    let tail = stack |> List.tail
+    let args = tail |> List.take n |> List.map (heapLookup heap >> getArg)
+    List.skip n stack |> List.append args 
 
 let unwind s =
     assert (s.Code.Length = 1)
@@ -160,7 +214,9 @@ let unwind s =
         if s.Stack.Length < n then
             failwith "Unwinding with two few arguments"
         else
-            { s with Code = c }
+            { s with 
+                Code = c
+                Stack = rearrange n s.Heap s.Stack }
     | NInd a ->
         { s with 
             Stack = a :: List.tail s.Stack
@@ -189,6 +245,9 @@ let dispatch (i : Instruction) =
     | Pop n -> pop n
     | Unwind -> unwind
 
+let wri s =
+    System.IO.File.WriteAllText("output3.txt", s)
+
 let step (s : GmState) = 
     match s.Code with
     | i :: is -> dispatch i { s with Code = is }
@@ -206,55 +265,6 @@ let rec eval state =
             let newState = state |> step |> doAdmin
             go newState (state :: states)
     go state [] |> List.rev
-
-let showInstruction i = sprintf "%A" i |> iStr
-
-let showInstructions code =
-    iConcat 
-        [ iStr "    Code:{";
-          code |> List.map showInstruction |> iInterleave iNewline |> iIndent;
-          iStr "}"; iNewline ]
-
-let showSc s (name, addr) =
-    let arity, code = 
-        match heapLookup s.Heap addr with 
-        | NGlobal (x,y) -> x,y
-        | _ -> failwith "wrong node, expected global"
-    iConcat 
-        [ iStr "Code for "; iStr name; iNewline;
-          showInstructions code; iNewline; iNewline ]
-
-let showNode s a = function
-    | NNum n -> iNum n
-    | NGlobal (n, g) ->
-        let v, _ = List.find (snd >> ((=) a)) s.Globals
-        iConcat
-            [ iStr "Global "; iStr v ]
-    | NAp (a1, a2) ->
-        iConcat
-            [ iStr "Ap "; showAddr a1;
-              iStr " "; showAddr a2 ]
-    | NInd a ->
-        iConcat
-            [ iStr "Ind "; showAddr a ]
-
-let showStackItem s a =
-    iConcat
-        [ showAddr a; iStr ": ";
-          heapLookup s.Heap a |> showNode s a ]
-
-let showStack s =
-    iConcat
-        [ iStr " Stack:[";
-          s.Stack |> List.rev 
-          |> List.map (showStackItem s) 
-          |> iInterleave iNewline |> iIndent;
-          iStr "]"; ]
-
-let showState s =
-    iConcat
-        [ showStack s; iNewline; 
-          showInstructions s.Code; iNewline ]
 
 let showStats s =
     iConcat 
