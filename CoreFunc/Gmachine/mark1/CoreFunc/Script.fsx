@@ -23,7 +23,7 @@ main = twice twice twice id 3"
 let src7 = "main = Pack{2,2} 1 2"
 let src8 = "main = (2 + 3) + (3 * 3)"
 let src9 = "fac n = if (n == 0) 1 (n * fac (n-1)) ;
-main = fac 1"
+main = fac 3"
 let src10 = "f x = x + 10;
 g x = 8 * f (x - 1);
 main = g 3"

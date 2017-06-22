@@ -1,5 +1,6 @@
 module CoreFunc
 
+open Language
 
 let src3 = "pair x y f = f x y ;
 fst p = p K ;
@@ -24,6 +25,6 @@ main = f (if True (2 + 3) (3 + 3))"
 
 [<EntryPoint>]
 let main argv =
-    Compile.runProg src9
+    iStr "jijij" |> iDisplay
     |> printfn "%s"
     0 // return an integer exit code
