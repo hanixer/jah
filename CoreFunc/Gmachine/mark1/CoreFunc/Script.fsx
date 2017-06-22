@@ -20,6 +20,7 @@ let src4 = "main = letrec f = f x in f"
 let src5 = "main = 2 * 3 * 342"
 let src = "id = S K K ;
 main = twice twice twice id 3"
+let src7 = "main = Pack{2,2} 1 2"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")

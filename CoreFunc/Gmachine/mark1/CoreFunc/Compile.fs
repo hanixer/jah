@@ -50,7 +50,20 @@ let tiStatGetSteps s = s
 let applyToStats func state =
     { state with Stats = func state.Stats}
 
-let extraPreludeDefs = []
+let extraPreludeDefs = [
+    "True", [], EConstr (2, 0)
+    "False", [], EConstr (1, 0)
+    "and", ["x"; "y"], EAp (EAp (EAp (EVar "if", EVar "x"), EVar "y"), EVar "False")
+    "or", ["x"; "y"], EAp (EAp (EAp (EVar "if", EVar "x"), EVar "True"), EVar "y")
+    "not", ["x"], EAp (EAp (EAp (EVar "if", EVar "x"), EVar "False"), EVar "True")
+    "xor", ["x"; "y"], 
+        EAp 
+            (EAp 
+                (EAp 
+                    (EVar "if", EVar "x"), 
+                    EAp (EVar "not", EVar "y")), 
+            EVar "y")
+]
 
 let primitives = [ 
     "negate", Neg
@@ -97,6 +110,7 @@ let doAdmin state = applyToStats tiStatIncSteps state
 let rec isDataNode heap addr =
     match heapLookup heap addr with
     | NNum n -> true
+    | NData _ -> true
     | NInd addr2 -> isDataNode heap addr2
     | _ -> false
 
@@ -109,8 +123,9 @@ let tiFinal = function
         false
 
 let instantiateConstr tag arity heap env =
-    
-    failwith ""
+    heapAlloc heap (NPrimitive ("PConstr", (PConstr (tag, arity))))
+let instantiateAndUpdateConstr tag arity updAddr heap env =
+    heapUpdate heap updAddr (NPrimitive ("PConstr", (PConstr (tag, arity))))
 
 let rec instantiate expr heap env =
     let heap', addr =
@@ -128,8 +143,8 @@ let rec instantiate expr heap env =
             | None -> failwithf "Variable %s is not found in instantiation!(%A)" name env
         | ELet (isrec, defs, body) ->
             instantiateLet isrec defs body heap env
-        | EConstr (a, b) ->
-            instantiateConstr a b heap env
+        | EConstr (tag, arity) ->
+            instantiateConstr tag arity heap env
         | ECase _ -> 
             failwith "Can't instantiate case expression!"
         | ELam _ ->
@@ -192,7 +207,8 @@ let instantiateAndUpdate expr updAddr heap env =
         let heap2 = heapUpdate heap1 updAddr node
         let heap3 = heapRemove heap2 addr'
         heap3
-
+    | EConstr (t, a) ->
+        instantiateAndUpdateConstr t a updAddr heap env
     | _ ->
         failwith "Con't instantiate lambda expression, case or constructor"
 
@@ -238,6 +254,9 @@ let primNeg (state : TiState) =
             Heap = newHeap }
     | _ ->
         evalNodeOnNewStack state argAddr
+
+// let primDyadic (state : TiState) (func : Node -> Node -> Node) : TiState =
+
 
 let primArith (state : TiState) (func : int -> int -> int) : TiState =
     let lookup (x, y) = (heapLookup state.Heap x, heapLookup state.Heap y)
@@ -304,15 +323,6 @@ let primStep (state : TiState) = function
     | If -> ifStep state
     | _ -> failwith "wrong function primitive"
     
-let numStep (state : TiState) n = 
-    match state.Stack with
-    | [addr] when isDataNode state.Heap addr ->
-        { state with
-            Stack = List.head state.Dump 
-            Dump = List.tail state.Dump }
-    | _ -> 
-        failwith "Expected in numStep to have stack with only num node on the top"
-
 let apStep (state : TiState) a a1 a2 =
     match heapLookup state.Heap a2 with
     | NInd a3 ->
@@ -355,6 +365,8 @@ let showNode = function
         iConcat [
             iStr "NPrimitive "; iStr name;
         ]
+    | NData (2, []) -> iStr "True"
+    | NData (1, []) -> iStr "False"
     | NData (tag, addrs) -> 
         iConcat [ 
             iStr "NData"; iNum tag; iStr " len"; iNum (List.length addrs) 
@@ -394,6 +406,24 @@ let showState (state : TiState) =
         showHeap state.Heap; iNewline 
     ]
 
+let numStep (state : TiState) n = 
+    match state.Stack, state.Dump with
+    | [addr], (stack :: stacks) when isDataNode state.Heap addr ->
+        { state with
+            Stack = stack
+            Dump = stacks }
+    | _ -> 
+        failwith "Expected in numStep to have stack with only num node on the top"
+
+let dataStep state t a =
+    match state.Stack, state.Dump with
+    | [addr], (stack :: stacks) when isDataNode state.Heap addr ->
+        { state with
+            Stack = stack
+            Dump = stacks }
+    | _ -> 
+        failwith "Expected in dataStep to have stack with only data node on the top"
+
 let step state = 
     let a = (List.head state.Stack)
     match heapLookup state.Heap a with
@@ -402,12 +432,11 @@ let step state =
     | NSc (name, args, body) -> scStep state name args body
     | NInd addr -> indStep state addr
     | NPrimitive (name, prim) -> primStep state prim
+    | NData (t, a) -> dataStep state t a
 
 let rec eval state = 
     printfn "%s %d" (showState state |> iDisplay) state.Stack.Length
     let restStates = 
-        // if state.Stats > 100 then []
-        // else  
         if tiFinal state then []
         else
             state |> step |> doAdmin |> eval

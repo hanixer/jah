@@ -1,0 +1,421 @@
+   0) Stk [   1: NSc main ]
+      (   1) NSc main
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) NSc False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      
+      
+   1) Stk [   1: NAp   20    9 (NSc False) ]
+      (   1) NAp 20 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) NSc False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      
+      
+   2) Stk [  20: NAp   13    9 (NSc False)
+              1: NAp   20    9 (NSc False) ]
+      (   1) NAp 20 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) NSc False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      
+      
+   3) Stk [  13: NSc xor
+             20: NAp   13    9 (NSc False)
+              1: NAp   20    9 (NSc False) ]
+      (   1) NAp 20 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) NSc False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      
+      
+   4) Stk [   1: NAp   23    9 (NSc False) ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) NSc False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+   5) Stk [  23: NAp   21   22 (NAp 12 9)
+              1: NAp   23    9 (NSc False) ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) NSc False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+   6) Stk [  21: NAp   19    9 (NSc False)
+             23: NAp   21   22 (NAp 12 9)
+              1: NAp   23    9 (NSc False) ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) NSc False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+   7) Stk [  19: NPrimitive if
+             21: NAp   19    9 (NSc False)
+             23: NAp   21   22 (NAp 12 9)
+              1: NAp   23    9 (NSc False) ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) NSc False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+   8) Stk [   9: NSc False ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) NSc False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+   9) Stk [   9: NPrimitive PConstr ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) NPrimitive PConstr
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+  10) Stk [   9: False ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+  11) Stk [   1: NAp   23    9 (False) ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+  12) Stk [  23: NAp   21   22 (NAp 12 9)
+              1: NAp   23    9 (False) ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+  13) Stk [  21: NAp   19    9 (False)
+             23: NAp   21   22 (NAp 12 9)
+              1: NAp   23    9 (False) ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+  14) Stk [  19: NPrimitive if
+             21: NAp   19    9 (False)
+             23: NAp   21   22 (NAp 12 9)
+              1: NAp   23    9 (False) ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+  15) Stk [   9: False ]
+      (   1) NAp 23 9
+      (   2) NSc I
+      (   3) NSc K
+      (   4) NSc K1
+      (   5) NSc S
+      (   6) NSc compose
+      (   7) NSc twice
+      (   8) NSc True
+      (   9) False
+      (  10) NSc and
+      (  11) NSc or
+      (  12) NSc not
+      (  13) NSc xor
+      (  14) NPrimitive negate
+      (  15) NPrimitive +
+      (  16) NPrimitive -
+      (  17) NPrimitive *
+      (  18) NPrimitive /
+      (  19) NPrimitive if
+      (  20) NAp 13 9
+      (  21) NAp 19 9
+      (  22) NAp 12 9
+      (  23) NAp 21 22
+      
+      
+
+
+Total number of steps = 15
