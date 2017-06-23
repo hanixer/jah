@@ -1,9 +1,9 @@
 #load "Language.fs"
 #load "Util.fs"
-#load "Gm.fs"
+#load "Compile.fs"
 
 open Language
-open Gm
+open Compile
 
 let src2 = "main = letrec x = 43 in S K K x"
 let src3 = "pair x y f = f x y ;
@@ -17,14 +17,19 @@ f x y = letrec
 main = f 3 4"
 let src4 = "main = letrec f = f x in f"
 
-let src5 = "id x = x ;
-main = twice twice id 3"
+let src5 = "main = 2 * 3 * 342"
 let src = "id = S K K ;
-main = twice id 3"
-let src6 = "main = 1 + 2 + 3"
+main = twice twice twice id 3"
+let src7 = "main = Pack{2,2} 1 2"
+let src8 = "main = (2 + 3) + (3 * 3)"
+let src9 = "fac n = if (n == 0) 1 (n * fac (n-1)) ;
+main = fac 3"
+let src10 = "f x = x + 10;
+g x = 8 * f (x - 1);
+main = g 3"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
     runProg src |> fprintf f "%s"
 
-g src6
+g src

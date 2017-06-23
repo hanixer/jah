@@ -56,23 +56,6 @@ let statInitial = 0
 let statIncSteps s = s + 1
 let statGetSteps s = s
 
-let showInstruction i = sprintf "%A" i |> iStr
-
-let showInstructions code =
-    iConcat 
-        [ iStr "    Code:{";
-          code |> List.map showInstruction |> iInterleave iNewline |> iIndent;
-          iStr "}"; iNewline ]
-
-let showSc s (name, addr) =
-    let arity, code = 
-        match heapLookup s.Heap addr with 
-        | NGlobal (x,y) -> x,y
-        | _ -> failwith "wrong node, expected global"
-    iConcat 
-        [ iStr "Code for "; iStr name; iNewline;
-          showInstructions code; iNewline; iNewline ]
-
 let showNode s a = function
     | NNum n -> iNum n
     | NGlobal (n, g) ->
@@ -94,7 +77,7 @@ let showStackItem s a =
 
 let showStack s =
     iConcat
-        [ iStr " Stack:[";
+        [ iStr "Stack:[";
           s.Stack 
           |> List.rev 
           |> List.map (showStackItem s) 
@@ -102,14 +85,68 @@ let showStack s =
           |> iIndent;
           iStr "]"; ]
 
+let showShortStack stack =
+    iConcat
+        [ iStr "["; 
+          List.map (string >> iStr) stack |> iInterleave (iStr ","); 
+          iStr "]" ]
+
+let showInstruction i = sprintf "%A" i |> iStr
+
+let showInstructions code =
+    iConcat 
+        [ iStr "Code:{";
+          code |> List.map showInstruction |> iInterleave iNewline |> iIndent;
+          iStr "}"; iNewline ]
+
+let showShortInstruction n code =
+    let minNumber = min n (List.length code)
+    let codes = List.take minNumber code |> List.map showInstruction
+    let dotcodes = 
+        if List.length code > n then
+            List.append codes [iStr "..."]
+        else codes
+    iConcat
+        [ iStr "{"
+          iInterleave (iStr "; ") dotcodes
+          iStr "}" ]
+
+let showDumpItem (code, stack) =
+    iConcat
+        [ iStr "<"
+          showShortInstruction 3 code
+          iStr ","
+          showShortStack stack
+          iStr ">"]
+
+let showDump s =
+    iConcat 
+        [ iStr "Dump:[";
+          s.Dump
+          |> List.rev
+          |> List.map showDumpItem
+          |> iInterleave iNewline
+          |> IIdent;
+          iStr "]" ]
+
 let showState s =
     iConcat
         [ showStack s; iNewline; 
+          showDump s; iNewline;
           showInstructions s.Code; iNewline ]
 
 let showStats s =
     iConcat 
         [ iStr "Steps taken:"; s.Stats |> statGetSteps |> iNum ]
+
+let showSc s (name, addr) =
+    let arity, code = 
+        match heapLookup s.Heap addr with 
+        | NGlobal (x,y) -> x,y
+        | _ -> failwith "wrong node, expected global"
+    iConcat 
+        [ iStr "Code for "; iStr name; iNewline;
+          showInstructions code; iNewline; iNewline ]
 
 let showResults states =
     let s  = List.head states
@@ -123,11 +160,50 @@ let showResults states =
 
 let compiledPrimitives = []
 
+let boxInteger n s =
+    let heap', a = heapAlloc s.Heap (NNum n)
+    { s with
+        Heap = heap'
+        Stack = a :: s.Stack }
+
+let unboxInteger a s =
+    match heapLookup s.Heap a with
+    | NNum n -> n
+    | _ -> failwith "Number node is expected"
+
+let boxBoolean b s =
+    let heap', a = heapAlloc s.Heap (NNum (if b then 1 else 0))
+    { s with
+        Heap = heap'
+        Stack = a :: s.Stack }
+
+let primitive1 box unbox op state =
+    match state.Stack with
+    | a :: stack ->
+        unbox a state |> op |> box <| { state with Stack = stack }
+    | _ ->
+        failwith "Stack is expected to be nonempty"
+
+let primitive2 box unbox op state =
+    match state.Stack with
+    | a1 :: a2 :: stack ->
+        let p1 = unbox a1 state
+        let p2 = unbox a2 state
+        op p1 p2 |> box <| { state with Stack = stack }
+    | _ -> failwith "stack expected to have 2 arguments"
+
+let arithmetic1 = primitive1 boxInteger unboxInteger
+
+let arithmetic2 = primitive2 boxInteger unboxInteger
+
+let comparison = primitive2 boxBoolean unboxInteger
+
 let allocateSc heap (name, nargs, is) =
     let heap', addr = heapAlloc heap (NGlobal (nargs, is))
     heap', (name, addr)
 
-let initialCode = [ Pushglobal "main"; Unwind ]
+let initialCode = [ Pushglobal "main"; Eval ]
+// let initialCode = [ Pushglobal "main"; Unwind ]
 
 let argOffset n env =
     List.map (fun (name, m) -> (name, m + n)) env
@@ -220,11 +296,12 @@ let compile program =
       Heap = heap
       Globals = globals
       Stats = statInitial
+      Dump = []
       Stack = [] }
 
 
 let gmFinal (s : GmState) =
-    s.Code.IsEmpty
+    s.Code.IsEmpty && s.Dump.IsEmpty
 
 let tryFindGlobal s name =
     List.tryFind (fst >> ((=) name)) s.Globals
@@ -276,10 +353,17 @@ let rearrange n heap stack =
 
 let unwind s =
     assert (s.Code.Length = 1)
-
-    match heapLookup s.Heap (List.head s.Stack)  with
+    let a = (List.head s.Stack)
+    match heapLookup s.Heap a with
     | NNum n ->
-        { s with Code = [] }
+        match s.Dump with
+        | (i', stack') :: dump ->
+            { s with 
+                Code = i'
+                Stack = a :: stack'
+                Dump = dump }
+        | _ ->
+            failwith "evaluation has to be terminated at this point"
     | NAp (a1, a2) -> 
         { s with
             Stack = a1 :: s.Stack 
@@ -315,6 +399,31 @@ let rec alloc n s =
         let heap', a = heapAlloc s.Heap (NInd heapNull)
         alloc (n - 1) { s with Heap = heap'; Stack = a :: s.Stack }
 
+let evalInstruction s = 
+    { s with
+        Code = [Unwind]
+        Stack = [List.head s.Stack]
+        Dump = (s.Code, List.tail s.Stack) :: s.Dump }
+
+let neg = arithmetic1 (~-)
+
+let cond i1 i2 s =
+    match s.Stack with
+    | a :: stack ->
+        match heapLookup s.Heap a with
+        | NNum 1 -> 
+            { s with
+                Stack = stack
+                Code = List.append i1 s.Code }
+        | NNum 0 -> 
+            { s with
+                Stack = stack
+                Code = List.append i2 s.Code }
+        | _ -> 
+            failwith "Expected 1 or 0 on the top of the stack"
+    | _ ->
+        failwith "expected nonempty list for conditional"
+
 let dispatch (i : Instruction) =
     match i with
     | Pushglobal f -> pushglobal f
@@ -326,9 +435,21 @@ let dispatch (i : Instruction) =
     | Unwind -> unwind
     | Slide n -> slide n
     | Alloc n -> alloc n
-
-let wri s =
-    System.IO.File.WriteAllText("output3.txt", s)
+    | Eval -> evalInstruction
+    | Neg -> neg
+    | Add -> arithmetic2 (+)
+    | Sub -> arithmetic2 (-)
+    | Mul -> arithmetic2 (*)
+    | Div -> arithmetic2 (/)
+    | Eq  -> comparison (=)
+    | Ne  -> comparison (<>)
+    | Lt  -> comparison (<)
+    | Le  -> comparison (<=)
+    | Gt  -> comparison (>)
+    | Ge  -> comparison (>=)
+    | Cond (i1, i2) -> cond i1 i2
+    | _ ->
+        failwithf "Unimplemented instruction %A" i
 
 let step (s : GmState) = 
     match s.Code with
