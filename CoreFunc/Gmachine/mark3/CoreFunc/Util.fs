@@ -17,6 +17,8 @@ let heapUpdate heap addr newValue =
     Map.add addr newValue heap
 let heapRemove heap addr =
     Map.remove addr heap
+let heapNull : Addr = -1
+
 
 let mapAccumul (f : 'acc -> 'a -> 'acc * 'b) (initialAcc : 'acc) (xs : 'a list) : 'acc * 'b list =
     xs 

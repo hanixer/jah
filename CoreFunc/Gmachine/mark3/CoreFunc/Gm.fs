@@ -13,6 +13,8 @@ type Instruction =
     | Mkap
     | Update of int
     | Pop of int
+    | Slide of int
+    | Alloc of int
 
 type GmCode = Instruction list
 
@@ -39,6 +41,9 @@ type GmState =
 
 type CompiledSC = Name * int * GmCode
 type GmCompiler = CoreExpr -> GmEnvironment -> GmCode
+
+let emptyState = 
+    { Code = []; Heap = Map.empty; Globals = []; Stack = []; Stats = 0 }
 
 let showInstruction i = sprintf "%A" i |> iStr
 
@@ -79,9 +84,11 @@ let showStackItem s a =
 let showStack s =
     iConcat
         [ iStr " Stack:[";
-          s.Stack |> List.rev 
+          s.Stack 
+          |> List.rev 
           |> List.map (showStackItem s) 
-          |> iInterleave iNewline |> iIndent;
+          |> iInterleave iNewline 
+          |> iIndent;
           iStr "]"; ]
 
 let showState s =
@@ -108,6 +115,48 @@ let getArg = function
     | NAp (_, a) -> a
     | _ -> failwith "application node is expected"
 
+let compileLetDefs comp defs env =
+    let compileDef (is, env) (v, e) =
+        comp e env |> List.append is, argOffset 1 env
+    List.fold compileDef ([], env) defs 
+    |> fst
+
+let buildLetEnv env defs =
+    let defVars =
+        List.map fst defs 
+        |> List.rev 
+        |> List.mapi (fun i x -> x, i)
+        |> List.rev
+    let envOffset = argOffset (List.length defs) env
+    List.append envOffset defVars
+    
+
+let compileLet comp defs body env =
+    let defsIs = compileLetDefs comp defs env
+    let n = (List.length defs)
+    let newEnv = buildLetEnv env defs
+    List.concat
+        [ defsIs
+          comp body newEnv
+          [Slide n] ]
+
+let compileLetRecDefs comp defs env =
+    let compileDef (is, n) (v, e) =
+        let is' = List.concat [ is; comp e env; [Update (n - 1)] ]
+        is' , (n - 1)
+    List.fold compileDef ([], List.length defs) defs 
+    |> fst
+
+let compileLetRec comp defs body env =
+    let n = List.length defs
+    let newEnv = buildLetEnv env defs
+    let defsIs = compileLetRecDefs comp defs newEnv
+    List.concat
+        [ [Alloc n]
+          defsIs
+          comp body newEnv
+          [Slide n] ]
+
 let rec compileC expr env =
     match expr with
     | EVar v ->
@@ -120,6 +169,10 @@ let rec compileC expr env =
             [ compileC e2 env
               compileC e1 (argOffset 1 env)
               [Mkap] ]
+    | ELet (false, defs, body) ->
+        compileLet compileC defs body env
+    | ELet (true, defs, body) ->
+        compileLetRec compileC defs body env
     | _ ->
         failwithf "cannot compile %A" expr
 
@@ -235,6 +288,12 @@ let pop n s =
     { s with
         Stack = List.skip n s.Stack }
 
+let rec alloc n s =
+    if n = 0 then s
+    else
+        let heap', a = heapAlloc s.Heap (NInd heapNull)
+        alloc (n - 1) { s with Heap = heap'; Stack = a :: s.Stack }
+
 let dispatch (i : Instruction) =
     match i with
     | Pushglobal f -> pushglobal f
@@ -244,6 +303,8 @@ let dispatch (i : Instruction) =
     | Update n -> updateInstr n
     | Pop n -> pop n
     | Unwind -> unwind
+    | Slide n -> slide n
+    | Alloc n -> alloc n
 
 let wri s =
     System.IO.File.WriteAllText("output3.txt", s)

@@ -1,0 +1,498 @@
+Supercombinator definitions
+Code for main
+    Code:{Pushint 1
+          Pushglobal "f"
+          Mkap
+          Update 0
+          Pop 0
+          Unwind}
+
+
+
+Code for f
+    Code:{Alloc 2
+          Push 0
+          Pushglobal "I"
+          Mkap
+          Update 1
+          Pushint 3
+          Pushglobal "I"
+          Mkap
+          Update 0
+          Push 0
+          Push 3
+          Pushglobal "K"
+          Mkap
+          Mkap
+          Slide 2
+          Update 1
+          Pop 1
+          Unwind}
+
+
+
+Code for twice
+    Code:{Push 0
+          Push 1
+          Pushglobal "compose"
+          Mkap
+          Mkap
+          Update 1
+          Pop 1
+          Unwind}
+
+
+
+Code for compose
+    Code:{Push 2
+          Push 2
+          Mkap
+          Push 1
+          Mkap
+          Update 3
+          Pop 3
+          Unwind}
+
+
+
+Code for S
+    Code:{Push 2
+          Push 2
+          Mkap
+          Push 3
+          Push 2
+          Mkap
+          Mkap
+          Update 3
+          Pop 3
+          Unwind}
+
+
+
+Code for K1
+    Code:{Push 1
+          Update 2
+          Pop 2
+          Unwind}
+
+
+
+Code for K
+    Code:{Push 0
+          Update 2
+          Pop 2
+          Unwind}
+
+
+
+Code for I
+    Code:{Push 0
+          Update 1
+          Pop 1
+          Unwind}
+
+
+
+
+State transitions
+
+   0)  Stack:[]
+          Code:{Pushglobal "main"
+                Unwind}
+      
+      
+   1)  Stack:[8: Global main]
+          Code:{Unwind}
+      
+      
+   2)  Stack:[8: Global main]
+          Code:{Pushint 1
+                Pushglobal "f"
+                Mkap
+                Update 0
+                Pop 0
+                Unwind}
+      
+      
+   3)  Stack:[8: Global main
+              9: 1]
+          Code:{Pushglobal "f"
+                Mkap
+                Update 0
+                Pop 0
+                Unwind}
+      
+      
+   4)  Stack:[8: Global main
+              9: 1
+              7: Global f]
+          Code:{Mkap
+                Update 0
+                Pop 0
+                Unwind}
+      
+      
+   5)  Stack:[8: Global main
+              10: Ap 7 9]
+          Code:{Update 0
+                Pop 0
+                Unwind}
+      
+      
+   6)  Stack:[8: Ind 10]
+          Code:{Pop 0
+                Unwind}
+      
+      
+   7)  Stack:[8: Ind 10]
+          Code:{Unwind}
+      
+      
+   8)  Stack:[10: Ap 7 9]
+          Code:{Unwind}
+      
+      
+   9)  Stack:[10: Ap 7 9
+              7: Global f]
+          Code:{Unwind}
+      
+      
+  10)  Stack:[10: Ap 7 9
+              9: 1]
+          Code:{Alloc 2
+                Push 0
+                Pushglobal "I"
+                Mkap
+                Update 1
+                Pushint 3
+                Pushglobal "I"
+                Mkap
+                Update 0
+                Push 0
+                Push 3
+                Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  11)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind -1
+              12: Ind -1]
+          Code:{Push 0
+                Pushglobal "I"
+                Mkap
+                Update 1
+                Pushint 3
+                Pushglobal "I"
+                Mkap
+                Update 0
+                Push 0
+                Push 3
+                Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  12)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind -1
+              12: Ind -1
+              12: Ind -1]
+          Code:{Pushglobal "I"
+                Mkap
+                Update 1
+                Pushint 3
+                Pushglobal "I"
+                Mkap
+                Update 0
+                Push 0
+                Push 3
+                Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  13)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind -1
+              12: Ind -1
+              12: Ind -1
+              1: Global I]
+          Code:{Mkap
+                Update 1
+                Pushint 3
+                Pushglobal "I"
+                Mkap
+                Update 0
+                Push 0
+                Push 3
+                Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  14)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind -1
+              12: Ind -1
+              13: Ap 1 12]
+          Code:{Update 1
+                Pushint 3
+                Pushglobal "I"
+                Mkap
+                Update 0
+                Push 0
+                Push 3
+                Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  15)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind 13
+              12: Ind -1]
+          Code:{Pushint 3
+                Pushglobal "I"
+                Mkap
+                Update 0
+                Push 0
+                Push 3
+                Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  16)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind 13
+              12: Ind -1
+              14: 3]
+          Code:{Pushglobal "I"
+                Mkap
+                Update 0
+                Push 0
+                Push 3
+                Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  17)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind 13
+              12: Ind -1
+              14: 3
+              1: Global I]
+          Code:{Mkap
+                Update 0
+                Push 0
+                Push 3
+                Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  18)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind 13
+              12: Ind -1
+              15: Ap 1 14]
+          Code:{Update 0
+                Push 0
+                Push 3
+                Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  19)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind 13
+              12: Ind 15]
+          Code:{Push 0
+                Push 3
+                Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  20)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind 13
+              12: Ind 15
+              12: Ind 15]
+          Code:{Push 3
+                Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  21)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind 13
+              12: Ind 15
+              12: Ind 15
+              9: 1]
+          Code:{Pushglobal "K"
+                Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  22)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind 13
+              12: Ind 15
+              12: Ind 15
+              9: 1
+              2: Global K]
+          Code:{Mkap
+                Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  23)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind 13
+              12: Ind 15
+              12: Ind 15
+              16: Ap 2 9]
+          Code:{Mkap
+                Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  24)  Stack:[10: Ap 7 9
+              9: 1
+              11: Ind 13
+              12: Ind 15
+              17: Ap 16 12]
+          Code:{Slide 2
+                Update 1
+                Pop 1
+                Unwind}
+      
+      
+  25)  Stack:[10: Ap 7 9
+              9: 1
+              17: Ap 16 12]
+          Code:{Update 1
+                Pop 1
+                Unwind}
+      
+      
+  26)  Stack:[10: Ind 17
+              9: 1]
+          Code:{Pop 1
+                Unwind}
+      
+      
+  27)  Stack:[10: Ind 17]
+          Code:{Unwind}
+      
+      
+  28)  Stack:[17: Ap 16 12]
+          Code:{Unwind}
+      
+      
+  29)  Stack:[17: Ap 16 12
+              16: Ap 2 9]
+          Code:{Unwind}
+      
+      
+  30)  Stack:[17: Ap 16 12
+              16: Ap 2 9
+              2: Global K]
+          Code:{Unwind}
+      
+      
+  31)  Stack:[17: Ap 16 12
+              12: Ind 15
+              9: 1]
+          Code:{Push 0
+                Update 2
+                Pop 2
+                Unwind}
+      
+      
+  32)  Stack:[17: Ap 16 12
+              12: Ind 15
+              9: 1
+              9: 1]
+          Code:{Update 2
+                Pop 2
+                Unwind}
+      
+      
+  33)  Stack:[17: Ind 9
+              12: Ind 15
+              9: 1]
+          Code:{Pop 2
+                Unwind}
+      
+      
+  34)  Stack:[17: Ind 9]
+          Code:{Unwind}
+      
+      
+  35)  Stack:[9: 1]
+          Code:{Unwind}
+      
+      
+
+
+Steps taken:35

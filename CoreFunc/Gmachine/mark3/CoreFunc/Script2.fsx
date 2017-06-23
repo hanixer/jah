@@ -16,6 +16,8 @@ g2 x = 2;
 main = compose f1 g2 3"
 let src4 = "id = S K K ;
 main = twice twice id 3"
+let src5 = "f x = letrec y = I z; z = I 3 in K x z;
+main = f 1"
 
 
 let g src =
@@ -26,4 +28,6 @@ let h src =
     use f = System.IO.File.CreateText("output.txt")
     src |> parse |> compile |> List.singleton |> showResults |> fprintf f "%s"
 
-g src4
+g src5
+compileSc ("Y", ["f"], ELet (false, ["x", EVar "f"], EAp (EVar "x", EVar "f")))
+compileSc ("Y", ["f"], EAp (EVar "f", EAp (EVar "Y", EVar "f")))
