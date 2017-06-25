@@ -38,7 +38,7 @@ let preludeDefs =
         ("K1",["x";"y"], EVar "y")
         ("S", ["f";"g";"x"], EAp (EAp ((EVar "f"), (EVar "x")), EAp ((EVar "g"), (EVar "x"))))
         ("compose", ["f";"g";"x"], EAp (EVar "f", EAp (EVar "g", EVar "x")))
-        ("twice", ["f"], EAp (EAp (EVar "compose", EVar "f"), (EVar "f"))) 
+        ("twice", ["f"], EAp (EAp (EVar "compose", EVar "f"), (EVar "f")))
     ]
 
 type Iseq = 
@@ -68,27 +68,28 @@ let rec iInterleave sep = function
     | iseq :: rest -> iseq |>iAppend<| sep |>iAppend<| (iInterleave sep rest)
 
 let showAddr = string >> iStr
-
-let rec flatten col = function
-    | [] -> ""
-    | (INewline, indent) :: iseqs ->
-        "\n" + (space indent) + (flatten indent iseqs)
-    | (IIdent iseq, indent) :: iseqs ->
-        flatten col ((iseq, col) :: iseqs)
-    | (INil, indent) :: iseqs ->  flatten col iseqs
-    | (IStr s, indent) :: iseqs -> 
-        if s.Contains("\n") then
-            let splitted = 
-                s.Split('\n') 
-                |> List.ofArray 
-                |> List.map iStr 
-                |> iInterleave INewline
-            flatten col ((splitted, indent) :: iseqs)
-        else
-            s + (flatten (col + s.Length) iseqs)
-    | (IAppend (iseq1, iseq2), indent) :: iseqs -> 
-        flatten col ((iseq1, indent) :: (iseq2, indent) :: iseqs)
-
+let rec flatten col xs =
+    let rec go acc col lkj =
+        match lkj with
+        | [] -> acc
+        | (INewline, indent) :: iseqs ->
+            go (acc + "\n" + (space indent)) indent iseqs
+        | (IIdent iseq, indent) :: iseqs ->
+            go acc col ((iseq, col) :: iseqs)
+        | (INil, indent) :: iseqs ->  go acc col iseqs
+        | (IStr s, indent) :: iseqs -> 
+            if s.Contains("\n") then
+                let splitted = 
+                    s.Split('\n') 
+                    |> List.ofArray 
+                    |> List.map iStr 
+                    |> iInterleave INewline
+                go acc col ((splitted, indent) :: iseqs)
+            else
+                go (acc + s) (col + s.Length) iseqs
+        | (IAppend (iseq1, iseq2), indent) :: iseqs -> 
+            go acc col ((iseq1, indent) :: (iseq2, indent) :: iseqs)
+    go "" col xs
 let iDisplay seq = flatten 0 [seq, 0]
 
 let iNum n = iStr (string n)
@@ -301,17 +302,18 @@ let pLambda pExpr =
         (pOneOrMore pVar)
         (pLitHelp ".")
         pExpr
+
 let  pAexpr pExpr =
+    pPack |>pAlt<|
     (pApply pVar EVar) |>pAlt<| 
     (pApply pNum ENum) |>pAlt<|
-    pPack |>pAlt<|
     pBetween (pLitHelp "(") pExpr (pLitHelp ")") 
 
 type PartialExpr =
     | NoOp
     | FoundOp of Name * CoreExpr
 
-let pApplic pExpr = 
+let pApplication pExpr = 
     pOneOrMore (pAexpr pExpr) |>pApply<|
     (fun xs -> List.fold (fun acc elt -> EAp (acc, elt)) (List.head xs) (List.tail xs))
     
@@ -324,9 +326,38 @@ let rec pChainl pElt pOp =
             pOp
             pElt))
 
+let pBinaryl pExpr primitive ops =
+    let ops = List.map pLitHelp ops
+    let pCombined =
+        if List.length ops = 1 then List.head ops
+        else List.fold pAlt ops.Head ops.Tail
+    pChainl (primitive pExpr) 
+        (pApply pCombined (fun op -> fun x y -> EAp (EAp (EVar op, x), y)))
+
 let pMult pExpr =
-    pChainl (pApplic pExpr) 
-        (pApply (pLitHelp "*") (fun _ -> fun x y -> EAp (EAp (EVar "*", x), y)))
+    pBinaryl pExpr pApplication ["*"; "/"]
+
+let pAdd pExpr =
+    pBinaryl pExpr pMult ["+"; "-"]
+
+//relop → < | <= | == | ˜= | >= | > Comparison
+
+let pRelop =
+    let ops = ["<="; "<"; "=="; "~="; ">="; ">"] |> List.map pLitHelp
+    List.fold pAlt ops.Head ops.Tail
+
+let pRelopExpr pExpr =
+    let p1 =
+        pThen3 (fun x op y -> EAp (EAp (EVar op, x), y))
+            (pAdd pExpr) pRelop (pAdd pExpr)
+    let p2 = pAdd pExpr
+    p1 |>pAlt<| p2
+
+let pAnd pExpr =
+    pBinaryl pExpr pRelopExpr ["&"]
+
+let pOr pExpr =
+    pBinaryl pExpr pAnd ["|"]
 
 let rec pExpr<'a> =
     let parserReference = ref (fun _ -> [ENum 2, []])
@@ -335,7 +366,8 @@ let rec pExpr<'a> =
         pLet p |>pAlt<|
         pCase p |>pAlt<|
         pLambda p |>pAlt<|
-        pMult p
+        pOr p
+        // pAdd p
     
     !parserReference
 
@@ -355,5 +387,3 @@ let parse s =
     |> pProgram 
     |> List.tryHead |> Option.map fst
     |> defaultArg <| []
-
-// let parseExpr s = s |> List.ofSeq |> clex |> pExpr

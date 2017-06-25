@@ -43,7 +43,7 @@ let allocateSc heap (name, args, body) =
     heap', (name, addr)
 
 let buildInitialHeap scDefns = 
-    mapAccumul allocateSc Map.empty scDefns
+    mapAccumul allocateSc heapEmpty scDefns
 
 let compile program = 
     let scDefs = program |>List.append<| preludeDefs |>List.append<| extraPreludeDefs
@@ -86,18 +86,19 @@ let showHeap2 (heap : TiHeap) =
         | NAp (a1, a2) -> 
             iConcat [ iStr "NAp "; showAddr a1; iStr " "; showAddr a2 ]
         | NSc (name, args, body) -> iStr ("NSc " + name)
+        | _ -> failwith "jie"
     let showHeapElt (addr, node) =
         iConcat [
             iStr "("; iFWNum 4 addr; iStr ") ";
             showNode node; iNewline
         ]
 
-    Map.toList heap
+    heapAddrsAndElements heap
     |> List.map showHeapElt
     |> iConcat
     
 
-let rec instantiate expr heap env =
+let rec instantiate expr heap (env : (Name * Addr) list)=
     let heap', addr =
         match expr with
         | ENum n ->
@@ -157,7 +158,7 @@ and instantiateLet isrec defs body heap env =
         let newEnv = allocatedDefs |>List.append<| env
         instantiate body newHeap newEnv
 
-let instantiateAndUpdate expr updAddr heap env =
+let instantiateAndUpdate expr updAddr heap (env : (Name * Addr) list) =
     match expr with
     | EAp (e1, e2) ->
         let heap1, a1 = instantiate e1 heap env
@@ -170,7 +171,7 @@ let instantiateAndUpdate expr updAddr heap env =
         | Some (_, addr) ->
             heapUpdate heap updAddr (NInd addr)
         | None ->
-            failwith "Variable %s is not found!" name
+            failwithf "Variable %s is not found!" name
     | ELet (isrec, defs, body) ->
         let heap1, addr' = instantiateLet isrec defs body heap env
         let node = heapLookup heap1 addr'
@@ -195,7 +196,7 @@ let getArgs heap stack =
     List.map getArg (List.tail stack)
 
 let getRootAddr stack argNames =
-    List.nth stack (List.length argNames)
+    List.item (List.length argNames) stack 
 
 let scStep (state : TiState) scName argNames body =
     let requiredLength = List.length argNames + 1
@@ -253,7 +254,7 @@ let showHeap (heap : TiHeap) =
             showNode node; iNewline
         ]
 
-    Map.toList heap
+    heapAddrsAndElements heap
     |> List.map showHeapElt
     |> iConcat
 

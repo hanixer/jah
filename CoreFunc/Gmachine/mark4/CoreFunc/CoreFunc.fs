@@ -10,9 +10,11 @@ f x y = letrec
     in
     fst (snd (snd (snd a))) ;
 main = f 3 4"
+let nfib = "nfib n = if (n==0) 1 (1 + nfib (n-1) + nfib (n-2)) ;
+main = nfib 4"
 
 [<EntryPoint>]
 let main argv =
-    Compile.runProg src3
-    printfn "%A" argv
+    Gm.runProg nfib 
+    |> printfn "%A"
     0 // return an integer exit code

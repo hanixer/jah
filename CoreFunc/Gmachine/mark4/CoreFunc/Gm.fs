@@ -50,25 +50,34 @@ type CompiledSC = Name * int * GmCode
 type GmCompiler = CoreExpr -> GmEnvironment -> GmCode
 
 let emptyState = 
-    { Code = []; Heap = Map.empty; Globals = []; Stack = []; Stats = 0; Dump = [] }
+    { Code = []; Heap = heapEmpty; Globals = []; Stack = []; Stats = 0; Dump = [] }
 
 let statInitial = 0
 let statIncSteps s = s + 1
 let statGetSteps s = s
 
-let showNode s a = function
+let rec getLeftmost s a =
+    match heapLookup s.Heap a with
+    | NAp (a1, a2) ->
+        getLeftmost s a1
+    | n -> n, a
+
+let rec showNode s a = function
     | NNum n -> iNum n
     | NGlobal (n, g) ->
         let v, _ = List.find (snd >> ((=) a)) s.Globals
         iConcat
             [ iStr "Global "; iStr v ]
     | NAp (a1, a2) ->
+        let leftmost, addrLeft = getLeftmost s a1
         iConcat
             [ iStr "Ap "; showAddr a1;
-              iStr " "; showAddr a2 ]
+              iStr " "; showAddr a2;
+              iStr " /"; showNode s addrLeft leftmost; iStr "/" ]
     | NInd a ->
         iConcat
-            [ iStr "Ind "; showAddr a ]
+            [ iStr "Ind "; showAddr a
+              iStr " ("; heapLookup s.Heap a |> showNode s a; iStr ")" ]
 
 let showStackItem s a =
     iConcat
@@ -158,7 +167,25 @@ let showResults states =
           showStats (List.last states) ]
     |> iDisplay
 
-let compiledPrimitives = []
+let compiledArithmetic str op =
+    str, 2, [Push 1; Eval; Push 1; Eval; op; Update 2; Pop 2; Unwind]
+
+let compiledCompirison str op =
+    str, 2, [Push 1; Eval; Push 1; Eval; op; Update 2; Pop 2; Unwind]
+
+let compiledPrimitives = 
+    [ compiledArithmetic "+" Add
+      compiledArithmetic "-" Sub
+      compiledArithmetic "*" Mul
+      compiledArithmetic "/" Div
+      "negate", 1, [Push 0; Eval; Neg; Update 1; Pop 1; Unwind]
+      compiledArithmetic "==" Eq
+      compiledArithmetic "~=" Ne
+      compiledArithmetic "<" Lt
+      compiledArithmetic "<=" Le
+      compiledArithmetic ">" Gt
+      compiledArithmetic ">=" Ge
+      "if", 3, [Push 0; Eval; Cond ([Push 1], [Push 2]); Update 3; Pop 3; Unwind] ]
 
 let boxInteger n s =
     let heap', a = heapAlloc s.Heap (NNum n)
@@ -288,7 +315,7 @@ let buildInitialHeap program =
     let compiled = 
         List.map compileSc (List.append preludeDefs program)
         |> List.append compiledPrimitives
-    mapAccumul allocateSc Map.empty compiled
+    mapAccumul allocateSc heapEmpty compiled
 
 let compile program =
     let heap, globals = buildInitialHeap program
@@ -352,7 +379,6 @@ let rearrange n heap stack =
     List.skip n stack |> List.append args 
 
 let unwind s =
-    assert (s.Code.Length = 1)
     let a = (List.head s.Stack)
     match heapLookup s.Heap a with
     | NNum n ->
@@ -448,8 +474,6 @@ let dispatch (i : Instruction) =
     | Gt  -> comparison (>)
     | Ge  -> comparison (>=)
     | Cond (i1, i2) -> cond i1 i2
-    | _ ->
-        failwithf "Unimplemented instruction %A" i
 
 let step (s : GmState) = 
     match s.Code with
