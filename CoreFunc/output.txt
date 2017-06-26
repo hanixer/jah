@@ -1,0 +1,506 @@
+Supercombinator definitions
+Code for main
+Code:{Pushint 4
+      Pushint 3
+      Pushint 2
+      Mul
+      Pushint 1
+      Pushglobal "f"
+      Mkap
+      Eval
+      Add
+      Add
+      Update 0
+      Pop 0
+      Unwind}
+
+
+
+Code for f
+Code:{Pushint 1
+      Push 1
+      Add
+      Update 1
+      Pop 1
+      Unwind}
+
+
+
+Code for twice
+Code:{Push 0
+      Push 1
+      Pushglobal "compose"
+      Mkap
+      Mkap
+      Eval
+      Update 1
+      Pop 1
+      Unwind}
+
+
+
+Code for compose
+Code:{Push 2
+      Push 2
+      Mkap
+      Push 1
+      Mkap
+      Eval
+      Update 3
+      Pop 3
+      Unwind}
+
+
+
+Code for S
+Code:{Push 2
+      Push 2
+      Mkap
+      Push 3
+      Push 2
+      Mkap
+      Mkap
+      Eval
+      Update 3
+      Pop 3
+      Unwind}
+
+
+
+Code for K1
+Code:{Push 1
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for K
+Code:{Push 0
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for I
+Code:{Push 0
+      Update 1
+      Pop 1
+      Unwind}
+
+
+
+Code for if
+Code:{Push 0
+      Eval
+      Cond ([Push 1],[Push 2])
+      Update 3
+      Pop 3
+      Unwind}
+
+
+
+Code for >=
+Code:{Push 1
+      Eval
+      Push 1
+      Eval
+      Ge
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for >
+Code:{Push 1
+      Eval
+      Push 1
+      Eval
+      Gt
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for <=
+Code:{Push 1
+      Eval
+      Push 1
+      Eval
+      Le
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for <
+Code:{Push 1
+      Eval
+      Push 1
+      Eval
+      Lt
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for ~=
+Code:{Push 1
+      Eval
+      Push 1
+      Eval
+      Ne
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for ==
+Code:{Push 1
+      Eval
+      Push 1
+      Eval
+      Eq
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for negate
+Code:{Push 0
+      Eval
+      Neg
+      Update 1
+      Pop 1
+      Unwind}
+
+
+
+Code for /
+Code:{Push 1
+      Eval
+      Push 1
+      Eval
+      Div
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for *
+Code:{Push 1
+      Eval
+      Push 1
+      Eval
+      Mul
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for -
+Code:{Push 1
+      Eval
+      Push 1
+      Eval
+      Sub
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for +
+Code:{Push 1
+      Eval
+      Push 1
+      Eval
+      Add
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+
+State transitions
+
+   0) Stack:[]
+      Dump:[]
+      Code:{Pushglobal "main"
+            Eval}
+      
+      
+   1) Stack:[20: Global main]
+      Dump:[]
+      Code:{Eval}
+      
+      
+   2) Stack:[20: Global main]
+      Dump:[<{},[]>]
+      Code:{Unwind}
+      
+      
+   3) Stack:[20: Global main]
+      Dump:[<{},[]>]
+      Code:{Pushint 4
+            Pushint 3
+            Pushint 2
+            Mul
+            Pushint 1
+            Pushglobal "f"
+            Mkap
+            Eval
+            Add
+            Add
+            Update 0
+            Pop 0
+            Unwind}
+      
+      
+   4) Stack:[20: Global main
+             21: 4]
+      Dump:[<{},[]>]
+      Code:{Pushint 3
+            Pushint 2
+            Mul
+            Pushint 1
+            Pushglobal "f"
+            Mkap
+            Eval
+            Add
+            Add
+            Update 0
+            Pop 0
+            Unwind}
+      
+      
+   5) Stack:[20: Global main
+             21: 4
+             22: 3]
+      Dump:[<{},[]>]
+      Code:{Pushint 2
+            Mul
+            Pushint 1
+            Pushglobal "f"
+            Mkap
+            Eval
+            Add
+            Add
+            Update 0
+            Pop 0
+            Unwind}
+      
+      
+   6) Stack:[20: Global main
+             21: 4
+             22: 3
+             23: 2]
+      Dump:[<{},[]>]
+      Code:{Mul
+            Pushint 1
+            Pushglobal "f"
+            Mkap
+            Eval
+            Add
+            Add
+            Update 0
+            Pop 0
+            Unwind}
+      
+      
+   7) Stack:[20: Global main
+             21: 4
+             24: 6]
+      Dump:[<{},[]>]
+      Code:{Pushint 1
+            Pushglobal "f"
+            Mkap
+            Eval
+            Add
+            Add
+            Update 0
+            Pop 0
+            Unwind}
+      
+      
+   8) Stack:[20: Global main
+             21: 4
+             24: 6
+             25: 1]
+      Dump:[<{},[]>]
+      Code:{Pushglobal "f"
+            Mkap
+            Eval
+            Add
+            Add
+            Update 0
+            Pop 0
+            Unwind}
+      
+      
+   9) Stack:[20: Global main
+             21: 4
+             24: 6
+             25: 1
+             19: Global f]
+      Dump:[<{},[]>]
+      Code:{Mkap
+            Eval
+            Add
+            Add
+            Update 0
+            Pop 0
+            Unwind}
+      
+      
+  10) Stack:[20: Global main
+             21: 4
+             24: 6
+             26: Ap 19 25 /Global f/]
+      Dump:[<{},[]>]
+      Code:{Eval
+            Add
+            Add
+            Update 0
+            Pop 0
+            Unwind}
+      
+      
+  11) Stack:[26: Ap 19 25 /Global f/]
+      Dump:[<{},[]>
+            <{Add; Add; Update 0; ...},[24,21,20]>]
+      Code:{Unwind}
+      
+      
+  12) Stack:[26: Ap 19 25 /Global f/
+             19: Global f]
+      Dump:[<{},[]>
+            <{Add; Add; Update 0; ...},[24,21,20]>]
+      Code:{Unwind}
+      
+      
+  13) Stack:[26: Ap 19 25 /Global f/
+             25: 1]
+      Dump:[<{},[]>
+            <{Add; Add; Update 0; ...},[24,21,20]>]
+      Code:{Pushint 1
+            Push 1
+            Add
+            Update 1
+            Pop 1
+            Unwind}
+      
+      
+  14) Stack:[26: Ap 19 25 /Global f/
+             25: 1
+             25: 1]
+      Dump:[<{},[]>
+            <{Add; Add; Update 0; ...},[24,21,20]>]
+      Code:{Push 1
+            Add
+            Update 1
+            Pop 1
+            Unwind}
+      
+      
+  15) Stack:[26: Ap 19 25 /Global f/
+             25: 1
+             25: 1
+             25: 1]
+      Dump:[<{},[]>
+            <{Add; Add; Update 0; ...},[24,21,20]>]
+      Code:{Add
+            Update 1
+            Pop 1
+            Unwind}
+      
+      
+  16) Stack:[26: Ap 19 25 /Global f/
+             25: 1
+             27: 2]
+      Dump:[<{},[]>
+            <{Add; Add; Update 0; ...},[24,21,20]>]
+      Code:{Update 1
+            Pop 1
+            Unwind}
+      
+      
+  17) Stack:[26: Ind 27 (2)
+             25: 1]
+      Dump:[<{},[]>
+            <{Add; Add; Update 0; ...},[24,21,20]>]
+      Code:{Pop 1
+            Unwind}
+      
+      
+  18) Stack:[26: Ind 27 (2)]
+      Dump:[<{},[]>
+            <{Add; Add; Update 0; ...},[24,21,20]>]
+      Code:{Unwind}
+      
+      
+  19) Stack:[27: 2]
+      Dump:[<{},[]>
+            <{Add; Add; Update 0; ...},[24,21,20]>]
+      Code:{Unwind}
+      
+      
+  20) Stack:[20: Global main
+             21: 4
+             24: 6
+             27: 2]
+      Dump:[<{},[]>]
+      Code:{Add
+            Add
+            Update 0
+            Pop 0
+            Unwind}
+      
+      
+  21) Stack:[20: Global main
+             21: 4
+             28: 8]
+      Dump:[<{},[]>]
+      Code:{Add
+            Update 0
+            Pop 0
+            Unwind}
+      
+      
+  22) Stack:[20: Global main
+             29: 12]
+      Dump:[<{},[]>]
+      Code:{Update 0
+            Pop 0
+            Unwind}
+      
+      
+  23) Stack:[20: Ind 29 (12)]
+      Dump:[<{},[]>]
+      Code:{Pop 0
+            Unwind}
+      
+      
+  24) Stack:[20: Ind 29 (12)]
+      Dump:[<{},[]>]
+      Code:{Unwind}
+      
+      
+  25) Stack:[29: 12]
+      Dump:[<{},[]>]
+      Code:{Unwind}
+      
+      
+
+
+Steps taken:25

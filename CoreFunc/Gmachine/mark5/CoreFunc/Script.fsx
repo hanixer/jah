@@ -36,11 +36,10 @@ let gcd = "gcd a b =
 main = gcd 4 2"
 let nfib = "nfib n = if (n==0) 1 (1 + nfib (n-1) + nfib (n-2)) ;
 main = nfib 4"
-let src7 = "f x y = y;
-main = f 1 2"
+let whnf = "main = K 1"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
     runProg src |> fprintf f "%s"
 parse "main = (2-3)"
-g arithm1
+g "f x = x + 1; main = f 1 + 2 * 3 + 4"
