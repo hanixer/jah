@@ -39,7 +39,7 @@ type GmHeap = Heap<Node>
 
 type GmStats = int
 
-type GmEnvironment = Name * int list
+type GmEnvironment = (Name * int) list
 
 type GmDump = (GmCode * GmStack) list
 
@@ -262,14 +262,14 @@ let allocateSc heap (name, nargs, is) =
 let initialCode = [ Pushglobal "main"; Eval ]
 // let initialCode = [ Pushglobal "main"; Unwind ]
 
-let argOffset n env =
+let argOffset n (env : GmEnvironment) =
     List.map (fun (name, m) -> (name, m + n)) env
 
 let getArg = function
     | NAp (_, a) -> a
     | _ -> failwith "application node is expected"
 
-let compileLetDefs comp defs env =
+let compileLetDefs comp defs (env : GmEnvironment) =
     let compileDef (is, env) (v, e) =
         comp e env |> List.append is, argOffset 1 env
     List.fold compileDef ([], env) defs 
@@ -324,6 +324,32 @@ let compileLetRec compArg compBody defs body env =
           compBody body newEnv
           [Slide n] ]
 
+let rec extractPackExpr = function
+    | EConstr (t, a) ->
+        t, a, []
+    | EAp (e1, e2) ->
+        let t, a, exprs = extractPackExpr e1
+        t, a, (e2 :: exprs)
+    | _ ->
+        failwith "Only EConstr or EAp is expected"
+
+let rec isPackExpr expr =
+    let rec go n = function
+        | EConstr (_, a) when a = n -> true
+        | EAp (e1, _) -> go (n + 1) e1
+        | _ -> false
+    go 0 expr
+
+let compileConstr (comp : GmCompiler) expr (env : GmEnvironment)  =
+    let t, a, exprs = extractPackExpr expr
+    let compileSub (instrs, en : GmEnvironment) expr = 
+        let compiled = comp expr en
+        (List.append instrs compiled), (argOffset 1 en)
+    let compiled = List.fold compileSub ([], env) exprs |> fst
+    List.concat
+        [ compiled
+          [Pack (t, a)] ]
+
 let rec compileC expr env =
     match expr with
     | EVar v ->
@@ -331,6 +357,8 @@ let rec compileC expr env =
         | Some (_, n) -> [Push n]
         | None -> [Pushglobal v]
     | ENum n -> [Pushint n]
+    | _ when isPackExpr expr ->
+        compileConstr compileC expr env
     | EAp (e1, e2) ->
         List.concat
             [ compileC e2 env
@@ -367,6 +395,8 @@ let compileAp compPrimitive compOther e1 e2 env  =
 let rec compileE expr env =
     match expr with
     | ENum n -> [Pushint n]
+    | _ when isPackExpr expr ->
+        compileConstr compileC expr env
     | EAp (e1, e2) ->
         match compileAp compileE compileC e1 e2 env with
         | Some res -> res

@@ -30,3 +30,5 @@ let h src =
     
 { emptyState with Code = [Pushint 2; Pushint 3; Pack (3, 2);]} |> step |> step |> step
 List.replicate 2 [1;2;3]
+
+g "main = Pack{1,2} 1 2"

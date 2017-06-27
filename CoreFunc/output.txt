@@ -1,27 +1,10 @@
 Supercombinator definitions
 Code for main
-Code:{Pushint 4
-      Pushint 3
-      Pushint 2
-      Mul
+Code:{Pushint 2
       Pushint 1
-      Pushglobal "f"
-      Mkap
-      Eval
-      Add
-      Add
+      Pack (1,2)
       Update 0
       Pop 0
-      Unwind}
-
-
-
-Code for f
-Code:{Pushint 1
-      Push 1
-      Add
-      Update 1
-      Pop 1
       Unwind}
 
 
@@ -240,267 +223,70 @@ State transitions
             Eval}
       
       
-   1) Stack:[20: Global main]
+   1) Stack:[19: Global main]
       Dump:[]
       Code:{Eval}
       
       
-   2) Stack:[20: Global main]
+   2) Stack:[19: Global main]
       Dump:[<{},[]>]
       Code:{Unwind}
       
       
-   3) Stack:[20: Global main]
-      Dump:[<{},[]>]
-      Code:{Pushint 4
-            Pushint 3
-            Pushint 2
-            Mul
-            Pushint 1
-            Pushglobal "f"
-            Mkap
-            Eval
-            Add
-            Add
-            Update 0
-            Pop 0
-            Unwind}
-      
-      
-   4) Stack:[20: Global main
-             21: 4]
-      Dump:[<{},[]>]
-      Code:{Pushint 3
-            Pushint 2
-            Mul
-            Pushint 1
-            Pushglobal "f"
-            Mkap
-            Eval
-            Add
-            Add
-            Update 0
-            Pop 0
-            Unwind}
-      
-      
-   5) Stack:[20: Global main
-             21: 4
-             22: 3]
+   3) Stack:[19: Global main]
       Dump:[<{},[]>]
       Code:{Pushint 2
-            Mul
             Pushint 1
-            Pushglobal "f"
-            Mkap
-            Eval
-            Add
-            Add
+            Pack (1,2)
             Update 0
             Pop 0
             Unwind}
       
       
-   6) Stack:[20: Global main
-             21: 4
-             22: 3
-             23: 2]
-      Dump:[<{},[]>]
-      Code:{Mul
-            Pushint 1
-            Pushglobal "f"
-            Mkap
-            Eval
-            Add
-            Add
-            Update 0
-            Pop 0
-            Unwind}
-      
-      
-   7) Stack:[20: Global main
-             21: 4
-             24: 6]
+   4) Stack:[19: Global main
+             20: 2]
       Dump:[<{},[]>]
       Code:{Pushint 1
-            Pushglobal "f"
-            Mkap
-            Eval
-            Add
-            Add
+            Pack (1,2)
             Update 0
             Pop 0
             Unwind}
       
       
-   8) Stack:[20: Global main
-             21: 4
-             24: 6
-             25: 1]
+   5) Stack:[19: Global main
+             20: 2
+             21: 1]
       Dump:[<{},[]>]
-      Code:{Pushglobal "f"
-            Mkap
-            Eval
-            Add
-            Add
+      Code:{Pack (1,2)
             Update 0
             Pop 0
             Unwind}
       
       
-   9) Stack:[20: Global main
-             21: 4
-             24: 6
-             25: 1
-             19: Global f]
-      Dump:[<{},[]>]
-      Code:{Mkap
-            Eval
-            Add
-            Add
-            Update 0
-            Pop 0
-            Unwind}
-      
-      
-  10) Stack:[20: Global main
-             21: 4
-             24: 6
-             26: Ap 19 25 /Global f/]
-      Dump:[<{},[]>]
-      Code:{Eval
-            Add
-            Add
-            Update 0
-            Pop 0
-            Unwind}
-      
-      
-  11) Stack:[26: Ap 19 25 /Global f/]
-      Dump:[<{},[]>
-            <{Add; Add; Update 0; ...},[24,21,20]>]
-      Code:{Unwind}
-      
-      
-  12) Stack:[26: Ap 19 25 /Global f/
-             19: Global f]
-      Dump:[<{},[]>
-            <{Add; Add; Update 0; ...},[24,21,20]>]
-      Code:{Unwind}
-      
-      
-  13) Stack:[26: Ap 19 25 /Global f/
-             25: 1]
-      Dump:[<{},[]>
-            <{Add; Add; Update 0; ...},[24,21,20]>]
-      Code:{Pushint 1
-            Push 1
-            Add
-            Update 1
-            Pop 1
-            Unwind}
-      
-      
-  14) Stack:[26: Ap 19 25 /Global f/
-             25: 1
-             25: 1]
-      Dump:[<{},[]>
-            <{Add; Add; Update 0; ...},[24,21,20]>]
-      Code:{Push 1
-            Add
-            Update 1
-            Pop 1
-            Unwind}
-      
-      
-  15) Stack:[26: Ap 19 25 /Global f/
-             25: 1
-             25: 1
-             25: 1]
-      Dump:[<{},[]>
-            <{Add; Add; Update 0; ...},[24,21,20]>]
-      Code:{Add
-            Update 1
-            Pop 1
-            Unwind}
-      
-      
-  16) Stack:[26: Ap 19 25 /Global f/
-             25: 1
-             27: 2]
-      Dump:[<{},[]>
-            <{Add; Add; Update 0; ...},[24,21,20]>]
-      Code:{Update 1
-            Pop 1
-            Unwind}
-      
-      
-  17) Stack:[26: Ind 27 (2)
-             25: 1]
-      Dump:[<{},[]>
-            <{Add; Add; Update 0; ...},[24,21,20]>]
-      Code:{Pop 1
-            Unwind}
-      
-      
-  18) Stack:[26: Ind 27 (2)]
-      Dump:[<{},[]>
-            <{Add; Add; Update 0; ...},[24,21,20]>]
-      Code:{Unwind}
-      
-      
-  19) Stack:[27: 2]
-      Dump:[<{},[]>
-            <{Add; Add; Update 0; ...},[24,21,20]>]
-      Code:{Unwind}
-      
-      
-  20) Stack:[20: Global main
-             21: 4
-             24: 6
-             27: 2]
-      Dump:[<{},[]>]
-      Code:{Add
-            Add
-            Update 0
-            Pop 0
-            Unwind}
-      
-      
-  21) Stack:[20: Global main
-             21: 4
-             28: 8]
-      Dump:[<{},[]>]
-      Code:{Add
-            Update 0
-            Pop 0
-            Unwind}
-      
-      
-  22) Stack:[20: Global main
-             29: 12]
+   6) Stack:[19: Global main
+             22: Cons 1 [21, 20]]
       Dump:[<{},[]>]
       Code:{Update 0
             Pop 0
             Unwind}
       
       
-  23) Stack:[20: Ind 29 (12)]
+   7) Stack:[19: Ind 22 (Cons 1 [21, 20])]
       Dump:[<{},[]>]
       Code:{Pop 0
             Unwind}
       
       
-  24) Stack:[20: Ind 29 (12)]
+   8) Stack:[19: Ind 22 (Cons 1 [21, 20])]
       Dump:[<{},[]>]
       Code:{Unwind}
       
       
-  25) Stack:[29: 12]
+   9) Stack:[22: Cons 1 [21, 20]]
       Dump:[<{},[]>]
       Code:{Unwind}
       
       
 
 
-Steps taken:25
+Steps taken:9
