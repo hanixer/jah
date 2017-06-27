@@ -52,13 +52,14 @@ type GmState =
       Stack : GmStack
       Dump : GmDump
       Stats : GmStats
-      Output : GmOutput }
+      Output : GmOutput
+      Exception : System.Exception option }
 
 type CompiledSC = Name * int * GmCode
 type GmCompiler = CoreExpr -> GmEnvironment -> GmCode
 
 let emptyState = 
-    { Code = []; Heap = heapEmpty; Globals = []; Stack = []; Stats = 0; Dump = []; Output = [] }
+    { Code = []; Heap = heapEmpty; Globals = []; Stack = []; Stats = 0; Dump = []; Output = []; Exception = None }
 
 let statInitial = 0
 let statIncSteps s = s + 1
@@ -153,11 +154,18 @@ let showDump s =
           |> IIdent;
           iStr "]" ]
 
+let showExcept s =
+    match s.Exception with
+    | Some e ->
+        iConcat [ iStr "Exception! "; e.ToString() |> iStr; iNewline ]
+    | None -> iNil
+
 let showState s =
     iConcat
         [ showStack s; iNewline; 
           showDump s; iNewline;
-          showInstructions s.Code; iNewline ]
+          showInstructions s.Code; iNewline;
+          showExcept s ]
 
 let showStats s =
     iConcat 
@@ -215,8 +223,7 @@ let compiledPrimitives =
       compiledArithmetic "<=" Le
       compiledArithmetic ">" Gt
       compiledArithmetic ">=" Ge
-      "if", 3, [Push 0; Eval; Cond ([Push 1], [Push 2]); Update 3; Pop 3; Unwind] ]
-
+      "if", 3, [Push 0; Eval; Casejump [(1, [Split 0; Push 2; Slide 0]); (2, [Split 0; Push 1; Slide 0])]; Update 3; Pop 3;Unwind] ]
 let boxInteger n s =
     let heap', a = heapAlloc s.Heap (NNum n)
     { s with
@@ -229,7 +236,8 @@ let unboxInteger a s =
     | _ -> failwith "Number node is expected"
 
 let boxBoolean b s =
-    let heap', a = heapAlloc s.Heap (NNum (if b then 1 else 0))
+    let t = if b then 2 else 1
+    let heap', a = heapAlloc s.Heap (NConstr (t, []))
     { s with
         Heap = heap'
         Stack = a :: s.Stack }
@@ -376,11 +384,11 @@ let compileAp compPrimitive compOther e1 e2 env  =
     | EVar "negate" ->
         List.append (compPrimitive e2 env) [Neg]
         |> Some
-    | EAp(EAp(EVar "if", cond), ethen) ->
-        List.concat
-            [ compPrimitive cond env
-              [Cond (compPrimitive ethen env, compPrimitive e2 env)] ]
-        |> Some
+    // | EAp(EAp(EVar "if", cond), ethen) ->
+    //     List.concat
+    //         [ compPrimitive cond env
+    //           [Cond (compPrimitive ethen env, compPrimitive e2 env)] ]
+    //     |> Some
     | EAp (EVar op, lhs) -> 
         match List.tryFind (fst >> ((=) op)) buildInDyadic with
         | Some (_, opInstr) ->
@@ -432,13 +440,11 @@ let buildInitialHeap program =
 
 let compile program =
     let heap, globals = buildInitialHeap program
-    { Code = initialCode
-      Heap = heap
-      Globals = globals
-      Stats = statInitial
-      Dump = []
-      Stack = []
-      Output = [] }
+    { emptyState with
+        Code = initialCode
+        Heap = heap
+        Globals = globals
+        Stats = statInitial }
 
 
 let gmFinal (s : GmState) =
@@ -652,7 +658,11 @@ let rec eval state =
             states
         else
             let newState = state |> step |> doAdmin
-            go newState (state :: states)
-    go state [] |> List.rev
+            try
+                go newState (state :: states)
+            with
+            | e ->
+                { state with Exception = Some e } :: states
+    go state [] |> List.rev        
 
 let runProg<'p> = parse >> compile >> eval >> showResults
