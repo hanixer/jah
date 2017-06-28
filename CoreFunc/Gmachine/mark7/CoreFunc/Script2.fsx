@@ -19,7 +19,7 @@ main = twice twice id 3"
 let src5 = "f x = letrec y = I z; z = I 3 in K x z;
 main = f 1"
 let fac = "fac n = if (n==0) 1 (n * fac (n-1)) ;
-main = fac 3"
+main = fac 1"
 
 
 let g src =
@@ -33,4 +33,4 @@ let h src =
 { emptyState with Code = [Pushint 2; Pushint 3; Pack (3, 2);]} |> step |> step |> step
 List.replicate 2 [1;2;3]
 
-g fac
+let a,b,exprs = extractPackExpr (EAp (EAp (EAp (EConstr (1, 3), EVar "hello"), ENum 2), ENum 3))
