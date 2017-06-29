@@ -18,6 +18,7 @@ type Instruction =
     | Eval
     | Add | Sub | Mul | Div | Neg
     | Eq | Ne | Lt | Le | Gt | Ge
+    | And | Or | Not
     | Cond of GmCode * GmCode
     | Pack of int * int
     | Casejump of (int * GmCode) list
@@ -46,11 +47,11 @@ type GmStats = int
 
 type GmEnvironment = (Name * int) list
 
-type GmDump = (GmCode * GmStack) list
+type GmVStack = int list
+
+type GmDump = (GmCode * GmStack * GmVStack) list
 
 type GmOutput = char list
-
-type GmVStack = int list
 
 type GmState =
     { Code : GmCode
@@ -97,7 +98,7 @@ let rec showNode s a = function
               iStr " ("; heapLookup s.Heap a |> showNode s a; iStr ")" ]
     | NConstr (t, addrs) ->
         iConcat
-            [ iStr "Cons "
+            [ iStr "Constr "
               iNum t
               iStr " ["
               List.map showAddr addrs |> iInterleave (iStr ", ")
@@ -120,7 +121,7 @@ let showStack s =
 
 let showShortStack stack =
     iConcat
-        [ iStr "["; 
+        [ iStr "S:["; 
           List.map (string >> iStr) stack |> iInterleave (iStr ","); 
           iStr "]" ]
 
@@ -144,12 +145,26 @@ let showShortInstruction n code =
           iInterleave (iStr "; ") dotcodes
           iStr "}" ]
 
-let showDumpItem (code, stack) =
+let showVStack s =
+    iConcat 
+        [ iStr "VStack:["
+          List.map iNum s.VStack |> iInterleave (iStr ", ")
+          iStr "]" ]
+
+let showShortVStack vstack =
+    iConcat 
+        [ iStr "V:["
+          List.map iNum vstack |> iInterleave (iStr ", ")
+          iStr "]" ]
+
+let showDumpItem (code, stack, vstack) =
     iConcat
         [ iStr "<"
           showShortInstruction 3 code
-          iStr ","
+          iStr ", "
           showShortStack stack
+          iStr ", "
+          showShortVStack vstack
           iStr ">"]
 
 let showDump s =
@@ -168,23 +183,18 @@ let showExcept s =
         iConcat [ iStr "Exception! "; e.ToString() |> iStr; iNewline ]
     | None -> iNil
 
-let showVStack s =
-    iConcat 
-        [ iStr "VStack:["
-          List.map iNum s.VStack |> iInterleave (iStr ", ")
-          iStr "]" ]
-
 let showState s =
     iConcat
-        [ showStack s; iNewline; 
-          showDump s; iNewline;
+        [ showVStack s; iNewline;
+          showStack s; iNewline; iNewline;
+          showDump s; iNewline; iNewline;
           showInstructions s.Code;
-          showExcept s;
-          showVStack s; iNewline ]
+          showExcept s; ]
 
 let showStats s =
     iConcat 
-        [ iStr "Steps taken:"; s.Stats |> statGetSteps |> iNum ]
+        [ iStr "Steps taken:"; s.Stats |> statGetSteps |> iNum; iNewline;
+          iStr "Heap size:"; heapSize s.Heap |> iNum ]
 
 let showSc s (name, addr) =
     let arity, code = 
@@ -226,20 +236,6 @@ let buildInDyadic =
         ("<=", Le)
         ("<", Lt) ]
 
-let compiledPrimitives = 
-    [ compiledArithmetic "+" Add
-      compiledArithmetic "-" Sub
-      compiledArithmetic "*" Mul
-      compiledArithmetic "/" Div
-      "negate", 1, [Push 0; Eval; Neg; Update 1; Pop 1; Unwind]
-      compiledArithmetic "==" Eq
-      compiledArithmetic "~=" Ne
-      compiledArithmetic "<" Lt
-      compiledArithmetic "<=" Le
-      compiledArithmetic ">" Gt
-      compiledArithmetic ">=" Ge
-      "if", 3, [Push 0; Eval; Casejump [(1, [Split 0; Push 2; Slide 0]); (2, [Split 0; Push 1; Slide 0])]; Update 3; Pop 3;Unwind] ]
-
 let mkBinPrimitive op =
     op, ["x"; "y"], (EAp (EAp (EVar op, EVar "x"), EVar "y"))
 
@@ -254,6 +250,8 @@ let primitives =
       mkBinPrimitive "<="
       mkBinPrimitive ">"
       mkBinPrimitive ">="
+      mkBinPrimitive "&"
+      mkBinPrimitive "|"
       "negate", ["x"], EAp (EVar "negate", EVar "x")
       "if", ["c"; "t"; "f"], (EAp (EAp (EAp (EVar "if", EVar "c"), EVar "t"), EVar "f"))
       "True", [], EConstr (2, 0)
@@ -270,7 +268,8 @@ let binaryOpsToInstr =
       "<", Lt
       "<=", Le
       ">", Gt
-      ">=", Ge ]
+      ">=", Ge
+      "&", And ]
       |> Map.ofList
 
 let isPrimitiveBinaryOp op =
@@ -319,14 +318,27 @@ let primitive2 box unbox op state =
 
 let arithmetic1 = primitive1 boxInteger unboxInteger
 
-let arithmetic2 f s =
+let binary f s =
     match s.VStack with
     | n0 :: n1 :: v ->
-        { s with VStack = (f n0 n1) :: v }
+        { s with VStack = f n0 n1 :: v }
     | _ ->
         failwith "two numbers expected on VStack"
 
-let comparison = primitive2 boxBoolean unboxInteger
+let arithmetic2 = binary
+
+let boolToInt x = if  x then 2 else 1
+
+let comparison f = 
+    let func x y = boolToInt (f x y)
+    binary func
+
+let boolean f =
+    let intToBool = function
+        | 2 -> true
+        | 1 -> false
+        | _ -> failwith "2 or 1 expected"
+    binary (fun x y -> f (intToBool x) (intToBool y) |> boolToInt)        
 
 let allocateSc heap (name, nargs, is) =
     let heap', addr = heapAlloc heap (NGlobal (nargs, is))
@@ -371,14 +383,14 @@ let compileAlt comp env (t, vars, body)  =
 let compileD comp alts env =
     List.map (compileAlt comp env) alts
 
-let compileLet (compArg : GmCompiler) (compBody : GmCompiler) defs body lastInstr env =
+let compileLet (compArg : GmCompiler) (compBody : GmCompiler) lastInstr defs body  env =
     let defsIs = compileLetDefs compArg defs env
     let n = (List.length defs)
     let newEnv = buildLetEnv env defs
     List.concat
         [ defsIs
           compBody body newEnv
-          [lastInstr n] ]
+          lastInstr n ]
 
 let compileLetRecDefs comp defs env =
     let compileDef (is, n) (v, e) =
@@ -387,7 +399,7 @@ let compileLetRecDefs comp defs env =
     List.fold compileDef ([], List.length defs) defs 
     |> fst
 
-let compileLetRec (compArg : GmCompiler) (compBody : GmCompiler) defs body lastInstr env =
+let compileLetRec (compArg : GmCompiler) (compBody : GmCompiler) lastInstr defs body env =
     let n = List.length defs
     let newEnv = buildLetEnv env defs
     let defsIs = compileLetRecDefs compArg defs newEnv
@@ -395,7 +407,7 @@ let compileLetRec (compArg : GmCompiler) (compBody : GmCompiler) defs body lastI
         [ [Alloc n]
           defsIs
           compBody body newEnv
-          [lastInstr n] ]
+          lastInstr n ]
 
 let rec extractPackExpr = function
     | EConstr (t, a) ->
@@ -423,6 +435,17 @@ let compileConstr (comp : GmCompiler) expr (env : GmEnvironment)  =
         [ compiled
           [Pack (t, a)] ]
 
+let compileIf (compCond : GmCompiler) (compBody : GmCompiler) c t e env =
+    List.concat
+        [ compCond c env
+          [ Cond (compBody t env, compBody e env) ] ]
+
+let compileCase (comp : GmCompiler) condExpr alts env =
+    List.concat
+        [ comp condExpr env
+          [compileD comp alts env |> Casejump] ]
+
+
 let rec compileC expr env =
     match expr with
     | EVar v ->
@@ -438,9 +461,11 @@ let rec compileC expr env =
               compileC e1 (argOffset 1 env)
               [Mkap] ]
     | ELet (false, defs, body) ->
-        compileLet compileC compileC defs body Slide env
+        let last n = [Slide n]
+        compileLet compileC compileC last defs body  env
     | ELet (true, defs, body) ->
-        compileLetRec compileC compileC defs body Slide env
+        let last n = [Slide n]
+        compileLetRec compileC compileC last defs body env
     | _ ->
         failwithf "cannot compile %A" expr
 
@@ -457,21 +482,19 @@ let rec compileE expr env =
             [ compileB expr env
               [mkInstr] ]
     | EAp (EAp (EAp (EVar "if", c), t), e) ->
-        List.concat
-            [ compileB c env
-              [ Cond (compileE t env, compileE e env) ] ]
+        compileIf compileB compileE c t e env
     | EAp (EVar "negate", e) ->
         List.concat
             [ compileB expr env
               [Mkint] ]
     | ELet (false, defs, body) ->
-        compileLet compileC compileE defs body Slide env
+        let last n = [Slide n]
+        compileLet compileC compileE last defs body env
     | ELet (true, defs, body) ->
-        compileLetRec compileC compileE defs body Slide env
+        let last n = [Slide n]
+        compileLetRec compileC compileE last defs body env
     | ECase (condExpr, alts) ->
-        List.concat
-            [ compileE condExpr env
-              [compileD compileE alts env |> Casejump] ]
+        compileCase compileE condExpr alts env
     | _ ->
         defaultComp ()
 
@@ -479,9 +502,11 @@ and compileB expr env =
     match expr with
     | ENum n -> [Pushbasic n]
     | ELet (false, defs, body) ->
-        compileLet compileC compileB defs body Pop env
+        let last n = [Pop n]
+        compileLet compileC compileB last defs body env
     | ELet (true, defs, body) ->
-        compileLetRec compileC compileB defs body Pop env
+        let last n = [Pop n]
+        compileLetRec compileC compileB last defs body env
     | EAp (EAp (EVar op, e1), e2) when isPrimitiveBinaryOp op ->
         let instr = primitiveBinaryToInstr op
         List.concat
@@ -489,9 +514,7 @@ and compileB expr env =
               compileB e1 env
               [instr] ]
     | EAp (EAp (EAp (EVar "if", c), t), e) ->
-        List.concat
-            [ compileB c env
-              [ Cond (compileB t env, compileB e env) ] ]
+        compileIf compileB compileB c t e env
     | EAp (EVar "negate", e) ->
         List.concat
             [ compileB e env
@@ -501,22 +524,33 @@ and compileB expr env =
             [ compileE expr env
               [Get] ]
 
-let compileR expr env = 
-    let d = List.length env
-    compileE expr env 
-    |> List.append
-    <| [ Update d; Pop d; Unwind ]
+let rec compileR d expr env = 
+    match expr with
+    | ELet (isRec, defs, body) ->
+        let last _ = []
+        let d' = d + List.length defs
+        let compLet = if isRec then compileLetRec else compileLet
+        compLet compileC (compileR d') last defs body env
+    | EAp (EAp (EAp (EVar "if", c), t), e) ->
+        compileIf compileB (compileR d) c t e env
+    | ECase (condExpr, alts) ->
+        let d' = d + List.length alts
+        compileCase (compileR d') condExpr alts env
+    | _ ->
+        List.concat
+            [ compileE expr env
+              [ Update d; Pop d; Unwind ] ]
 
 let compileSc (name, env, body) =
     let newEnv = List.mapi (fun i x -> x, i) env
-    let compiled = compileR body newEnv 
+    let d = List.length newEnv
+    let compiled = compileR d body newEnv 
     name, env.Length, compiled
 
 let buildInitialHeap program = 
     let compiled = 
         List.concat [preludeDefs; program; primitives]
         |> List.map compileSc
-        |> List.append compiledPrimitives
     mapAccumul allocateSc heapEmpty compiled
 
 let compile program =
@@ -579,16 +613,20 @@ let rearrange n heap stack =
     let args = tail |> List.take n |> List.map (heapLookup heap >> getArg)
     List.skip n stack |> List.append args 
 
+let restoreDump state i s v d a =
+    { state with 
+        Code = i
+        Stack = a :: s
+        VStack = v
+        Dump = d }
+
 let unwind s =
     let a = (List.head s.Stack)
     match heapLookup s.Heap a with
     | NNum _ | NConstr _ ->
         match s.Dump with
-        | (i', stack') :: dump ->
-            { s with 
-                Code = i'
-                Stack = a :: stack'
-                Dump = dump }
+        | (i, stack, vstack) :: dump ->
+            restoreDump s i stack vstack dump a
         | _ ->
             failwith "evaluation has to be terminated at this point"
     | NAp (a1, a2) -> 
@@ -596,12 +634,10 @@ let unwind s =
             Stack = a1 :: s.Stack 
             Code = [Unwind] }
     | NGlobal (n, c) ->
-        if s.Stack.Length < n then
-            let code, stack = List.head s.Dump
-            { s with
-                Code = code
-                Stack = List.last s.Stack :: stack
-                Dump = List.tail s.Dump }
+        printfn "global: n = %d, stack length = %d" n s.Stack.Length
+        if s.Stack.Length - 1 < n then
+            let i, stack, vstack = List.head s.Dump
+            restoreDump s i stack vstack (List.tail s.Dump) (List.last s.Stack)
         else
             { s with 
                 Code = c
@@ -634,7 +670,8 @@ let evalInstruction s =
     { s with
         Code = [Unwind]
         Stack = [List.head s.Stack]
-        Dump = (s.Code, List.tail s.Stack) :: s.Dump }
+        Dump = (s.Code, List.tail s.Stack, s.VStack) :: s.Dump
+        VStack = [] }
 
 let neg s = 
     match s.VStack with
@@ -751,6 +788,7 @@ let dispatch (i : Instruction) =
     | Le  -> comparison (<=)
     | Gt  -> comparison (>)
     | Ge  -> comparison (>=)
+    | And -> boolean (&&)
     | Cond (i1, i2) -> cond i1 i2
     | Pack (t, n) -> pack t n
     | Casejump alts -> casejump alts
@@ -770,6 +808,8 @@ let doAdmin (s : GmState) =
     { s with 
         Stats = statIncSteps s.Stats}
 
+exception Overflow
+
 let rec eval state =        
     let rec go state states =
         if gmFinal state then
@@ -777,6 +817,8 @@ let rec eval state =
         else
             let newState = state |> step |> doAdmin
             try
+                if state.Stats > 100 then raise Overflow
+                printfn "Step #%d" state.Stats
                 go newState (state :: states)
             with
             | e ->

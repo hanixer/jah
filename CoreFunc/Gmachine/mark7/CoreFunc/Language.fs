@@ -387,3 +387,11 @@ let parse s =
     |> pProgram 
     |> List.tryHead |> Option.map fst
     |> defaultArg <| []
+
+let parseExpr s =
+    s 
+    |> List.ofSeq 
+    |> clex |> List.map (List.toArray >> System.String)
+    |> pExpr
+    |> List.tryHead |> Option.map fst
+    |> defaultArg <| EVar "Parse error!"

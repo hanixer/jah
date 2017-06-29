@@ -37,9 +37,16 @@ main = gcd 4 2"
 let nfib = "nfib n = if (n==0) 1 (1 + nfib (n-1) + nfib (n-2)) ;
 main = nfib 4"
 let whnf = "main = K 1"
+let simpleFunc = "f x = x + 5;
+main = f 4"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
     runProg src |> fprintf f "%s"
 parse "main = (2-3)"
-g "f x = x + 1; main = f 1 + 2 * 3 + 4"
+let e = parseExpr "case 1 of <1> 2 3 -> 4; <5> -> 6" 
+let env = ["z",0;"w",1;"i",5]
+compileR (List.length env) e env
+compileE e env
+compileB e env
+g "main = if 2 > 3 1 2"

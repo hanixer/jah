@@ -42,4 +42,4 @@ let g src =
     use f = System.IO.File.CreateText("output.txt")
     runProg src |> fprintf f "%s"
 parse "main = (2-3)"
-g "f x = x + 1; main = f 1 + 2 * 3 + 4"
+g gcd

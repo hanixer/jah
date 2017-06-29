@@ -16,33 +16,64 @@ Code:{Pack (2,0)
 
 
 Code for if
-Code:{Push 2
-      Push 2
-      Push 2
-      Pushglobal "if"
-      Mkap
-      Mkap
-      Mkap
+Code:{Push 0
       Eval
-      Update 3
-      Pop 3
-      Unwind}
+      Get
+      Cond
+        ([Push 1; Eval; Update 3; Pop 3; Unwind],
+         [Push 2; Eval; Update 3; Pop 3; Unwind])}
 
 
 
 Code for negate
 Code:{Push 0
+      Eval
+      Get
       Neg
+      Mkint
       Update 1
       Pop 1
       Unwind}
 
 
 
-Code for >=
+Code for |
 Code:{Push 1
       Push 1
+      Pushglobal "|"
+      Mkap
+      Mkap
+      Eval
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for &
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      And
+      Mkbool
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for >=
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
       Ge
+      Mkbool
       Update 2
       Pop 2
       Unwind}
@@ -51,8 +82,13 @@ Code:{Push 1
 
 Code for >
 Code:{Push 1
-      Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
       Gt
+      Mkbool
       Update 2
       Pop 2
       Unwind}
@@ -61,8 +97,13 @@ Code:{Push 1
 
 Code for <=
 Code:{Push 1
-      Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
       Le
+      Mkbool
       Update 2
       Pop 2
       Unwind}
@@ -71,8 +112,13 @@ Code:{Push 1
 
 Code for <
 Code:{Push 1
-      Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
       Lt
+      Mkbool
       Update 2
       Pop 2
       Unwind}
@@ -81,11 +127,13 @@ Code:{Push 1
 
 Code for ~=
 Code:{Push 1
-      Push 1
-      Pushglobal "~="
-      Mkap
-      Mkap
       Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Ne
+      Mkbool
       Update 2
       Pop 2
       Unwind}
@@ -94,8 +142,13 @@ Code:{Push 1
 
 Code for ==
 Code:{Push 1
-      Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
       Eq
+      Mkbool
       Update 2
       Pop 2
       Unwind}
@@ -104,8 +157,13 @@ Code:{Push 1
 
 Code for /
 Code:{Push 1
-      Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
       Div
+      Mkint
       Update 2
       Pop 2
       Unwind}
@@ -114,8 +172,13 @@ Code:{Push 1
 
 Code for *
 Code:{Push 1
-      Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
       Mul
+      Mkint
       Update 2
       Pop 2
       Unwind}
@@ -124,8 +187,13 @@ Code:{Push 1
 
 Code for -
 Code:{Push 1
-      Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
       Sub
+      Mkint
       Update 2
       Pop 2
       Unwind}
@@ -134,8 +202,13 @@ Code:{Push 1
 
 Code for +
 Code:{Push 1
-      Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
       Add
+      Mkint
       Update 2
       Pop 2
       Unwind}
@@ -144,6 +217,19 @@ Code:{Push 1
 
 Code for main
 Code:{Pushint 2
+      Pushint 1
+      Pushint 3
+      Mkap
+      Mkap
+      Eval
+      Get
+      Pushint 2
+      Pushglobal "if"
+      Mkap
+      Eval
+      Get
+      Gt
+      Mkbool
       Update 0
       Pop 0
       Unwind}
@@ -193,6 +279,7 @@ Code:{Push 2
 
 Code for K1
 Code:{Push 1
+      Eval
       Update 2
       Pop 2
       Unwind}
@@ -201,6 +288,7 @@ Code:{Push 1
 
 Code for K
 Code:{Push 0
+      Eval
       Update 2
       Pop 2
       Unwind}
@@ -209,148 +297,9 @@ Code:{Push 0
 
 Code for I
 Code:{Push 0
+      Eval
       Update 1
       Pop 1
-      Unwind}
-
-
-
-Code for if
-Code:{Push 0
-      Eval
-      Casejump [(1, [Split 0; Push 2; Slide 0]); (2, [Split 0; Push 1; Slide 0])]
-      Update 3
-      Pop 3
-      Unwind}
-
-
-
-Code for >=
-Code:{Push 1
-      Eval
-      Push 1
-      Eval
-      Ge
-      Update 2
-      Pop 2
-      Unwind}
-
-
-
-Code for >
-Code:{Push 1
-      Eval
-      Push 1
-      Eval
-      Gt
-      Update 2
-      Pop 2
-      Unwind}
-
-
-
-Code for <=
-Code:{Push 1
-      Eval
-      Push 1
-      Eval
-      Le
-      Update 2
-      Pop 2
-      Unwind}
-
-
-
-Code for <
-Code:{Push 1
-      Eval
-      Push 1
-      Eval
-      Lt
-      Update 2
-      Pop 2
-      Unwind}
-
-
-
-Code for ~=
-Code:{Push 1
-      Eval
-      Push 1
-      Eval
-      Ne
-      Update 2
-      Pop 2
-      Unwind}
-
-
-
-Code for ==
-Code:{Push 1
-      Eval
-      Push 1
-      Eval
-      Eq
-      Update 2
-      Pop 2
-      Unwind}
-
-
-
-Code for negate
-Code:{Push 0
-      Eval
-      Neg
-      Update 1
-      Pop 1
-      Unwind}
-
-
-
-Code for /
-Code:{Push 1
-      Eval
-      Push 1
-      Eval
-      Div
-      Update 2
-      Pop 2
-      Unwind}
-
-
-
-Code for *
-Code:{Push 1
-      Eval
-      Push 1
-      Eval
-      Mul
-      Update 2
-      Pop 2
-      Unwind}
-
-
-
-Code for -
-Code:{Push 1
-      Eval
-      Push 1
-      Eval
-      Sub
-      Update 2
-      Pop 2
-      Unwind}
-
-
-
-Code for +
-Code:{Push 1
-      Eval
-      Push 1
-      Eval
-      Add
-      Update 2
-      Pop 2
       Unwind}
 
 
@@ -358,54 +307,289 @@ Code:{Push 1
 
 State transitions
 
-   0) Stack:[]
+   0) VStack:[]
+      Stack:[]
+      
       Dump:[]
+      
       Code:{Pushglobal "main"
             Eval}
-      VStack:[]
       
-   1) Stack:[19: Global main]
+   1) VStack:[]
+      Stack:[7: Global main]
+      
       Dump:[]
+      
       Code:{Eval}
-      VStack:[]
       
-   2) Stack:[19: Global main]
-      Dump:[<{},[]>]
+   2) VStack:[]
+      Stack:[7: Global main]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
       Code:{Unwind}
-      VStack:[]
       
-   3) Stack:[19: Global main]
-      Dump:[<{},[]>]
+   3) VStack:[]
+      Stack:[7: Global main]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
       Code:{Pushint 2
+            Pushint 1
+            Pushint 3
+            Mkap
+            Mkap
+            Eval
+            Get
+            Pushint 2
+            Pushglobal "if"
+            Mkap
+            Eval
+            Get
+            Gt
+            Mkbool
             Update 0
             Pop 0
             Unwind}
-      VStack:[]
       
-   4) Stack:[19: Global main
-             34: 2]
-      Dump:[<{},[]>]
-      Code:{Update 0
+   4) VStack:[]
+      Stack:[7: Global main
+             24: 2]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Pushint 1
+            Pushint 3
+            Mkap
+            Mkap
+            Eval
+            Get
+            Pushint 2
+            Pushglobal "if"
+            Mkap
+            Eval
+            Get
+            Gt
+            Mkbool
+            Update 0
             Pop 0
             Unwind}
-      VStack:[]
       
-   5) Stack:[19: Ind 34 (2)]
-      Dump:[<{},[]>]
-      Code:{Pop 0
+   5) VStack:[]
+      Stack:[7: Global main
+             24: 2
+             25: 1]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Pushint 3
+            Mkap
+            Mkap
+            Eval
+            Get
+            Pushint 2
+            Pushglobal "if"
+            Mkap
+            Eval
+            Get
+            Gt
+            Mkbool
+            Update 0
+            Pop 0
             Unwind}
-      VStack:[]
       
-   6) Stack:[19: Ind 34 (2)]
-      Dump:[<{},[]>]
-      Code:{Unwind}
-      VStack:[]
+   6) VStack:[]
+      Stack:[7: Global main
+             24: 2
+             25: 1
+             26: 3]
       
-   7) Stack:[34: 2]
-      Dump:[<{},[]>]
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Mkap
+            Mkap
+            Eval
+            Get
+            Pushint 2
+            Pushglobal "if"
+            Mkap
+            Eval
+            Get
+            Gt
+            Mkbool
+            Update 0
+            Pop 0
+            Unwind}
+      
+   7) VStack:[]
+      Stack:[7: Global main
+             24: 2
+             27: Ap 26 25 /3/]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Mkap
+            Eval
+            Get
+            Pushint 2
+            Pushglobal "if"
+            Mkap
+            Eval
+            Get
+            Gt
+            Mkbool
+            Update 0
+            Pop 0
+            Unwind}
+      
+   8) VStack:[]
+      Stack:[7: Global main
+             28: Ap 27 24 /3/]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Eval
+            Get
+            Pushint 2
+            Pushglobal "if"
+            Mkap
+            Eval
+            Get
+            Gt
+            Mkbool
+            Update 0
+            Pop 0
+            Unwind}
+      
+   9) VStack:[]
+      Stack:[28: Ap 27 24 /3/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Get; Pushint 2; Pushglobal "if"; ...}, S:[7], V:[]>]
+      
       Code:{Unwind}
-      VStack:[]
+      
+  10) VStack:[]
+      Stack:[28: Ap 27 24 /3/
+             27: Ap 26 25 /3/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Get; Pushint 2; Pushglobal "if"; ...}, S:[7], V:[]>]
+      
+      Code:{Unwind}
+      
+  11) VStack:[]
+      Stack:[28: Ap 27 24 /3/
+             27: Ap 26 25 /3/
+             26: 3]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Get; Pushint 2; Pushglobal "if"; ...}, S:[7], V:[]>]
+      
+      Code:{Unwind}
+      
+  12) VStack:[]
+      Stack:[7: Global main
+             26: 3]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Get
+            Pushint 2
+            Pushglobal "if"
+            Mkap
+            Eval
+            Get
+            Gt
+            Mkbool
+            Update 0
+            Pop 0
+            Unwind}
+      
+  13) VStack:[3]
+      Stack:[7: Global main]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Pushint 2
+            Pushglobal "if"
+            Mkap
+            Eval
+            Get
+            Gt
+            Mkbool
+            Update 0
+            Pop 0
+            Unwind}
+      
+  14) VStack:[3]
+      Stack:[7: Global main
+             24: 2]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Pushglobal "if"
+            Mkap
+            Eval
+            Get
+            Gt
+            Mkbool
+            Update 0
+            Pop 0
+            Unwind}
+      
+  15) VStack:[3]
+      Stack:[7: Global main
+             24: 2
+             21: Global if]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Mkap
+            Eval
+            Get
+            Gt
+            Mkbool
+            Update 0
+            Pop 0
+            Unwind}
+      
+  16) VStack:[3]
+      Stack:[7: Global main
+             29: Ap 21 24 /Global if/]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Eval
+            Get
+            Gt
+            Mkbool
+            Update 0
+            Pop 0
+            Unwind}
+      
+  17) VStack:[]
+      Stack:[29: Ap 21 24 /Global if/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Get; Gt; Mkbool; ...}, S:[7], V:[3]>]
+      
+      Code:{Unwind}
+      
+  18) VStack:[]
+      Stack:[29: Ap 21 24 /Global if/
+             21: Global if]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Get; Gt; Mkbool; ...}, S:[7], V:[3]>]
+      
+      Code:{Unwind}
+      Exception! System.Exception: Get expects NConstr or NNum
+         at FSI_0004.Gm.get(GmState s) in g:\home\jah\CoreFunc\Gmachine\mark7\CoreFunc\Gm.fs:line 766
+         at FSI_0004.Gm.go@814-2(GmState state, FSharpList`1 states) in g:\home\jah\CoreFunc\Gmachine\mark7\CoreFunc\Gm.fs:line 825
+         at FSI_0004.Gm.go@814-2(GmState state, FSharpList`1 states) in g:\home\jah\CoreFunc\Gmachine\mark7\CoreFunc\Gm.fs:line 822
       
 
 
-Steps taken:7
+Steps taken:18
+Heap size:29

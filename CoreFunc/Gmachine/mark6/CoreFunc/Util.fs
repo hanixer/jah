@@ -19,6 +19,7 @@ let heapRemove heap addr =
 let heapNull : Addr = -1
 let heapEmpty = { LastAddr = 0; Map = Map.empty }
 let heapAddrsAndElements heap = Map.toList heap.Map
+let heapSize heap = Seq.length heap.Map
 
 
 let mapAccumul (f : 'acc -> 'a -> 'acc * 'b) (initialAcc : 'acc) (xs : 'a list) : 'acc * 'b list =

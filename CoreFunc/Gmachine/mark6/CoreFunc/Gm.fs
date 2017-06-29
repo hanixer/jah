@@ -166,10 +166,11 @@ let showState s =
           showDump s; iNewline;
           showInstructions s.Code; iNewline;
           showExcept s ]
-
+          
 let showStats s =
     iConcat 
-        [ iStr "Steps taken:"; s.Stats |> statGetSteps |> iNum ]
+        [ iStr "Steps taken:"; s.Stats |> statGetSteps |> iNum; iNewline;
+          iStr "Heap size:"; heapSize s.Heap |> iNum ]
 
 let showSc s (name, addr) =
     let arity, code = 
