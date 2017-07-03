@@ -29,6 +29,7 @@ type Instruction =
     | Mkint
     | Get
     | Return
+    | UpdateInt of int
 
 
 and GmCode = Instruction list
@@ -533,9 +534,13 @@ let rec compileR d expr env =
         let d' = d + List.length alts
         compileCase (compileR d') condExpr alts env
     | _ ->
-        List.concat
-            [ compileE expr env
-              [ Update d; Pop d; Unwind ] ]
+        let compiled = compileE expr env
+        match List.tryLast compiled with
+        | Some Mkint ->
+            let compiled = List.take (List.length compiled - 1) compiled
+            List.append compiled [UpdateInt d; Pop d; Unwind]
+        | _ ->
+            List.append compiled [Update d; Pop d; Unwind]
 
 let compileSc (name, env, body) =
     let newEnv = List.mapi (fun i x -> x, i) env
@@ -753,6 +758,17 @@ let mkint s =
     | _ ->
         failwith "A number is expected on the VStack"
 
+let updateInt n state =
+    match state.VStack, state.Stack with
+    | (num :: v), s ->
+        let heap1, b = heapAlloc state.Heap (NNum num)
+        let heap2 = heapUpdate heap1 (List.item n s) (NInd b)
+        { state with
+            Heap = heap2
+            VStack = v }
+    | _, _ ->
+        failwith "Expected an item on vstack"
+
 let get s =
     match lookupStackTop s with
     | NConstr (n, []) | NNum n ->
@@ -807,6 +823,7 @@ let dispatch (i : Instruction) =
     | Mkint -> mkint
     | Get -> get
     | Return -> returnInstr
+    | UpdateInt n -> updateInt n
 
 let step (s : GmState) = 
     match s.Code with

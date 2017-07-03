@@ -39,11 +39,13 @@ Code:{Push 0
 
 Code for |
 Code:{Push 1
-      Push 1
-      Pushglobal "|"
-      Mkap
-      Mkap
       Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Or
+      Mkbool
       Update 2
       Pop 2
       Unwind}
@@ -216,23 +218,26 @@ Code:{Push 1
 
 
 Code for main
-Code:{Pushint 2
-      Pushint 1
-      Pushint 3
-      Mkap
+Code:{Pushint 4
+      Pushglobal "fac"
       Mkap
       Eval
-      Get
-      Pushint 2
-      Pushglobal "if"
-      Mkap
-      Eval
-      Get
-      Gt
-      Mkbool
       Update 0
       Pop 0
       Unwind}
+
+
+
+Code for fac
+Code:{Pushbasic 0
+      Push 0
+      Eval
+      Get
+      Eq
+      Cond
+        ([Pushint 1; Update 1; Pop 1; Unwind],
+         [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+          Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
 
 
 
@@ -316,280 +321,3599 @@ State transitions
             Eval}
       
    1) VStack:[]
-      Stack:[7: Global main]
+      Stack:[8: Global main]
       
       Dump:[]
       
       Code:{Eval}
       
    2) VStack:[]
-      Stack:[7: Global main]
+      Stack:[8: Global main]
       
       Dump:[<{}, S:[], V:[]>]
       
       Code:{Unwind}
       
    3) VStack:[]
-      Stack:[7: Global main]
+      Stack:[8: Global main]
       
       Dump:[<{}, S:[], V:[]>]
       
-      Code:{Pushint 2
-            Pushint 1
-            Pushint 3
-            Mkap
+      Code:{Pushint 4
+            Pushglobal "fac"
             Mkap
             Eval
-            Get
-            Pushint 2
-            Pushglobal "if"
-            Mkap
-            Eval
-            Get
-            Gt
-            Mkbool
             Update 0
             Pop 0
             Unwind}
       
    4) VStack:[]
-      Stack:[7: Global main
-             24: 2]
+      Stack:[8: Global main
+             25: 4]
       
       Dump:[<{}, S:[], V:[]>]
       
-      Code:{Pushint 1
-            Pushint 3
-            Mkap
+      Code:{Pushglobal "fac"
             Mkap
             Eval
-            Get
-            Pushint 2
-            Pushglobal "if"
-            Mkap
-            Eval
-            Get
-            Gt
-            Mkbool
             Update 0
             Pop 0
             Unwind}
       
    5) VStack:[]
-      Stack:[7: Global main
-             24: 2
-             25: 1]
+      Stack:[8: Global main
+             25: 4
+             7: Global fac]
       
       Dump:[<{}, S:[], V:[]>]
       
-      Code:{Pushint 3
-            Mkap
-            Mkap
+      Code:{Mkap
             Eval
-            Get
-            Pushint 2
-            Pushglobal "if"
-            Mkap
-            Eval
-            Get
-            Gt
-            Mkbool
             Update 0
             Pop 0
             Unwind}
       
    6) VStack:[]
-      Stack:[7: Global main
-             24: 2
-             25: 1
-             26: 3]
+      Stack:[8: Global main
+             26: Ap 7 25 /Global fac/]
       
       Dump:[<{}, S:[], V:[]>]
       
-      Code:{Mkap
-            Mkap
-            Eval
-            Get
-            Pushint 2
-            Pushglobal "if"
-            Mkap
-            Eval
-            Get
-            Gt
-            Mkbool
+      Code:{Eval
             Update 0
             Pop 0
             Unwind}
       
    7) VStack:[]
-      Stack:[7: Global main
-             24: 2
-             27: Ap 26 25 /3/]
+      Stack:[26: Ap 7 25 /Global fac/]
       
-      Dump:[<{}, S:[], V:[]>]
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
       
-      Code:{Mkap
-            Eval
-            Get
-            Pushint 2
-            Pushglobal "if"
-            Mkap
-            Eval
-            Get
-            Gt
-            Mkbool
-            Update 0
-            Pop 0
-            Unwind}
+      Code:{Unwind}
       
    8) VStack:[]
-      Stack:[7: Global main
-             28: Ap 27 24 /3/]
+      Stack:[26: Ap 7 25 /Global fac/
+             7: Global fac]
       
-      Dump:[<{}, S:[], V:[]>]
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
       
-      Code:{Eval
-            Get
-            Pushint 2
-            Pushglobal "if"
-            Mkap
-            Eval
-            Get
-            Gt
-            Mkbool
-            Update 0
-            Pop 0
-            Unwind}
+      Code:{Unwind}
       
    9) VStack:[]
-      Stack:[28: Ap 27 24 /3/]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4]
       
       Dump:[<{}, S:[], V:[]>
-            <{Get; Pushint 2; Pushglobal "if"; ...}, S:[7], V:[]>]
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
       
-      Code:{Unwind}
+      Code:{Pushbasic 0
+            Push 0
+            Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
       
-  10) VStack:[]
-      Stack:[28: Ap 27 24 /3/
-             27: Ap 26 25 /3/]
+  10) VStack:[0]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4]
       
       Dump:[<{}, S:[], V:[]>
-            <{Get; Pushint 2; Pushglobal "if"; ...}, S:[7], V:[]>]
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
       
-      Code:{Unwind}
+      Code:{Push 0
+            Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
       
-  11) VStack:[]
-      Stack:[28: Ap 27 24 /3/
-             27: Ap 26 25 /3/
-             26: 3]
+  11) VStack:[0]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             25: 4]
       
       Dump:[<{}, S:[], V:[]>
-            <{Get; Pushint 2; Pushglobal "if"; ...}, S:[7], V:[]>]
-      
-      Code:{Unwind}
-      
-  12) VStack:[]
-      Stack:[7: Global main
-             26: 3]
-      
-      Dump:[<{}, S:[], V:[]>]
-      
-      Code:{Get
-            Pushint 2
-            Pushglobal "if"
-            Mkap
-            Eval
-            Get
-            Gt
-            Mkbool
-            Update 0
-            Pop 0
-            Unwind}
-      
-  13) VStack:[3]
-      Stack:[7: Global main]
-      
-      Dump:[<{}, S:[], V:[]>]
-      
-      Code:{Pushint 2
-            Pushglobal "if"
-            Mkap
-            Eval
-            Get
-            Gt
-            Mkbool
-            Update 0
-            Pop 0
-            Unwind}
-      
-  14) VStack:[3]
-      Stack:[7: Global main
-             24: 2]
-      
-      Dump:[<{}, S:[], V:[]>]
-      
-      Code:{Pushglobal "if"
-            Mkap
-            Eval
-            Get
-            Gt
-            Mkbool
-            Update 0
-            Pop 0
-            Unwind}
-      
-  15) VStack:[3]
-      Stack:[7: Global main
-             24: 2
-             21: Global if]
-      
-      Dump:[<{}, S:[], V:[]>]
-      
-      Code:{Mkap
-            Eval
-            Get
-            Gt
-            Mkbool
-            Update 0
-            Pop 0
-            Unwind}
-      
-  16) VStack:[3]
-      Stack:[7: Global main
-             29: Ap 21 24 /Global if/]
-      
-      Dump:[<{}, S:[], V:[]>]
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
       
       Code:{Eval
             Get
-            Gt
-            Mkbool
-            Update 0
-            Pop 0
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  12) VStack:[]
+      Stack:[25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[25,26], V:[0]>]
+      
+      Code:{Unwind}
+      
+  13) VStack:[0]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  14) VStack:[4, 0]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  15) VStack:[1]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  16) VStack:[]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Pushint 1
+            Push 1
+            Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
             Unwind}
       
   17) VStack:[]
-      Stack:[29: Ap 21 24 /Global if/]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             27: 1]
       
       Dump:[<{}, S:[], V:[]>
-            <{Get; Gt; Mkbool; ...}, S:[7], V:[3]>]
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
       
-      Code:{Unwind}
+      Code:{Push 1
+            Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
       
   18) VStack:[]
-      Stack:[29: Ap 21 24 /Global if/
-             21: Global if]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             27: 1
+             25: 4]
       
       Dump:[<{}, S:[], V:[]>
-            <{Get; Gt; Mkbool; ...}, S:[7], V:[3]>]
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  19) VStack:[]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             27: 1
+             25: 4
+             10: Global -]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  20) VStack:[]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             27: 1
+             28: Ap 10 25 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  21) VStack:[]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             29: Ap 28 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  22) VStack:[]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             29: Ap 28 27 /Global -/
+             7: Global fac]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  23) VStack:[]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             30: Ap 7 29 /Global fac/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  24) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
       
       Code:{Unwind}
-      Exception! System.Exception: Get expects NConstr or NNum
-         at FSI_0004.Gm.get(GmState s) in g:\home\jah\CoreFunc\Gmachine\mark7\CoreFunc\Gm.fs:line 766
-         at FSI_0004.Gm.go@814-2(GmState state, FSharpList`1 states) in g:\home\jah\CoreFunc\Gmachine\mark7\CoreFunc\Gm.fs:line 825
-         at FSI_0004.Gm.go@814-2(GmState state, FSharpList`1 states) in g:\home\jah\CoreFunc\Gmachine\mark7\CoreFunc\Gm.fs:line 822
+      
+  25) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             7: Global fac]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Unwind}
+      
+  26) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ap 28 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Pushbasic 0
+            Push 0
+            Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  27) VStack:[0]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ap 28 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  28) VStack:[0]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ap 28 27 /Global -/
+             29: Ap 28 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  29) VStack:[]
+      Stack:[29: Ap 28 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Unwind}
+      
+  30) VStack:[]
+      Stack:[29: Ap 28 27 /Global -/
+             28: Ap 10 25 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Unwind}
+      
+  31) VStack:[]
+      Stack:[29: Ap 28 27 /Global -/
+             28: Ap 10 25 /Global -/
+             10: Global -]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Unwind}
+      
+  32) VStack:[]
+      Stack:[29: Ap 28 27 /Global -/
+             27: 1
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Push 1
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  33) VStack:[]
+      Stack:[29: Ap 28 27 /Global -/
+             27: 1
+             25: 4
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  34) VStack:[]
+      Stack:[27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>
+            <{Get; Push 0; Eval; ...}, S:[25,27,29], V:[]>]
+      
+      Code:{Unwind}
+      
+  35) VStack:[]
+      Stack:[29: Ap 28 27 /Global -/
+             27: 1
+             25: 4
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  36) VStack:[1]
+      Stack:[29: Ap 28 27 /Global -/
+             27: 1
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  37) VStack:[1]
+      Stack:[29: Ap 28 27 /Global -/
+             27: 1
+             25: 4
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  38) VStack:[]
+      Stack:[25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>
+            <{Get; Sub; Mkint; ...}, S:[25,27,29], V:[1]>]
+      
+      Code:{Unwind}
+      
+  39) VStack:[1]
+      Stack:[29: Ap 28 27 /Global -/
+             27: 1
+             25: 4
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  40) VStack:[4, 1]
+      Stack:[29: Ap 28 27 /Global -/
+             27: 1
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  41) VStack:[3]
+      Stack:[29: Ap 28 27 /Global -/
+             27: 1
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  42) VStack:[]
+      Stack:[29: Ap 28 27 /Global -/
+             27: 1
+             25: 4
+             31: 3]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Update 2
+            Pop 2
+            Unwind}
+      
+  43) VStack:[]
+      Stack:[29: Ind 31 (3)
+             27: 1
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Pop 2
+            Unwind}
+      
+  44) VStack:[]
+      Stack:[29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Unwind}
+      
+  45) VStack:[]
+      Stack:[31: 3]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[29,30], V:[0]>]
+      
+      Code:{Unwind}
+      
+  46) VStack:[0]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             31: 3]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  47) VStack:[3, 0]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  48) VStack:[1]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  49) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Pushint 1
+            Push 1
+            Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  50) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Push 1
+            Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  51) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             27: 1
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  52) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             27: 1
+             29: Ind 31 (3)
+             10: Global -]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  53) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             27: 1
+             32: Ap 10 29 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  54) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             33: Ap 32 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  55) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             33: Ap 32 27 /Global -/
+             7: Global fac]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  56) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             34: Ap 7 33 /Global fac/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  57) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Unwind}
+      
+  58) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             7: Global fac]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Unwind}
+      
+  59) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ap 32 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Pushbasic 0
+            Push 0
+            Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  60) VStack:[0]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ap 32 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  61) VStack:[0]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ap 32 27 /Global -/
+             33: Ap 32 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  62) VStack:[]
+      Stack:[33: Ap 32 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Unwind}
+      
+  63) VStack:[]
+      Stack:[33: Ap 32 27 /Global -/
+             32: Ap 10 29 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Unwind}
+      
+  64) VStack:[]
+      Stack:[33: Ap 32 27 /Global -/
+             32: Ap 10 29 /Global -/
+             10: Global -]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Unwind}
+      
+  65) VStack:[]
+      Stack:[33: Ap 32 27 /Global -/
+             27: 1
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Push 1
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  66) VStack:[]
+      Stack:[33: Ap 32 27 /Global -/
+             27: 1
+             29: Ind 31 (3)
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  67) VStack:[]
+      Stack:[27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>
+            <{Get; Push 0; Eval; ...}, S:[29,27,33], V:[]>]
+      
+      Code:{Unwind}
+      
+  68) VStack:[]
+      Stack:[33: Ap 32 27 /Global -/
+             27: 1
+             29: Ind 31 (3)
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  69) VStack:[1]
+      Stack:[33: Ap 32 27 /Global -/
+             27: 1
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  70) VStack:[1]
+      Stack:[33: Ap 32 27 /Global -/
+             27: 1
+             29: Ind 31 (3)
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  71) VStack:[]
+      Stack:[29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>
+            <{Get; Sub; Mkint; ...}, S:[29,27,33], V:[1]>]
+      
+      Code:{Unwind}
+      
+  72) VStack:[]
+      Stack:[31: 3]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>
+            <{Get; Sub; Mkint; ...}, S:[29,27,33], V:[1]>]
+      
+      Code:{Unwind}
+      
+  73) VStack:[1]
+      Stack:[33: Ap 32 27 /Global -/
+             27: 1
+             29: Ind 31 (3)
+             31: 3]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  74) VStack:[3, 1]
+      Stack:[33: Ap 32 27 /Global -/
+             27: 1
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  75) VStack:[2]
+      Stack:[33: Ap 32 27 /Global -/
+             27: 1
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+  76) VStack:[]
+      Stack:[33: Ap 32 27 /Global -/
+             27: 1
+             29: Ind 31 (3)
+             35: 2]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Update 2
+            Pop 2
+            Unwind}
+      
+  77) VStack:[]
+      Stack:[33: Ind 35 (2)
+             27: 1
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Pop 2
+            Unwind}
+      
+  78) VStack:[]
+      Stack:[33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Unwind}
+      
+  79) VStack:[]
+      Stack:[35: 2]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[33,34], V:[0]>]
+      
+      Code:{Unwind}
+      
+  80) VStack:[0]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             35: 2]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  81) VStack:[2, 0]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  82) VStack:[1]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  83) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Pushint 1
+            Push 1
+            Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  84) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Push 1
+            Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  85) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             27: 1
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  86) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             27: 1
+             33: Ind 35 (2)
+             10: Global -]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  87) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             27: 1
+             36: Ap 10 33 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  88) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             37: Ap 36 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  89) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             37: Ap 36 27 /Global -/
+             7: Global fac]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  90) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             38: Ap 7 37 /Global fac/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+  91) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Unwind}
+      
+  92) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             7: Global fac]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Unwind}
+      
+  93) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ap 36 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Pushbasic 0
+            Push 0
+            Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  94) VStack:[0]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ap 36 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  95) VStack:[0]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ap 36 27 /Global -/
+             37: Ap 36 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+  96) VStack:[]
+      Stack:[37: Ap 36 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Unwind}
+      
+  97) VStack:[]
+      Stack:[37: Ap 36 27 /Global -/
+             36: Ap 10 33 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Unwind}
+      
+  98) VStack:[]
+      Stack:[37: Ap 36 27 /Global -/
+             36: Ap 10 33 /Global -/
+             10: Global -]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Unwind}
+      
+  99) VStack:[]
+      Stack:[37: Ap 36 27 /Global -/
+             27: 1
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Push 1
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 100) VStack:[]
+      Stack:[37: Ap 36 27 /Global -/
+             27: 1
+             33: Ind 35 (2)
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 101) VStack:[]
+      Stack:[27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>
+            <{Get; Push 0; Eval; ...}, S:[33,27,37], V:[]>]
+      
+      Code:{Unwind}
+      
+ 102) VStack:[]
+      Stack:[37: Ap 36 27 /Global -/
+             27: 1
+             33: Ind 35 (2)
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 103) VStack:[1]
+      Stack:[37: Ap 36 27 /Global -/
+             27: 1
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 104) VStack:[1]
+      Stack:[37: Ap 36 27 /Global -/
+             27: 1
+             33: Ind 35 (2)
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 105) VStack:[]
+      Stack:[33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>
+            <{Get; Sub; Mkint; ...}, S:[33,27,37], V:[1]>]
+      
+      Code:{Unwind}
+      
+ 106) VStack:[]
+      Stack:[35: 2]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>
+            <{Get; Sub; Mkint; ...}, S:[33,27,37], V:[1]>]
+      
+      Code:{Unwind}
+      
+ 107) VStack:[1]
+      Stack:[37: Ap 36 27 /Global -/
+             27: 1
+             33: Ind 35 (2)
+             35: 2]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 108) VStack:[2, 1]
+      Stack:[37: Ap 36 27 /Global -/
+             27: 1
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 109) VStack:[1]
+      Stack:[37: Ap 36 27 /Global -/
+             27: 1
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 110) VStack:[]
+      Stack:[37: Ap 36 27 /Global -/
+             27: 1
+             33: Ind 35 (2)
+             39: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Update 2
+            Pop 2
+            Unwind}
+      
+ 111) VStack:[]
+      Stack:[37: Ind 39 (1)
+             27: 1
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Pop 2
+            Unwind}
+      
+ 112) VStack:[]
+      Stack:[37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Unwind}
+      
+ 113) VStack:[]
+      Stack:[39: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[37,38], V:[0]>]
+      
+      Code:{Unwind}
+      
+ 114) VStack:[0]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             39: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+ 115) VStack:[1, 0]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+ 116) VStack:[1]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+ 117) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Pushint 1
+            Push 1
+            Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 118) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Push 1
+            Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 119) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             27: 1
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Pushglobal "-"
+            Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 120) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             27: 1
+             37: Ind 39 (1)
+             10: Global -]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Mkap
+            Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 121) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             27: 1
+             40: Ap 10 37 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Mkap
+            Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 122) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             41: Ap 40 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Pushglobal "fac"
+            Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 123) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             41: Ap 40 27 /Global -/
+             7: Global fac]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Mkap
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 124) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             42: Ap 7 41 /Global fac/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 125) VStack:[]
+      Stack:[42: Ap 7 41 /Global fac/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Unwind}
+      
+ 126) VStack:[]
+      Stack:[42: Ap 7 41 /Global fac/
+             7: Global fac]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Unwind}
+      
+ 127) VStack:[]
+      Stack:[42: Ap 7 41 /Global fac/
+             41: Ap 40 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Pushbasic 0
+            Push 0
+            Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+ 128) VStack:[0]
+      Stack:[42: Ap 7 41 /Global fac/
+             41: Ap 40 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+ 129) VStack:[0]
+      Stack:[42: Ap 7 41 /Global fac/
+             41: Ap 40 27 /Global -/
+             41: Ap 40 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Eval
+            Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+ 130) VStack:[]
+      Stack:[41: Ap 40 27 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Unwind}
+      
+ 131) VStack:[]
+      Stack:[41: Ap 40 27 /Global -/
+             40: Ap 10 37 /Global -/]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Unwind}
+      
+ 132) VStack:[]
+      Stack:[41: Ap 40 27 /Global -/
+             40: Ap 10 37 /Global -/
+             10: Global -]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Unwind}
+      
+ 133) VStack:[]
+      Stack:[41: Ap 40 27 /Global -/
+             27: 1
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Push 1
+            Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 134) VStack:[]
+      Stack:[41: Ap 40 27 /Global -/
+             27: 1
+             37: Ind 39 (1)
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Eval
+            Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 135) VStack:[]
+      Stack:[27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>
+            <{Get; Push 0; Eval; ...}, S:[37,27,41], V:[]>]
+      
+      Code:{Unwind}
+      
+ 136) VStack:[]
+      Stack:[41: Ap 40 27 /Global -/
+             27: 1
+             37: Ind 39 (1)
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Get
+            Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 137) VStack:[1]
+      Stack:[41: Ap 40 27 /Global -/
+             27: 1
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 138) VStack:[1]
+      Stack:[41: Ap 40 27 /Global -/
+             27: 1
+             37: Ind 39 (1)
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Eval
+            Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 139) VStack:[]
+      Stack:[37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>
+            <{Get; Sub; Mkint; ...}, S:[37,27,41], V:[1]>]
+      
+      Code:{Unwind}
+      
+ 140) VStack:[]
+      Stack:[39: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>
+            <{Get; Sub; Mkint; ...}, S:[37,27,41], V:[1]>]
+      
+      Code:{Unwind}
+      
+ 141) VStack:[1]
+      Stack:[41: Ap 40 27 /Global -/
+             27: 1
+             37: Ind 39 (1)
+             39: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Get
+            Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 142) VStack:[1, 1]
+      Stack:[41: Ap 40 27 /Global -/
+             27: 1
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Sub
+            Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 143) VStack:[0]
+      Stack:[41: Ap 40 27 /Global -/
+             27: 1
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Mkint
+            Update 2
+            Pop 2
+            Unwind}
+      
+ 144) VStack:[]
+      Stack:[41: Ap 40 27 /Global -/
+             27: 1
+             37: Ind 39 (1)
+             43: 0]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Update 2
+            Pop 2
+            Unwind}
+      
+ 145) VStack:[]
+      Stack:[41: Ind 43 (0)
+             27: 1
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Pop 2
+            Unwind}
+      
+ 146) VStack:[]
+      Stack:[41: Ind 43 (0)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Unwind}
+      
+ 147) VStack:[]
+      Stack:[43: 0]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>
+            <{Get; Eq; Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}, S:[41,42], V:[0]>]
+      
+      Code:{Unwind}
+      
+ 148) VStack:[0]
+      Stack:[42: Ap 7 41 /Global fac/
+             41: Ind 43 (0)
+             43: 0]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Get
+            Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+ 149) VStack:[0, 0]
+      Stack:[42: Ap 7 41 /Global fac/
+             41: Ind 43 (0)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Eq
+            Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+ 150) VStack:[2]
+      Stack:[42: Ap 7 41 /Global fac/
+             41: Ind 43 (0)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Cond
+              ([Pushint 1; Update 1; Pop 1; Unwind],
+               [Pushint 1; Push 1; Pushglobal "-"; Mkap; Mkap; Pushglobal "fac"; Mkap; Eval;
+                Get; Push 0; Eval; Get; Mul; Mkint; Update 1; Pop 1; Unwind])}
+      
+ 151) VStack:[]
+      Stack:[42: Ap 7 41 /Global fac/
+             41: Ind 43 (0)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Pushint 1
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 152) VStack:[]
+      Stack:[42: Ap 7 41 /Global fac/
+             41: Ind 43 (0)
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Update 1
+            Pop 1
+            Unwind}
+      
+ 153) VStack:[]
+      Stack:[42: Ind 27 (1)
+             41: Ind 43 (0)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Pop 1
+            Unwind}
+      
+ 154) VStack:[]
+      Stack:[42: Ind 27 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Unwind}
+      
+ 155) VStack:[]
+      Stack:[27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[37,38], V:[]>]
+      
+      Code:{Unwind}
+      
+ 156) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             27: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 157) VStack:[1]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 158) VStack:[1]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 159) VStack:[]
+      Stack:[37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Mul; Mkint; ...}, S:[37,38], V:[1]>]
+      
+      Code:{Unwind}
+      
+ 160) VStack:[]
+      Stack:[39: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>
+            <{Get; Mul; Mkint; ...}, S:[37,38], V:[1]>]
+      
+      Code:{Unwind}
+      
+ 161) VStack:[1]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             39: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 162) VStack:[1, 1]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 163) VStack:[1]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 164) VStack:[]
+      Stack:[38: Ap 7 37 /Global fac/
+             37: Ind 39 (1)
+             44: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Update 1
+            Pop 1
+            Unwind}
+      
+ 165) VStack:[]
+      Stack:[38: Ind 44 (1)
+             37: Ind 39 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Pop 1
+            Unwind}
+      
+ 166) VStack:[]
+      Stack:[38: Ind 44 (1)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Unwind}
+      
+ 167) VStack:[]
+      Stack:[44: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[33,34], V:[]>]
+      
+      Code:{Unwind}
+      
+ 168) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             44: 1]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 169) VStack:[1]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 170) VStack:[1]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 171) VStack:[]
+      Stack:[33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Mul; Mkint; ...}, S:[33,34], V:[1]>]
+      
+      Code:{Unwind}
+      
+ 172) VStack:[]
+      Stack:[35: 2]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>
+            <{Get; Mul; Mkint; ...}, S:[33,34], V:[1]>]
+      
+      Code:{Unwind}
+      
+ 173) VStack:[1]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             35: 2]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 174) VStack:[2, 1]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 175) VStack:[2]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 176) VStack:[]
+      Stack:[34: Ap 7 33 /Global fac/
+             33: Ind 35 (2)
+             45: 2]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Update 1
+            Pop 1
+            Unwind}
+      
+ 177) VStack:[]
+      Stack:[34: Ind 45 (2)
+             33: Ind 35 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Pop 1
+            Unwind}
+      
+ 178) VStack:[]
+      Stack:[34: Ind 45 (2)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Unwind}
+      
+ 179) VStack:[]
+      Stack:[45: 2]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[29,30], V:[]>]
+      
+      Code:{Unwind}
+      
+ 180) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             45: 2]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 181) VStack:[2]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 182) VStack:[2]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 183) VStack:[]
+      Stack:[29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Mul; Mkint; ...}, S:[29,30], V:[2]>]
+      
+      Code:{Unwind}
+      
+ 184) VStack:[]
+      Stack:[31: 3]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>
+            <{Get; Mul; Mkint; ...}, S:[29,30], V:[2]>]
+      
+      Code:{Unwind}
+      
+ 185) VStack:[2]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             31: 3]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 186) VStack:[3, 2]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 187) VStack:[6]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 188) VStack:[]
+      Stack:[30: Ap 7 29 /Global fac/
+             29: Ind 31 (3)
+             46: 6]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Update 1
+            Pop 1
+            Unwind}
+      
+ 189) VStack:[]
+      Stack:[30: Ind 46 (6)
+             29: Ind 31 (3)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Pop 1
+            Unwind}
+      
+ 190) VStack:[]
+      Stack:[30: Ind 46 (6)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Unwind}
+      
+ 191) VStack:[]
+      Stack:[46: 6]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Push 0; Eval; ...}, S:[25,26], V:[]>]
+      
+      Code:{Unwind}
+      
+ 192) VStack:[]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             46: 6]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Get
+            Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 193) VStack:[6]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Push 0
+            Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 194) VStack:[6]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Eval
+            Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 195) VStack:[]
+      Stack:[25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>
+            <{Get; Mul; Mkint; ...}, S:[25,26], V:[6]>]
+      
+      Code:{Unwind}
+      
+ 196) VStack:[6]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Get
+            Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 197) VStack:[4, 6]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Mul
+            Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 198) VStack:[24]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Mkint
+            Update 1
+            Pop 1
+            Unwind}
+      
+ 199) VStack:[]
+      Stack:[26: Ap 7 25 /Global fac/
+             25: 4
+             47: 24]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Update 1
+            Pop 1
+            Unwind}
+      
+ 200) VStack:[]
+      Stack:[26: Ind 47 (24)
+             25: 4]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Pop 1
+            Unwind}
+      
+ 201) VStack:[]
+      Stack:[26: Ind 47 (24)]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Unwind}
+      
+ 202) VStack:[]
+      Stack:[47: 24]
+      
+      Dump:[<{}, S:[], V:[]>
+            <{Update 0; Pop 0; Unwind}, S:[8], V:[]>]
+      
+      Code:{Unwind}
+      
+ 203) VStack:[]
+      Stack:[8: Global main
+             47: 24]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Update 0
+            Pop 0
+            Unwind}
+      
+ 204) VStack:[]
+      Stack:[8: Ind 47 (24)]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Pop 0
+            Unwind}
+      
+ 205) VStack:[]
+      Stack:[8: Ind 47 (24)]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Unwind}
+      
+ 206) VStack:[]
+      Stack:[47: 24]
+      
+      Dump:[<{}, S:[], V:[]>]
+      
+      Code:{Unwind}
       
 
 
-Steps taken:18
-Heap size:29
+Steps taken:206
+Heap size:47
