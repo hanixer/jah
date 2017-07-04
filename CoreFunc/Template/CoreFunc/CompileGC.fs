@@ -28,6 +28,7 @@ type Node =
     | NInd of Addr
     | NPrimitive of Name * Primitive
     | NData of int * (Addr list)
+    | NMarked of Node
 
 type TiHeap = Heap<Node>
 
@@ -40,7 +41,8 @@ type TiState =
       Dump : TiDump
       Heap : TiHeap 
       Globals : TiGlobals
-      Stats : TiStats }
+      Stats : TiStats
+      Exception : System.Exception option }
 
 let initialTiDump = []
 
@@ -109,22 +111,68 @@ let compile program =
         Dump = initialTiDump
         Heap = initialHeap
         Globals = globals
-        Stats = tiStatInitial }
+        Stats = tiStatInitial
+        Exception = None }
 
-let findStackRoots = failwith ""
-let findDumpRoots = failwith ""
-let findGlobalRoots globals =
-    List.map snd globals
+let rec findAddrRoots heap addr addrs =
+    if List.contains addr addrs then
+        addrs
+    else
+        let addrs = addr :: addrs
+        match heapLookup heap addr with
+        | NAp (a1, a2) ->
+            findAddrRoots heap a1 addrs
+            |> findAddrRoots heap a2
+        | NInd a ->
+            findAddrRoots heap a addrs
+        | NData (_, addrsNode) ->
+            List.fold (fun acc a -> findAddrRoots heap a acc) addrs addrsNode
+        | _ -> addrs
+
+let findStackRoots state =
+    state.Stack
+
+let findDumpRoots state = 
+    List.concat state.Dump
+
+let findGlobalRoots state =
+    List.map snd state.Globals
 
 let findRoots state : Addr list =
-    List.concat
-        [ findStackRoots state.Stack
-          findDumpRoots state.Dump
-          findGlobalRoots state.Globals ]
+    [ findStackRoots state
+      findDumpRoots state
+      findGlobalRoots state ]
+    |> List.concat        
     |> List.distinct
 
-let markFrom = failwith ""
-let scanHeap = failwith ""
+let rec markFrom heap addr =
+    printfn "mark %d" addr
+    let mark addr heap = markFrom heap addr
+    let node = heapLookup heap addr
+    match node with
+    | NAp (a1, a2) ->
+        heapUpdate heap addr (NMarked node)
+        |> mark a1
+        |> mark a2
+    | NInd a ->
+        heapUpdate heap addr (NMarked node)
+        |> mark a
+    | NData (_, addrsNode) ->
+        let heap  = heapUpdate heap addr (NMarked node)
+        List.fold markFrom heap addrsNode
+    | NMarked _ -> heap
+    | _ -> 
+        heapUpdate heap addr (NMarked node)
+
+let scanHeap heap =
+    let chooseNode (addr, node) = 
+        match node with
+        | NMarked inner -> Some (addr, inner)
+        | _ -> None
+    heap
+    |> Map.toList
+    |> List.choose chooseNode
+    |> Map.ofList
 
 let gc state = 
     let heap = 
@@ -133,7 +181,11 @@ let gc state =
         |> scanHeap
     { state with Heap = heap }
 
-let doAdmin = applyToStats tiStatIncSteps >> gc
+let doAdmin state = 
+    let state = applyToStats tiStatIncSteps state 
+    if  state.Heap.Count - state.Globals.Length > 10 then
+        gc state
+    else state
 
 let rec isDataNode heap addr =
     match heapLookup heap addr with
@@ -451,6 +503,7 @@ let showNode = function
         iConcat [ 
             iStr "NData"; iNum tag; iStr " len"; iNum (List.length addrs) 
         ]
+    | _ -> iStr "Unmached node"
 
 let showStackNode heap = function
     | NAp (funAddr, argAddr) -> 
@@ -487,11 +540,18 @@ let showDump (state : TiState) =
         iStr "]]"
     ]
 
+let showExcept s =
+    match s.Exception with
+    | Some e ->
+        iConcat [ iStr "Exception! "; e.ToString() |> iStr; iNewline ]
+    | None -> iNil
+
 let showState (state : TiState) =
     iConcat [ 
         showStack state.Heap state.Stack; iNewline;
         showDump state; iNewline;
-        showHeap state.Heap; iNewline 
+        showHeap state.Heap; iNewline;
+        showExcept state; INewline
     ]
 
 let numStep (state : TiState) n = 
@@ -527,7 +587,11 @@ let rec eval state =
     let restStates = 
         if tiFinal state then []
         else
-            state |> step |> doAdmin |> eval
+            try
+                state |> step |> doAdmin |> eval
+            with
+            | e ->
+                [{ state with Exception = Some e }]
     state :: restStates
 
 let showStats state =
@@ -537,7 +601,7 @@ let showStats state =
 let showResults states =
     iConcat [
         iLayn (List.map showState states);
-        showStats (List.last states)
+        showStats (List.last states);
     ] |> iDisplay
     
 let runProg<'a> = parse >> compile >> eval >> showResults

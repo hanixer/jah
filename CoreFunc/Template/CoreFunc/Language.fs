@@ -69,11 +69,11 @@ let rec iInterleave sep = function
 
 let showAddr = string >> iStr
 let rec flatten col xs =
-    let rec go acc col lkj =
+    let rec go (acc : System.Text.StringBuilder) col lkj =
         match lkj with
         | [] -> acc
         | (INewline, indent) :: iseqs ->
-            go (acc + "\n" + (space indent)) indent iseqs
+            go (acc.Append("\n" + (space indent))) indent iseqs
         | (IIdent iseq, indent) :: iseqs ->
             go acc col ((iseq, col) :: iseqs)
         | (INil, indent) :: iseqs ->  go acc col iseqs
@@ -86,10 +86,11 @@ let rec flatten col xs =
                     |> iInterleave INewline
                 go acc col ((splitted, indent) :: iseqs)
             else
-                go (acc + s) (col + s.Length) iseqs
+                go (acc.Append(s)) (col + s.Length) iseqs
         | (IAppend (iseq1, iseq2), indent) :: iseqs -> 
             go acc col ((iseq1, indent) :: (iseq2, indent) :: iseqs)
-    go "" col xs
+    let sb = go (System.Text.StringBuilder()) col xs
+    sb.ToString()
 let iDisplay seq = flatten 0 [seq, 0]
 
 let iNum n = iStr (string n)

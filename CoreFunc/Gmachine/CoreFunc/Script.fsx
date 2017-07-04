@@ -26,7 +26,7 @@ let arithm1 = "main = 4*5+(2-5)"
 let arithm2 = "inc x = x + 1;
 main = twice twice inc 4"
 let fac = "fac n = if (n==0) 1 (n * fac (n-1)) ;
-main = fac 4"
+main = fac 10"
 let gcd = "gcd a b =
     if (a==b)
         a
