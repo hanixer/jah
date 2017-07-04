@@ -13,6 +13,9 @@ let appReferences  =
     !! "/**/*.csproj"
     ++ "/**/*.fsproj"
 
+let templateOnly =
+    !! "Template/**/*.fsproj"
+
 // version info
 let version = "0.1"  // or retrieve from CI server
 
@@ -24,6 +27,11 @@ Target "Clean" (fun _ ->
 Target "Build" (fun _ ->
     // compile all projects below src/app/
     MSBuildDebug buildDir "Build" appReferences
+    |> Log "AppBuild-Output: "
+)
+
+Target "BuildTemplate" (fun _ ->
+    MSBuildDebug buildDir "Build" templateOnly
     |> Log "AppBuild-Output: "
 )
 

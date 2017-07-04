@@ -1,4 +1,4 @@
-module Compile 
+module CompileGC 
 
 open Language
 open Util
@@ -111,7 +111,29 @@ let compile program =
         Globals = globals
         Stats = tiStatInitial }
 
-let doAdmin state = applyToStats tiStatIncSteps state
+let findStackRoots = failwith ""
+let findDumpRoots = failwith ""
+let findGlobalRoots globals =
+    List.map snd globals
+
+let findRoots state : Addr list =
+    List.concat
+        [ findStackRoots state.Stack
+          findDumpRoots state.Dump
+          findGlobalRoots state.Globals ]
+    |> List.distinct
+
+let markFrom = failwith ""
+let scanHeap = failwith ""
+
+let gc state = 
+    let heap = 
+        findRoots state
+        |> List.fold markFrom state.Heap
+        |> scanHeap
+    { state with Heap = heap }
+
+let doAdmin = applyToStats tiStatIncSteps >> gc
 
 let rec isDataNode heap addr =
     match heapLookup heap addr with
