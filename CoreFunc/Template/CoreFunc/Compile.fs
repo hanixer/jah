@@ -379,7 +379,6 @@ let primStep (state : TiState) = function
     | NotEq -> primEq state false
     | PConstr (t, a) -> primConstr state t a
     | If -> ifStep state
-    | _ -> failwith "wrong function primitive"
     
 let apStep (state : TiState) a a1 a2 =
     match heapLookup state.Heap a2 with

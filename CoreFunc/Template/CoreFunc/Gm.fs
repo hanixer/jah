@@ -167,7 +167,6 @@ let dispatch (i : Instruction) =
     | Push n -> push n
     | Slide n -> slide n
     | Unwind -> unwind
-    | _ -> failwith "unimpl"
 
 let step (s : GmState) = 
     match s.Code with
