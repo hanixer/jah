@@ -841,10 +841,10 @@ let rec eval state =
         if gmFinal state then
             states
         else
-            let newState = state |> step |> doAdmin
             try
                 if state.Stats > 1000 then raise OverflowException
-                printfn "Step #%d" state.Stats
+                printfn "Step #%d" state.Stats                
+                let newState = state |> step |> doAdmin
                 go newState (state :: states)
             with
             | e ->
