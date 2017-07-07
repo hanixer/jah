@@ -41,9 +41,6 @@
   <ItemGroup>
     <Compile Include="Util.fs" />
     <Compile Include="Language.fs" />
-    <Compile Include="Compile.fs" />
-    <Compile Include="CompileGC.fs" />
-    <Compile Include="Gm.fs" />
     <Compile Include="Tim.fs" />
     <Compile Include="CoreFunc.fs" />
     <None Include="App.config" />

@@ -30,7 +30,9 @@ type TimHeap = Heap<Frame>
 
 type CodeStore = (Name * (Instruction list)) list
 
-type TimStats = int
+type TimStats =
+    { Steps : int
+      HeapAllocated : int }
 
 type TimCompilerEnv = (Name * TimAMode) list
 
@@ -77,9 +79,14 @@ let codeLookup (cstore : CodeStore) l =
     | None ->
         failwithf "Attemp to jump to unknown label %s" l
 
-let statInitial = 0
-let statIncSteps s = s + 1
-let statGetSteps s = s
+let statInitial : TimStats =
+    { Steps = 0; HeapAllocated = 0 }
+let statIncSteps s = 
+    { s with Steps = s.Steps + 1 }
+let statGetSteps s = s.Steps
+let statIncAllocations s n =
+    { s with HeapAllocated = s.HeapAllocated + n }
+let statGetAllocations s = s.HeapAllocated
 
 let initialArgStack = []
 let initialValueStack = DummyTimValueStack
@@ -114,7 +121,12 @@ let extendEnvWithArgs env args : TimCompilerEnv =
 let compileSc env (name, args, body)  : Name * (Instruction list) =
     let n = List.length args
     let newEnv = extendEnvWithArgs env args
-    name, (Take n :: compileR body newEnv)
+    let compiledBody = 
+        compileR body newEnv
+    let instrs =
+        if n = 0 then compiledBody
+        else Take n :: compiledBody
+    name, instrs
 
 let compile program =
     let scDefs = List.append preludeDefs program
@@ -129,7 +141,7 @@ let compile program =
       Stack = initialArgStack
       ValueStack = initialValueStack
       Dump = initialDump
-      Heap = heapInitial
+      Heap = heapEmpty
       CStore = compiledCode
       Exception = None
       Stats = statInitial }
@@ -154,7 +166,8 @@ let step state =
                 Instrs = tail
                 Fptr = fptr'
                 Stack = stack
-                Heap = heap' }
+                Heap = heap'
+                Stats = statIncAllocations state.Stats n }
         else
             failwith "Too few args for Take instruction"
     | [ Enter am ] ->
@@ -181,8 +194,7 @@ let rec eval state =
             state :: states
         else
             try
-                if state.Stats > 100 then raise OverflowException
-                printfn "Step #%d" state.Stats
+                if statGetSteps state.Stats > 100 then raise OverflowException
                 let newState = state |> step |> doAdmin
                 go newState (state :: states)
             with
@@ -273,9 +285,11 @@ let showScDefs state =
     |> iInterleave iNewline
 
 let showStats state =
-    iConcat 
-        [ iStr "Steps taken = "; iNum (statGetSteps state.Stats); iNewline;
-          iStr "Frames allocated =  "; iNum (heapSize state.Heap); iNewline ]
+    [ iStr "Steps taken = "; iNum (statGetSteps state.Stats); iNewline;
+      iStr "Frames allocated =  "; iNum (heapSize state.Heap); iNewline;
+      iStr "Total heap allocations = "; iNum (statGetAllocations state.Stats); iNewline ]
+    |> iConcat 
+        
 
 let showFullResults states =
     let s  = List.head states

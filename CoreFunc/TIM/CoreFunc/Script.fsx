@@ -44,9 +44,11 @@ let simpleFunc = "f x = x + 5;
 main = f 4"
 let doubl = "double x = x + x;
 main = double (2 + 2)"
+let lotsOfArgs = "f x1 x2 x3 x4 x5 x6 = K (I (I (I 5))) (I (I (I (I 6)))) ;
+main = f 1 2 3 4 5 6"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
     fullRun src |> fprintf f "%s"
 
-g id1
+g lotsOfArgs

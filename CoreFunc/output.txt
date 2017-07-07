@@ -36,23 +36,28 @@ Code for twice:
     Enter Label "compose"}
 
 
-Code for id:
-   {Take 0,
-    Push Label "K",
-    Push Label "K",
-    Enter Label "S"}
-
-
-Code for id1:
-   {Take 0,
-    Push Label "id",
-    Enter Label "id"}
+Code for f:
+   {Take 6,
+    Push Code {Push Code {Push Code {Push Code {Push IntConst 6,
+                                                Enter Label "I"},
+                                     Enter Label "I"},
+                          Enter Label "I"},
+               Enter Label "I"},
+    Push Code {Push Code {Push Code {Push IntConst 5,
+                                     Enter Label "I"},
+                          Enter Label "I"},
+               Enter Label "I"},
+    Enter Label "K"}
 
 
 Code for main:
-   {Take 0,
+   {Push IntConst 6,
+    Push IntConst 5,
     Push IntConst 4,
-    Enter Label "id1"}
+    Push IntConst 3,
+    Push IntConst 2,
+    Push IntConst 1,
+    Enter Label "f"}
 
 
 
@@ -63,179 +68,226 @@ State transitions
       Arg stack: []
       
       
-   1) Code:  {Take 0, Push IntConst 4, Enter Label "id1"}
+   1) Code:  {Push IntConst 6, Push IntConst 5, Push IntConst 4, ..}
       Null frame ptr
       Arg stack: []
       
       
-   2) Code:  {Push IntConst 4, Enter Label "id1"}
-      Frame: <>
-      Arg stack: []
+   2) Code:  {Push IntConst 5, Push IntConst 4, Push IntConst 3, ..}
+      Null frame ptr
+      Arg stack: [({},FrameInt 6)]
       
       
-   3) Code:  {Enter Label "id1"}
-      Frame: <>
-      Arg stack: [({},FrameInt 4)]
+   3) Code:  {Push IntConst 4, Push IntConst 3, Push IntConst 2, ..}
+      Null frame ptr
+      Arg stack: [({},FrameInt 5)
+                  ({},FrameInt 6)]
       
       
-   4) Code:  {Take 0, Push Label "id", Enter Label "id"}
-      Frame: <>
-      Arg stack: [({},FrameInt 4)]
-      
-      
-   5) Code:  {Push Label "id", Enter Label "id"}
-      Frame: <>
-      Arg stack: [({},FrameInt 4)]
-      
-      
-   6) Code:  {Enter Label "id"}
-      Frame: <>
-      Arg stack: [({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)
-                  ({},FrameInt 4)]
-      
-      
-   7) Code:  {Take 0, Push Label "K", Push Label "K", ..}
-      Frame: <>
-      Arg stack: [({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)
-                  ({},FrameInt 4)]
-      
-      
-   8) Code:  {Push Label "K", Push Label "K", Enter Label "S"}
-      Frame: <>
-      Arg stack: [({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)
-                  ({},FrameInt 4)]
-      
-      
-   9) Code:  {Push Label "K", Enter Label "S"}
-      Frame: <>
-      Arg stack: [({Take 2, Enter Arg 1},FrameAddr 3)
-                  ({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)
-                  ({},FrameInt 4)]
-      
-      
-  10) Code:  {Enter Label "S"}
-      Frame: <>
-      Arg stack: [({Take 2, Enter Arg 1},FrameAddr 3)
-                  ({Take 2, Enter Arg 1},FrameAddr 3)
-                  ({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)
-                  ({},FrameInt 4)]
-      
-      
-  11) Code:  {Take 3, Push Code {..}, Push Arg 3, ..}
-      Frame: <>
-      Arg stack: [({Take 2, Enter Arg 1},FrameAddr 3)
-                  ({Take 2, Enter Arg 1},FrameAddr 3)
-                  ({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)
-                  ({},FrameInt 4)]
-      
-      
-  12) Code:  {Push Code {..}, Push Arg 3, Enter Arg 1}
-      Frame: <({Take 2, Enter Arg 1},FrameAddr 3)
-              ({Take 2, Enter Arg 1},FrameAddr 3)
-              ({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)>
-      Arg stack: [({},FrameInt 4)]
-      
-      
-  13) Code:  {Push Arg 3, Enter Arg 1}
-      Frame: <({Take 2, Enter Arg 1},FrameAddr 3)
-              ({Take 2, Enter Arg 1},FrameAddr 3)
-              ({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)>
-      Arg stack: [({Push Arg 3, Enter Arg 2},FrameAddr 4)
-                  ({},FrameInt 4)]
-      
-      
-  14) Code:  {Enter Arg 1}
-      Frame: <({Take 2, Enter Arg 1},FrameAddr 3)
-              ({Take 2, Enter Arg 1},FrameAddr 3)
-              ({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)>
-      Arg stack: [({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)
-                  ({Push Arg 3, Enter Arg 2},FrameAddr 4)
-                  ({},FrameInt 4)]
-      
-      
-  15) Code:  {Take 2, Enter Arg 1}
-      Frame: <>
-      Arg stack: [({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)
-                  ({Push Arg 3, Enter Arg 2},FrameAddr 4)
-                  ({},FrameInt 4)]
-      
-      
-  16) Code:  {Enter Arg 1}
-      Frame: <({Take 0, Push Label "K", Push Label "K", ..},FrameAddr 2)
-              ({Push Arg 3, Enter Arg 2},FrameAddr 4)>
-      Arg stack: [({},FrameInt 4)]
-      
-      
-  17) Code:  {Take 0, Push Label "K", Push Label "K", ..}
-      Frame: <>
-      Arg stack: [({},FrameInt 4)]
-      
-      
-  18) Code:  {Push Label "K", Push Label "K", Enter Label "S"}
-      Frame: <>
-      Arg stack: [({},FrameInt 4)]
-      
-      
-  19) Code:  {Push Label "K", Enter Label "S"}
-      Frame: <>
-      Arg stack: [({Take 2, Enter Arg 1},FrameAddr 6)
-                  ({},FrameInt 4)]
-      
-      
-  20) Code:  {Enter Label "S"}
-      Frame: <>
-      Arg stack: [({Take 2, Enter Arg 1},FrameAddr 6)
-                  ({Take 2, Enter Arg 1},FrameAddr 6)
-                  ({},FrameInt 4)]
-      
-      
-  21) Code:  {Take 3, Push Code {..}, Push Arg 3, ..}
-      Frame: <>
-      Arg stack: [({Take 2, Enter Arg 1},FrameAddr 6)
-                  ({Take 2, Enter Arg 1},FrameAddr 6)
-                  ({},FrameInt 4)]
-      
-      
-  22) Code:  {Push Code {..}, Push Arg 3, Enter Arg 1}
-      Frame: <({Take 2, Enter Arg 1},FrameAddr 6)
-              ({Take 2, Enter Arg 1},FrameAddr 6)
-              ({},FrameInt 4)>
-      Arg stack: []
-      
-      
-  23) Code:  {Push Arg 3, Enter Arg 1}
-      Frame: <({Take 2, Enter Arg 1},FrameAddr 6)
-              ({Take 2, Enter Arg 1},FrameAddr 6)
-              ({},FrameInt 4)>
-      Arg stack: [({Push Arg 3, Enter Arg 2},FrameAddr 7)]
-      
-      
-  24) Code:  {Enter Arg 1}
-      Frame: <({Take 2, Enter Arg 1},FrameAddr 6)
-              ({Take 2, Enter Arg 1},FrameAddr 6)
-              ({},FrameInt 4)>
+   4) Code:  {Push IntConst 3, Push IntConst 2, Push IntConst 1, ..}
+      Null frame ptr
       Arg stack: [({},FrameInt 4)
-                  ({Push Arg 3, Enter Arg 2},FrameAddr 7)]
+                  ({},FrameInt 5)
+                  ({},FrameInt 6)]
       
       
-  25) Code:  {Take 2, Enter Arg 1}
-      Frame: <>
-      Arg stack: [({},FrameInt 4)
-                  ({Push Arg 3, Enter Arg 2},FrameAddr 7)]
+   5) Code:  {Push IntConst 2, Push IntConst 1, Enter Label "f"}
+      Null frame ptr
+      Arg stack: [({},FrameInt 3)
+                  ({},FrameInt 4)
+                  ({},FrameInt 5)
+                  ({},FrameInt 6)]
       
       
-  26) Code:  {Enter Arg 1}
-      Frame: <({},FrameInt 4)
-              ({Push Arg 3, Enter Arg 2},FrameAddr 7)>
+   6) Code:  {Push IntConst 1, Enter Label "f"}
+      Null frame ptr
+      Arg stack: [({},FrameInt 2)
+                  ({},FrameInt 3)
+                  ({},FrameInt 4)
+                  ({},FrameInt 5)
+                  ({},FrameInt 6)]
+      
+      
+   7) Code:  {Enter Label "f"}
+      Null frame ptr
+      Arg stack: [({},FrameInt 1)
+                  ({},FrameInt 2)
+                  ({},FrameInt 3)
+                  ({},FrameInt 4)
+                  ({},FrameInt 5)
+                  ({},FrameInt 6)]
+      
+      
+   8) Code:  {Take 6, Push Code {..}, Push Code {..}, ..}
+      Null frame ptr
+      Arg stack: [({},FrameInt 1)
+                  ({},FrameInt 2)
+                  ({},FrameInt 3)
+                  ({},FrameInt 4)
+                  ({},FrameInt 5)
+                  ({},FrameInt 6)]
+      
+      
+   9) Code:  {Push Code {..}, Push Code {..}, Enter Label "K"}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
       Arg stack: []
       
       
-  27) Code:  {}
-      Frame ptr (int): 4
+  10) Code:  {Push Code {..}, Enter Label "K"}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: [({Push Code {..}, Enter Label "I"},FrameAddr 1)]
+      
+      
+  11) Code:  {Enter Label "K"}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: [({Push Code {..}, Enter Label "I"},FrameAddr 1)
+                  ({Push Code {..}, Enter Label "I"},FrameAddr 1)]
+      
+      
+  12) Code:  {Take 2, Enter Arg 1}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: [({Push Code {..}, Enter Label "I"},FrameAddr 1)
+                  ({Push Code {..}, Enter Label "I"},FrameAddr 1)]
+      
+      
+  13) Code:  {Enter Arg 1}
+      Frame: <({Push Code {..}, Enter Label "I"},FrameAddr 1)
+              ({Push Code {..}, Enter Label "I"},FrameAddr 1)>
+      Arg stack: []
+      
+      
+  14) Code:  {Push Code {..}, Enter Label "I"}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: []
+      
+      
+  15) Code:  {Enter Label "I"}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: [({Push Code {..}, Enter Label "I"},FrameAddr 1)]
+      
+      
+  16) Code:  {Take 1, Enter Arg 1}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: [({Push Code {..}, Enter Label "I"},FrameAddr 1)]
+      
+      
+  17) Code:  {Enter Arg 1}
+      Frame: <({Push Code {..}, Enter Label "I"},FrameAddr 1)>
+      Arg stack: []
+      
+      
+  18) Code:  {Push Code {..}, Enter Label "I"}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: []
+      
+      
+  19) Code:  {Enter Label "I"}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: [({Push IntConst 5, Enter Label "I"},FrameAddr 1)]
+      
+      
+  20) Code:  {Take 1, Enter Arg 1}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: [({Push IntConst 5, Enter Label "I"},FrameAddr 1)]
+      
+      
+  21) Code:  {Enter Arg 1}
+      Frame: <({Push IntConst 5, Enter Label "I"},FrameAddr 1)>
+      Arg stack: []
+      
+      
+  22) Code:  {Push IntConst 5, Enter Label "I"}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: []
+      
+      
+  23) Code:  {Enter Label "I"}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: [({},FrameInt 5)]
+      
+      
+  24) Code:  {Take 1, Enter Arg 1}
+      Frame: <({},FrameInt 1)
+              ({},FrameInt 2)
+              ({},FrameInt 3)
+              ({},FrameInt 4)
+              ({},FrameInt 5)
+              ({},FrameInt 6)>
+      Arg stack: [({},FrameInt 5)]
+      
+      
+  25) Code:  {Enter Arg 1}
+      Frame: <({},FrameInt 5)>
+      Arg stack: []
+      
+      
+  26) Code:  {}
+      Frame ptr (int): 5
       Arg stack: []
       
       
 
 
-Steps taken = 27
-Frames allocated =  8
+Steps taken = 26
+Frames allocated =  5
+Total heap allocations = 11

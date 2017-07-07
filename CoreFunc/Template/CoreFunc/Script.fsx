@@ -5,6 +5,9 @@
 open Language
 open CompileGC
 
+let id1 = "id = S K K ;
+id1 = id id ;
+main = id1 4"
 let src2 = "main = letrec x = 43 in S K K x"
 let src3 = "pair x y f = f x y ;
 fst p = p K ;
@@ -47,4 +50,4 @@ let g src =
     runProg src |> fprintf f "%s"
 parse "main = (2-3)"
 
-g fac
+g id1
