@@ -3,6 +3,19 @@ module Tim
 open Language
 open Util
 
+type FramePtr = 
+    | FrameAddr of Addr
+    | FrameInt of int
+    | FrameNull
+
+type ValueAMode =
+    | FramePtr
+    | IntVConst of int
+
+type Op =
+    | Add | Sub | Mul | Div | Neg
+    | Eq | Ne | Lt | Le | Gt | Ge
+
 type TimAMode =
     | Arg of int
     | Label of string
@@ -12,16 +25,14 @@ and Instruction =
     | Take of int
     | Enter of TimAMode
     | Push of TimAMode
-
-type FramePtr = 
-    | FrameAddr of Addr
-    | FrameInt of int
-    | FrameNull
+    | PushV of ValueAMode
+    | Op of Op
+    | Return
 
 type Closure = (Instruction list * FramePtr)
 type TimStack = Closure list
 
-type TimValueStack = DummyTimValueStack
+type TimValueStack = int list
 type TimDump = DummyTimDump
 
 type Frame = Closure list
@@ -40,7 +51,7 @@ type TimState =
     { Instrs : Instruction list
       Fptr : FramePtr
       Stack : TimStack
-      ValueStack : TimValueStack
+      VStack : TimValueStack
       Dump : TimDump
       Heap : TimHeap
       CStore : CodeStore
@@ -89,7 +100,7 @@ let statIncAllocations s n =
 let statGetAllocations s = s.HeapAllocated
 
 let initialArgStack = []
-let initialValueStack = DummyTimValueStack
+let initialValueStack = []
 let initialDump = DummyTimDump
 let intCode = []
 
@@ -139,7 +150,7 @@ let compile program =
     { Instrs = [Enter (Label "main")]
       Fptr = FrameNull 
       Stack = initialArgStack
-      ValueStack = initialValueStack
+      VStack = initialValueStack
       Dump = initialDump
       Heap = heapEmpty
       CStore = compiledCode
@@ -179,6 +190,13 @@ let step state =
         { state with 
             Instrs = tail
             Stack = amToClosure am state.Fptr state.Heap state.CStore :: state.Stack }
+    | Op Sub :: tail ->
+        match state.VStack with
+        | n1 :: n2 :: vstack ->
+            { state with
+                VStack = (n1 - n2) :: vstack
+                Instrs = tail }
+        | _ -> failwith "Expected two numbers on VStack"
     | _ -> failwith "Unmatched case for step"
 
 let doAdmin s =
@@ -270,7 +288,7 @@ let showState state =
         iStr "Code:  "; showInstructions Terse state.Instrs; iNewline;
         showFrame state.Heap state.Fptr;
         showStack state.Stack;
-        showValueStack state.ValueStack;
+        showValueStack state.VStack;
         showDump state.Dump;
         iNewline
     ]
