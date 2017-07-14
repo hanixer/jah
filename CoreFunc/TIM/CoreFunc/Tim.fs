@@ -166,38 +166,67 @@ let amToClosure am fptr heap cstore : Closure =
     | Label l -> codeLookup cstore l, fptr
     | IntConst n -> intCode, FrameInt n
 
+let take n state =
+    if List.length state.Stack >= n then
+        let heap', fptr' = frameAlloc state.Heap (List.take n state.Stack)
+        let stack = List.skip n state.Stack
+        { state with
+            Fptr = fptr'
+            Stack = stack
+            Heap = heap'
+            Stats = statIncAllocations state.Stats n }
+    else
+        failwith "Too few args for Take instruction"
+
+let enter am state =
+    if not state.Instrs.IsEmpty then 
+        failwith "Enter must be last instruction"
+
+    let code, fptr = amToClosure am state.Fptr state.Heap state.CStore
+    { state with
+        Instrs = code
+        Fptr = fptr }
+
+let push am state =
+    { state with 
+        Stack = amToClosure am state.Fptr state.Heap state.CStore :: state.Stack }
+
+let pushv vm state =
+    failwith "Continue from here"
+
+let oper op state =
+    match state.VStack with
+    | n1 :: n2 :: vstack ->
+        { state with VStack = (n1 - n2) :: vstack }
+    | _ -> failwith "Expected two numbers on VStack"
+
+let returnInstr state =
+    if not state.Instrs.IsEmpty then 
+        failwith "Return must be last instruction"
+
+    match state.Stack with
+    | (i, f) :: stack ->
+        { state with
+            Instrs = i
+            Fptr = f
+            Stack = stack }
+    | _ -> failwith "Stack must be non-empty for return instruction"
+
+let dispatch = function
+    | Take n -> take n
+    | Enter am -> enter am
+    | Push am -> push am
+    | PushV vm -> pushv vm
+    | Op op -> oper op
+    | Return -> returnInstr
+    | instr -> failwithf "Unimplemented instrction %A" instr
+
 let step state =
     let tail = List.tail state.Instrs
     match state.Instrs with
-    | Take n :: tail ->
-        if List.length state.Stack >= n then
-            let heap', fptr' = frameAlloc state.Heap (List.take n state.Stack)
-            let stack = List.skip n state.Stack
-            { state with
-                Instrs = tail
-                Fptr = fptr'
-                Stack = stack
-                Heap = heap'
-                Stats = statIncAllocations state.Stats n }
-        else
-            failwith "Too few args for Take instruction"
-    | [ Enter am ] ->
-        let code, fptr = amToClosure am state.Fptr state.Heap state.CStore
-        { state with
-            Instrs = code
-            Fptr = fptr }
-    | Push am :: tail ->
-        { state with 
-            Instrs = tail
-            Stack = amToClosure am state.Fptr state.Heap state.CStore :: state.Stack }
-    | Op Sub :: tail ->
-        match state.VStack with
-        | n1 :: n2 :: vstack ->
-            { state with
-                VStack = (n1 - n2) :: vstack
-                Instrs = tail }
-        | _ -> failwith "Expected two numbers on VStack"
-    | _ -> failwith "Unmatched case for step"
+    | instr :: instrs ->
+        dispatch instr { state with Instrs = instrs }
+    | _ -> failwith "Execution must be finished at this point"
 
 let doAdmin s =
     { s with 
