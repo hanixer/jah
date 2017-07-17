@@ -1,6 +1,7 @@
 #load "Language.fs"
 #load "Util.fs"
 #load "Tim.fs"
+#load "Tim1.fs"
 
 open Language
 open Tim
@@ -47,11 +48,15 @@ main = double (2 + 2)"
 let lotsOfArgs = "f x1 x2 x3 x4 x5 x6 = K (I (I (I 5))) (I (I (I (I 6)))) ;
 main = f 1 2 3 4 5 6"
 let four = "four = 2 + 2;
-main = four * four"
+five = 5;
+main = four * five"
+let factorial = "
+factorial n = if n 1 (n * factorial (n - 1));
+main = factorial 3"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
-    fullRun src |> fprintf f "%s"
+    Tim1.fullRun src |> fprintf f "%s"
 
 // g lotsOfArgs
 let code = 
@@ -63,4 +68,4 @@ let code =
 
 let state = { emptyState with Instrs = code; Stack = [ intCode, FrameInt 3; intCode, FrameInt 4 ] }
 
-g four
+g factorial

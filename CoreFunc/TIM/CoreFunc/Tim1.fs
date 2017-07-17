@@ -1,4 +1,4 @@
-module Tim
+module Tim1
 
 open Language
 open Util
@@ -134,22 +134,6 @@ let compiledPrimitives =
       compiledBinaryArithmetic "/" Div
       "if", ifCode ]
 
-let arithmeticOps = 
-    [ "+", Add
-      "-", Sub
-      "*", Mul
-      "/", Div]
-
-let isArithmetic = function
-    | EAp (EAp (EVar op, _), _) -> List.map fst arithmeticOps  |> List.contains op
-    | ENum _ -> true
-    | _ -> false
-
-let opToOp op = 
-    match Util.listTryFindFirst op arithmeticOps with
-    | Some (_, x) ->  x
-    | _ -> failwithf "Operation %s not found" op
-
 let rec compileA expr env =
     let r () = compileR expr env |> Code
     match expr with
@@ -161,28 +145,12 @@ let rec compileA expr env =
     | _ -> r ()
 
 and compileR expr env =
+    printfn "compileR %A" expr
     match expr with
-    | _ when isArithmetic expr ->
-        compileB expr env [Return]
     | EAp (e1, e2) ->
         Push (compileA e2 env) :: (compileR e1 env)
-    | EVar _ | ENum _ -> 
-        compileA expr env
-        |> Enter
-        |> List.singleton
+    | EVar _ | ENum _ -> [ compileA expr env |> Enter ]
     | _ -> failwith "compileR cannot compile this yet"
-
-and compileB expr env cont =
-    match expr with
-    | EAp (EAp (EVar opVar, e1), e2) ->
-        let cont1 = Op (opToOp opVar) :: cont
-        let cont2 = compileB e1 env cont1
-        compileB e2 env cont2
-    | ENum n ->
-        PushV (IntVConst n) :: cont
-    | _ ->
-        let compiled = compileR expr env
-        Push (Code cont) :: compiled
 
 let extendEnvWithArgs env args : TimCompilerEnv =
     args 
@@ -241,6 +209,7 @@ let take n state =
 let enter am state =
     if not state.Instrs.IsEmpty then 
         failwith "Enter must be last instruction"
+
     let code, fptr = amToClosure am state.Fptr state.Heap state.CStore
     { state with
         Instrs = code
@@ -401,12 +370,6 @@ let showFrame heap f =
     | FrameInt n ->
         iConcat [ iStr "Frame ptr (int): "; iNum n; iNewline ]
 
-let showException = function
-    | Some e ->
-        [ iStr "Exception! "; e.ToString() |> iStr; iNewline; ]
-        |> iConcat
-    | _ -> iNil
-
 let showState state =
     iConcat [
         iStr "Code:  "; showInstructions Terse state.Instrs; iNewline;
@@ -414,7 +377,6 @@ let showState state =
         showStack state.Stack;
         showValueStack state.VStack;
         showDump state.Dump;
-        showException state.Exception;
         iNewline
     ]
 
@@ -445,8 +407,7 @@ let showFullResults states =
     |> iDisplay
 
 let showResults states =
-    [ showState (List.last states); iNewline; iNewline; 
-      showStats (List.last states) ]
+    [ showState (List.last states); iNewline; iNewline; showStats (List.last states) ]
     |> iConcat
     |> iDisplay
 
