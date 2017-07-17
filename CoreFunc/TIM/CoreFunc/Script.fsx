@@ -46,9 +46,21 @@ let doubl = "double x = x + x;
 main = double (2 + 2)"
 let lotsOfArgs = "f x1 x2 x3 x4 x5 x6 = K (I (I (I 5))) (I (I (I (I 6)))) ;
 main = f 1 2 3 4 5 6"
+let four = "four = 2 + 2;
+main = four * four"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
     fullRun src |> fprintf f "%s"
 
-g lotsOfArgs
+// g lotsOfArgs
+let code = 
+    [ Take 2
+      Push (Code [ Push (Code [ Op Sub;
+                                Return ])
+                   Enter (Arg 1) ])
+      Enter (Arg 2) ]
+
+let state = { emptyState with Instrs = code; Stack = [ intCode, FrameInt 3; intCode, FrameInt 4 ] }
+
+g four

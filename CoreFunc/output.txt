@@ -36,28 +36,48 @@ Code for twice:
     Enter Label "compose"}
 
 
-Code for f:
-   {Take 6,
-    Push Code {Push Code {Push Code {Push Code {Push IntConst 6,
-                                                Enter Label "I"},
-                                     Enter Label "I"},
-                          Enter Label "I"},
-               Enter Label "I"},
-    Push Code {Push Code {Push Code {Push IntConst 5,
-                                     Enter Label "I"},
-                          Enter Label "I"},
-               Enter Label "I"},
-    Enter Label "K"}
+Code for four:
+   {Push IntConst 2,
+    Push IntConst 2,
+    Enter Label "+"}
 
 
 Code for main:
-   {Push IntConst 6,
-    Push IntConst 5,
-    Push IntConst 4,
-    Push IntConst 3,
-    Push IntConst 2,
-    Push IntConst 1,
-    Enter Label "f"}
+   {Push Label "four",
+    Push Label "four",
+    Enter Label "*"}
+
+
+Code for +:
+   {Take 2,
+    Push Code {Push Code {Op Add,
+                          Return},
+               Enter Arg 1},
+    Enter Arg 2}
+
+
+Code for -:
+   {Take 2,
+    Push Code {Push Code {Op Sub,
+                          Return},
+               Enter Arg 1},
+    Enter Arg 2}
+
+
+Code for *:
+   {Take 2,
+    Push Code {Push Code {Op Mul,
+                          Return},
+               Enter Arg 1},
+    Enter Arg 2}
+
+
+Code for /:
+   {Take 2,
+    Push Code {Push Code {Op Div,
+                          Return},
+               Enter Arg 1},
+    Enter Arg 2}
 
 
 
@@ -65,229 +85,281 @@ State transitions
 
    0) Code:  {Enter Label "main"}
       Null frame ptr
-      Arg stack: []
+      Arg stack: [({},FrameNull)]
+      VStack:[]
       
+   1) Code:  {Push Label "four", Push Label "four", Enter Label "*"}
+      Null frame ptr
+      Arg stack: [({},FrameNull)]
+      VStack:[]
       
-   1) Code:  {Push IntConst 6, Push IntConst 5, Push IntConst 4, ..}
+   2) Code:  {Push Label "four", Enter Label "*"}
+      Null frame ptr
+      Arg stack: [({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)
+                  ({},FrameNull)]
+      VStack:[]
+      
+   3) Code:  {Enter Label "*"}
+      Null frame ptr
+      Arg stack: [({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)
+                  ({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)
+                  ({},FrameNull)]
+      VStack:[]
+      
+   4) Code:  {Take 2, Push Code {..}, Enter Arg 2}
+      Null frame ptr
+      Arg stack: [({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)
+                  ({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)
+                  ({},FrameNull)]
+      VStack:[]
+      
+   5) Code:  {Push Code {..}, Enter Arg 2}
+      Frame: <({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)
+              ({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)>
+      Arg stack: [({},FrameNull)]
+      VStack:[]
+      
+   6) Code:  {Enter Arg 2}
+      Frame: <({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)
+              ({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)>
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[]
+      
+   7) Code:  {Push IntConst 2, Push IntConst 2, Enter Label "+"}
+      Null frame ptr
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[]
+      
+   8) Code:  {Push IntConst 2, Enter Label "+"}
+      Null frame ptr
+      Arg stack: [({PushV FramePtr, Return},FrameInt 2)
+                  ({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[]
+      
+   9) Code:  {Enter Label "+"}
+      Null frame ptr
+      Arg stack: [({PushV FramePtr, Return},FrameInt 2)
+                  ({PushV FramePtr, Return},FrameInt 2)
+                  ({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[]
+      
+  10) Code:  {Take 2, Push Code {..}, Enter Arg 2}
+      Null frame ptr
+      Arg stack: [({PushV FramePtr, Return},FrameInt 2)
+                  ({PushV FramePtr, Return},FrameInt 2)
+                  ({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[]
+      
+  11) Code:  {Push Code {..}, Enter Arg 2}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[]
+      
+  12) Code:  {Enter Arg 2}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 2)
+                  ({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[]
+      
+  13) Code:  {PushV FramePtr, Return}
+      Frame ptr (int): 2
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 2)
+                  ({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[]
+      
+  14) Code:  {Return}
+      Frame ptr (int): 2
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 2)
+                  ({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2]
+      
+  15) Code:  {Push Code {..}, Enter Arg 1}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2]
+      
+  16) Code:  {Enter Arg 1}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Op Add, Return},FrameAddr 2)
+                  ({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2]
+      
+  17) Code:  {PushV FramePtr, Return}
+      Frame ptr (int): 2
+      Arg stack: [({Op Add, Return},FrameAddr 2)
+                  ({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2]
+      
+  18) Code:  {Return}
+      Frame ptr (int): 2
+      Arg stack: [({Op Add, Return},FrameAddr 2)
+                  ({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2, 2]
+      
+  19) Code:  {Op Add, Return}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2, 2]
+      
+  20) Code:  {Return}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[4]
+      
+  21) Code:  {Push Code {..}, Enter Arg 1}
+      Frame: <({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)
+              ({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)>
+      Arg stack: [({},FrameNull)]
+      VStack:[4]
+      
+  22) Code:  {Enter Arg 1}
+      Frame: <({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)
+              ({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)>
+      Arg stack: [({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[4]
+      
+  23) Code:  {Push IntConst 2, Push IntConst 2, Enter Label "+"}
+      Null frame ptr
+      Arg stack: [({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[4]
+      
+  24) Code:  {Push IntConst 2, Enter Label "+"}
+      Null frame ptr
+      Arg stack: [({PushV FramePtr, Return},FrameInt 2)
+                  ({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[4]
+      
+  25) Code:  {Enter Label "+"}
+      Null frame ptr
+      Arg stack: [({PushV FramePtr, Return},FrameInt 2)
+                  ({PushV FramePtr, Return},FrameInt 2)
+                  ({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[4]
+      
+  26) Code:  {Take 2, Push Code {..}, Enter Arg 2}
+      Null frame ptr
+      Arg stack: [({PushV FramePtr, Return},FrameInt 2)
+                  ({PushV FramePtr, Return},FrameInt 2)
+                  ({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[4]
+      
+  27) Code:  {Push Code {..}, Enter Arg 2}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[4]
+      
+  28) Code:  {Enter Arg 2}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 3)
+                  ({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[4]
+      
+  29) Code:  {PushV FramePtr, Return}
+      Frame ptr (int): 2
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 3)
+                  ({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[4]
+      
+  30) Code:  {Return}
+      Frame ptr (int): 2
+      Arg stack: [({Push Code {..}, Enter Arg 1},FrameAddr 3)
+                  ({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2, 4]
+      
+  31) Code:  {Push Code {..}, Enter Arg 1}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2, 4]
+      
+  32) Code:  {Enter Arg 1}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Op Add, Return},FrameAddr 3)
+                  ({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2, 4]
+      
+  33) Code:  {PushV FramePtr, Return}
+      Frame ptr (int): 2
+      Arg stack: [({Op Add, Return},FrameAddr 3)
+                  ({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2, 4]
+      
+  34) Code:  {Return}
+      Frame ptr (int): 2
+      Arg stack: [({Op Add, Return},FrameAddr 3)
+                  ({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2, 2, 4]
+      
+  35) Code:  {Op Add, Return}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[2, 2, 4]
+      
+  36) Code:  {Return}
+      Frame: <({PushV FramePtr, Return},FrameInt 2)
+              ({PushV FramePtr, Return},FrameInt 2)>
+      Arg stack: [({Op Mul, Return},FrameAddr 1)
+                  ({},FrameNull)]
+      VStack:[4, 4]
+      
+  37) Code:  {Op Mul, Return}
+      Frame: <({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)
+              ({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)>
+      Arg stack: [({},FrameNull)]
+      VStack:[4, 4]
+      
+  38) Code:  {Return}
+      Frame: <({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)
+              ({Push IntConst 2, Push IntConst 2, Enter Label "+"},FrameNull)>
+      Arg stack: [({},FrameNull)]
+      VStack:[16]
+      
+  39) Code:  {}
       Null frame ptr
       Arg stack: []
-      
-      
-   2) Code:  {Push IntConst 5, Push IntConst 4, Push IntConst 3, ..}
-      Null frame ptr
-      Arg stack: [({},FrameInt 6)]
-      
-      
-   3) Code:  {Push IntConst 4, Push IntConst 3, Push IntConst 2, ..}
-      Null frame ptr
-      Arg stack: [({},FrameInt 5)
-                  ({},FrameInt 6)]
-      
-      
-   4) Code:  {Push IntConst 3, Push IntConst 2, Push IntConst 1, ..}
-      Null frame ptr
-      Arg stack: [({},FrameInt 4)
-                  ({},FrameInt 5)
-                  ({},FrameInt 6)]
-      
-      
-   5) Code:  {Push IntConst 2, Push IntConst 1, Enter Label "f"}
-      Null frame ptr
-      Arg stack: [({},FrameInt 3)
-                  ({},FrameInt 4)
-                  ({},FrameInt 5)
-                  ({},FrameInt 6)]
-      
-      
-   6) Code:  {Push IntConst 1, Enter Label "f"}
-      Null frame ptr
-      Arg stack: [({},FrameInt 2)
-                  ({},FrameInt 3)
-                  ({},FrameInt 4)
-                  ({},FrameInt 5)
-                  ({},FrameInt 6)]
-      
-      
-   7) Code:  {Enter Label "f"}
-      Null frame ptr
-      Arg stack: [({},FrameInt 1)
-                  ({},FrameInt 2)
-                  ({},FrameInt 3)
-                  ({},FrameInt 4)
-                  ({},FrameInt 5)
-                  ({},FrameInt 6)]
-      
-      
-   8) Code:  {Take 6, Push Code {..}, Push Code {..}, ..}
-      Null frame ptr
-      Arg stack: [({},FrameInt 1)
-                  ({},FrameInt 2)
-                  ({},FrameInt 3)
-                  ({},FrameInt 4)
-                  ({},FrameInt 5)
-                  ({},FrameInt 6)]
-      
-      
-   9) Code:  {Push Code {..}, Push Code {..}, Enter Label "K"}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: []
-      
-      
-  10) Code:  {Push Code {..}, Enter Label "K"}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: [({Push Code {..}, Enter Label "I"},FrameAddr 1)]
-      
-      
-  11) Code:  {Enter Label "K"}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: [({Push Code {..}, Enter Label "I"},FrameAddr 1)
-                  ({Push Code {..}, Enter Label "I"},FrameAddr 1)]
-      
-      
-  12) Code:  {Take 2, Enter Arg 1}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: [({Push Code {..}, Enter Label "I"},FrameAddr 1)
-                  ({Push Code {..}, Enter Label "I"},FrameAddr 1)]
-      
-      
-  13) Code:  {Enter Arg 1}
-      Frame: <({Push Code {..}, Enter Label "I"},FrameAddr 1)
-              ({Push Code {..}, Enter Label "I"},FrameAddr 1)>
-      Arg stack: []
-      
-      
-  14) Code:  {Push Code {..}, Enter Label "I"}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: []
-      
-      
-  15) Code:  {Enter Label "I"}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: [({Push Code {..}, Enter Label "I"},FrameAddr 1)]
-      
-      
-  16) Code:  {Take 1, Enter Arg 1}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: [({Push Code {..}, Enter Label "I"},FrameAddr 1)]
-      
-      
-  17) Code:  {Enter Arg 1}
-      Frame: <({Push Code {..}, Enter Label "I"},FrameAddr 1)>
-      Arg stack: []
-      
-      
-  18) Code:  {Push Code {..}, Enter Label "I"}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: []
-      
-      
-  19) Code:  {Enter Label "I"}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: [({Push IntConst 5, Enter Label "I"},FrameAddr 1)]
-      
-      
-  20) Code:  {Take 1, Enter Arg 1}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: [({Push IntConst 5, Enter Label "I"},FrameAddr 1)]
-      
-      
-  21) Code:  {Enter Arg 1}
-      Frame: <({Push IntConst 5, Enter Label "I"},FrameAddr 1)>
-      Arg stack: []
-      
-      
-  22) Code:  {Push IntConst 5, Enter Label "I"}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: []
-      
-      
-  23) Code:  {Enter Label "I"}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: [({},FrameInt 5)]
-      
-      
-  24) Code:  {Take 1, Enter Arg 1}
-      Frame: <({},FrameInt 1)
-              ({},FrameInt 2)
-              ({},FrameInt 3)
-              ({},FrameInt 4)
-              ({},FrameInt 5)
-              ({},FrameInt 6)>
-      Arg stack: [({},FrameInt 5)]
-      
-      
-  25) Code:  {Enter Arg 1}
-      Frame: <({},FrameInt 5)>
-      Arg stack: []
-      
-      
-  26) Code:  {}
-      Frame ptr (int): 5
-      Arg stack: []
-      
+      VStack:[16]
       
 
 
-Steps taken = 26
-Frames allocated =  5
-Total heap allocations = 11
+Steps taken = 39
+Frames allocated =  3
+Total heap allocations = 6

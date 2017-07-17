@@ -28,6 +28,7 @@ and Instruction =
     | PushV of ValueAMode
     | Op of Op
     | Return
+    | Cond of (Instruction list * Instruction list)
 
 type Closure = (Instruction list * FramePtr)
 type TimStack = Closure list
@@ -57,6 +58,7 @@ type TimState =
       CStore : CodeStore
       Stats : TimStats
       Exception : System.Exception option }
+      
 
 let frameAlloc heap xs =
     let heap', addr = heapAlloc heap xs
@@ -99,12 +101,34 @@ let statIncAllocations s n =
     { s with HeapAllocated = s.HeapAllocated + n }
 let statGetAllocations s = s.HeapAllocated
 
-let initialArgStack = []
+let initialArgStack = [[], FrameNull]
 let initialValueStack = []
 let initialDump = DummyTimDump
-let intCode = []
+let intCode = [PushV FramePtr; Return]
 
-let compiledPrimitives = []
+let emptyState = 
+    { Instrs = [Enter (Label "main")]
+      Fptr = FrameNull 
+      Stack = initialArgStack
+      VStack = initialValueStack
+      Dump = initialDump
+      Heap = heapEmpty
+      CStore = []
+      Exception = None
+      Stats = statInitial }
+
+let compiledBinaryArithmetic name op = 
+    let l2 = [ Op op; Return ]
+    let l1 = [ Push (Code l2); Enter (Arg 1) ]
+    let code = [ Take 2; Push (Code l1); Enter (Arg 2) ]
+    name, code
+
+let compiledPrimitives = 
+    [ compiledBinaryArithmetic "+" Add
+      compiledBinaryArithmetic "-" Sub
+      compiledBinaryArithmetic "*" Mul
+      compiledBinaryArithmetic "/" Div
+      "if", [ Take 3; ] ] // Continue from here
 
 let rec compileA expr env =
     let r () = compileR expr env |> Code
@@ -192,12 +216,25 @@ let push am state =
         Stack = amToClosure am state.Fptr state.Heap state.CStore :: state.Stack }
 
 let pushv vm state =
-    failwith "Continue from here"
+    let fin n = { state with VStack = n :: state.VStack }
+    match vm with
+    | FramePtr ->
+        match state.Fptr with
+        | FrameInt n -> fin n
+        | _ -> failwith "Integer is expected as frame pointer"
+    | IntVConst n -> fin n
 
 let oper op state =
+    let f = 
+        match op with
+        | Add -> (+)
+        | Sub -> (-)
+        | Mul -> (*)
+        | Div -> (/)
+        | _-> (+)
     match state.VStack with
     | n1 :: n2 :: vstack ->
-        { state with VStack = (n1 - n2) :: vstack }
+        { state with VStack = (f n1 n2) :: vstack }
     | _ -> failwith "Expected two numbers on VStack"
 
 let returnInstr state =
@@ -212,6 +249,14 @@ let returnInstr state =
             Stack = stack }
     | _ -> failwith "Stack must be non-empty for return instruction"
 
+let cond i1 i2 state =
+    match state.VStack with
+    | 0 :: vstack ->
+        { state with Instrs = i1; VStack = vstack }
+    | n :: vstack ->
+        { state with Instrs = i2; VStack = vstack }
+    | _ -> failwith "A number is expected for Cond instruction on VStack"
+
 let dispatch = function
     | Take n -> take n
     | Enter am -> enter am
@@ -219,7 +264,7 @@ let dispatch = function
     | PushV vm -> pushv vm
     | Op op -> oper op
     | Return -> returnInstr
-    | instr -> failwithf "Unimplemented instrction %A" instr
+    | Cond (i1, i2) -> cond i1 i2
 
 let step state =
     let tail = List.tail state.Instrs
@@ -260,11 +305,15 @@ let rec showArg d = function
     | x ->
         sprintf "%A" x |> iStr
 
-and showInstruction d am =
-    match am with
-    | Take n -> sprintf "%A" am |> iStr
+and showInstruction d instr =
+    match instr with
+    | Take n -> sprintf "%A" instr |> iStr
     | Enter am -> iStr "Enter " |>iAppend<| showArg d am
     | Push am -> iStr "Push " |>iAppend<| showArg d am
+    | PushV vm -> sprintf "%A" instr |> iStr
+    | Op _ -> sprintf "%A" instr |> iStr
+    | Return -> iStr "Return"
+    | Cond _ -> iStr "Cond"
 
 and showInstructions d il =
     let numTerse = 3
@@ -289,7 +338,12 @@ let showClosure (i, f) =
           showFramePtr f; iStr ")" ]
 
 let showDump dump = iNil
-let showValueStack vstack = iNil
+
+let showValueStack vstack =
+    iConcat 
+        [ iStr "VStack:["
+          List.map iNum vstack |> iInterleave (iStr ", ")
+          iStr "]" ]
 
 let showStack stack =
     iConcat
