@@ -2,6 +2,7 @@
 #load "Util.fs"
 #load "Tim.fs"
 #load "Tim1.fs"
+#load "Tim2.fs"
 
 open Language
 open Tim
@@ -40,6 +41,9 @@ let gcd = "gcd a b =
 main = gcd 15 2"
 let nfib = "nfib n = if (n==0) 1 (1 + nfib (n-1) + nfib (n-2)) ;
 main = nfib 4"
+let fib = "
+fib n = if (n < 2) 1 (fib (n-1) + fib (n-2));
+main = fib 4"
 let whnf = "main = K 1"
 let simpleFunc = "f x = x + 5;
 main = f 4"
@@ -53,10 +57,12 @@ main = four * five"
 let factorial = "
 factorial n = if n 1 (n * factorial (n - 1));
 main = factorial 3"
+let simpleIf = "
+main = if 1 2 3"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
-    Tim1.fullRun src |> fprintf f "%s"
+    Tim.fullRun src |> fprintf f "%s"
 
 // g lotsOfArgs
 let code = 
@@ -68,4 +74,4 @@ let code =
 
 let state = { emptyState with Instrs = code; Stack = [ intCode, FrameInt 3; intCode, FrameInt 4 ] }
 
-g factorial
+g fib

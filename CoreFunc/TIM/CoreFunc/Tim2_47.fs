@@ -1,4 +1,4 @@
-module Tim
+module Tim2_47
 
 open Language
 open Util
@@ -22,8 +22,7 @@ type TimAMode =
     | Code of Instruction list
     | IntConst of int
 and Instruction =
-    | Take of int * int
-    | Move of int * TimAMode
+    | Take of int
     | Enter of TimAMode
     | Push of TimAMode
     | PushV of ValueAMode
@@ -118,15 +117,28 @@ let emptyState =
       Exception = None
       Stats = statInitial }
 
+let compiledBinaryArithmetic name op = 
+    let l2 = [ Op op; Return ]
+    let l1 = [ Push (Code l2); Enter (Arg 1) ]
+    let code = [ Take 2; Push (Code l1); Enter (Arg 2) ]
+    name, code
+
+let ifCode =
+    let l1 = [ Cond ([ Enter (Arg 2) ], [ Enter (Arg 3) ]) ]
+    [ Take 3; Push (Code l1); Enter (Arg 1) ]
+
 let compiledPrimitives = 
-    [  ]
+    [ compiledBinaryArithmetic "+" Add
+      compiledBinaryArithmetic "-" Sub
+      compiledBinaryArithmetic "*" Mul
+      compiledBinaryArithmetic "/" Div
+      "if", ifCode ]
 
 let arithmeticOps = 
     [ "+", Add
       "-", Sub
       "*", Mul
-      "/", Div
-      "<", Lt ]
+      "/", Div]
 
 let isBCompilable = function
     | EAp (EAp (EVar op, _), _) -> List.map fst arithmeticOps  |> List.contains op
@@ -220,24 +232,17 @@ let amToClosure am fptr heap cstore : Closure =
     | Label l -> codeLookup cstore l, fptr
     | IntConst n -> intCode, FrameInt n
 
-let take t n state =
-    if List.length state.Stack < n then
+let take n state =
+    if List.length state.Stack >= n then
+        let heap', fptr' = frameAlloc state.Heap (List.take n state.Stack)
+        let stack = List.skip n state.Stack
+        { state with
+            Fptr = fptr'
+            Stack = stack
+            Heap = heap'
+            Stats = statIncAllocations state.Stats n }
+    else
         failwith "Too few args for Take instruction"
-    let fromStack = List.take n state.Stack
-    let empty = [], FrameNull
-    let frame = Seq.replicate (t - n) empty |> List.ofSeq
-    let heap', fptr' = frameAlloc state.Heap frame
-    let stack = List.skip n state.Stack
-    { state with
-        Fptr = fptr'
-        Stack = stack
-        Heap = heap'
-        Stats = statIncAllocations state.Stats n }
-
-let move i am state =
-    let closure = amToClosure am state.Fptr state.Heap state.CStore
-    let heap = frameUpdate state.Heap state.Fptr i closure
-    { state with Heap = heap }
 
 let enter am state =
     if not state.Instrs.IsEmpty then 
@@ -267,7 +272,6 @@ let oper op state =
         | Sub -> (-)
         | Mul -> (*)
         | Div -> (/)
-        | Lt -> fun x y -> if x < y then 0 else 1
         | _-> (+)
     match state.VStack with
     | n1 :: n2 :: vstack ->
@@ -295,8 +299,7 @@ let cond i1 i2 state =
     | _ -> failwith "A number is expected for Cond instruction on VStack"
 
 let dispatch = function
-    | Take (t, n) -> take t n
-    | Move (i, am) -> move i am
+    | Take n -> take n
     | Enter am -> enter am
     | Push am -> push am
     | PushV vm -> pushv vm
@@ -324,7 +327,7 @@ let rec eval state =
             state :: states
         else
             try
-                if statGetSteps state.Stats > 1000 then raise OverflowException
+                if statGetSteps state.Stats > 100 then raise OverflowException
                 let newState = state |> step |> doAdmin
                 go newState (state :: states)
             with

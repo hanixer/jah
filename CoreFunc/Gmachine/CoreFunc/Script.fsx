@@ -41,6 +41,9 @@ let simpleFunc = "f x = x + 5;
 main = f 4"
 let doubl = "double x = x + x;
 main = double (2 + 2)"
+let fib = "
+fib n = if (n < 2) 1 (fib (n-1) + fib (n-2));
+main = fib 4"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
@@ -51,4 +54,4 @@ let env = ["z",0;"w",1;"i",5]
 compileR (List.length env) e env
 compileE e env
 compileB e env
-g fac
+g fib

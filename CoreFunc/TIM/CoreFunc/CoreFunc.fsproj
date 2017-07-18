@@ -43,6 +43,8 @@
     <Compile Include="Language.fs" />
     <Compile Include="Tim.fs" />
     <Compile Include="Tim1.fs" />
+    <Compile Include="Tim2.fs" />
+    <Compile Include="Tim2_47.fs" />
     <Compile Include="CoreFunc.fs" />
     <None Include="App.config" />
   </ItemGroup>
