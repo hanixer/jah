@@ -59,19 +59,25 @@ factorial n = if n 1 (n * factorial (n - 1));
 main = factorial 3"
 let simpleIf = "
 main = if 1 2 3"
+let let1 = "
+g x y = y;
+h x = x;
+f x = let y = f 3 
+    in g (let z = 4 in h z) y;
+main = 1 + 2"
+let withLet = "
+f x y z = let p = x + y in p + x + y + z;
+main = f 1 2 3"
+let withoutLet = "
+f1 p x y z = p + x + y + z;
+f x y z = f1 (x + y) x y z;
+main = f 1 2 3"
+
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
     Tim.fullRun src |> fprintf f "%s"
 
 // g lotsOfArgs
-let code = 
-    [ Take 2
-      Push (Code [ Push (Code [ Op Sub;
-                                Return ])
-                   Enter (Arg 1) ])
-      Enter (Arg 2) ]
 
-let state = { emptyState with Instrs = code; Stack = [ intCode, FrameInt 3; intCode, FrameInt 4 ] }
-
-g fib
+g withLet

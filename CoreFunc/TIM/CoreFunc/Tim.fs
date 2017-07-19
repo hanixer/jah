@@ -139,44 +139,58 @@ let opToOp op =
     | Some (_, x) ->  x
     | _ -> failwithf "Operation %s not found" op
 
-let rec compileA expr env =
-    let r () = compileR expr env |> Code
+let rec compileA expr env d =
     match expr with
-    | ENum n -> IntConst n
+    | ENum n -> d, IntConst n
     | EVar v -> 
         match listTryFindFirst v env with
-        | Some (_, x) -> x
+        | Some (_, x) -> d, x
         | None -> failwithf "Unknown variable '%s'" v
-    | _ -> r ()
+    | _ -> 
+        let d1, instrs = compileR expr env d
+        d1, (Code instrs)
 
-and compileR expr env =
+and compileR expr env d =
     match expr with
     | _ when isBCompilable expr ->
-        compileB expr env [Return]
+        compileB expr env d [Return]
     | EAp (e1, e2) ->
-        Push (compileA e2 env) :: (compileR e1 env)
+        let d1, am = compileA e2 env d
+        let d2, instrs = compileR e1 env d1
+        d2, (Push am :: instrs)
     | EVar _ | ENum _ -> 
-        compileA expr env
-        |> Enter
-        |> List.singleton
+        let d1, am = compileA expr env d
+        d1, [Enter am]
+    | ELet (false, bindings, body) ->
+        let n = List.length bindings
+        let processBinding (d, ams) (v, e) =
+            let d', am = compileA e env d
+            d', (am :: ams)
+        let dn, ams = List.fold processBinding (d + n, []) bindings
+        let ams = List.rev ams
+        let bindingsEnv = List.mapi (fun i (v, _) -> v, Arg (d + i + 1)) bindings
+        let bodyEnv = List.append bindingsEnv env
+        let d', bodyInstrs = compileR body bodyEnv dn
+        let moves = List.mapi (fun i am -> Move (d + i + 1, am)) ams
+        d', List.append moves bodyInstrs
     | _ -> failwith "compileR cannot compile this yet"
 
-and compileB expr env cont =
+and compileB expr env d cont =
     match expr with
     | EAp (EAp (EVar opVar, e1), e2) ->
         let cont1 = Op (opToOp opVar) :: cont
-        let cont2 = compileB e1 env cont1
-        compileB e2 env cont2
+        let d1, cont2 = compileB e1 env d cont1
+        compileB e2 env d1 cont2
     | EAp (EAp (EAp (EVar "if", e1), e2), e3) ->
-        let cont1 = compileB e2 env cont
-        let cont2 = compileB e3 env cont
+        let d1, cont1 = compileB e2 env d cont
+        let d2, cont2 = compileB e3 env d1 cont
         let cont3 = [ Cond (cont1, cont2) ]
-        compileB e1 env cont3
+        compileB e1 env d2 cont3
     | ENum n ->
-        PushV (IntVConst n) :: cont
+        d, (PushV (IntVConst n) :: cont)
     | _ ->
-        let compiled = compileR expr env
-        Push (Code cont) :: compiled
+        let d1, compiled = compileR expr env d
+        d1, (Push (Code cont) :: compiled)
 
 let extendEnvWithArgs env args : TimCompilerEnv =
     args 
@@ -186,11 +200,11 @@ let extendEnvWithArgs env args : TimCompilerEnv =
 let compileSc env (name, args, body)  : Name * (Instruction list) =
     let n = List.length args
     let newEnv = extendEnvWithArgs env args
-    let compiledBody = 
-        compileR body newEnv
+    let d, compiledBody = 
+        compileR body newEnv n
     let instrs =
         if n = 0 then compiledBody
-        else Take n :: compiledBody
+        else Take (d, n) :: compiledBody
     name, instrs
 
 let compile program =
@@ -226,7 +240,9 @@ let take t n state =
     let fromStack = List.take n state.Stack
     let empty = [], FrameNull
     let frame = Seq.replicate (t - n) empty |> List.ofSeq
-    let heap', fptr' = frameAlloc state.Heap frame
+    let heap', fptr' = 
+        List.append fromStack frame
+        |> frameAlloc state.Heap
     let stack = List.skip n state.Stack
     { state with
         Fptr = fptr'
@@ -236,7 +252,7 @@ let take t n state =
 
 let move i am state =
     let closure = amToClosure am state.Fptr state.Heap state.CStore
-    let heap = frameUpdate state.Heap state.Fptr i closure
+    let heap = frameUpdate state.Heap state.Fptr (i - 1) closure
     { state with Heap = heap }
 
 let enter am state =
@@ -345,13 +361,14 @@ let rec showArg d = function
 
 and showInstruction d instr =
     match instr with
-    | Take n -> sprintf "%A" instr |> iStr
+    | Take _ -> sprintf "%A" instr |> iStr
     | Enter am -> iStr "Enter " |>iAppend<| showArg d am
     | Push am -> iStr "Push " |>iAppend<| showArg d am
     | PushV vm -> sprintf "%A" instr |> iStr
     | Op _ -> sprintf "%A" instr |> iStr
     | Return -> iStr "Return"
     | Cond _ -> iStr "Cond"
+    | _ -> sprintf "%A" instr |> iStr
 
 and showInstructions d il =
     let numTerse = 3
