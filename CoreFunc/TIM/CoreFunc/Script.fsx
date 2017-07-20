@@ -72,6 +72,12 @@ let withoutLet = "
 f1 p x y z = p + x + y + z;
 f x y z = f1 (x + y) x y z;
 main = f 1 2 3"
+let simpleLetrec = "
+f x = 
+    letrec p = if (x < 1) 1 q;
+           q = if (x < 1) p 2
+    in p+q;
+main = f 1"
 
 
 let g src =
@@ -80,4 +86,4 @@ let g src =
 
 // g lotsOfArgs
 
-g withLet
+g simpleLetrec

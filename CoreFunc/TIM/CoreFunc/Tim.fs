@@ -173,6 +173,18 @@ and compileR expr env d =
         let d', bodyInstrs = compileR body bodyEnv dn
         let moves = List.mapi (fun i am -> Move (d + i + 1, am)) ams
         d', List.append moves bodyInstrs
+    | ELet (true, bindings, body) ->
+        let n = List.length bindings
+        let bindingsEnv = List.mapi (fun i (v, _) -> v, Arg (d + i + 1)) bindings
+        let bodyEnv = List.append bindingsEnv env
+        let processBinding (d, ams) (v, e) =
+            let d', am = compileA e bodyEnv d
+            d', (am :: ams)
+        let dn, ams = List.fold processBinding (d + n, []) bindings
+        let ams = List.rev ams
+        let d', bodyInstrs = compileR body bodyEnv dn
+        let moves = List.mapi (fun i am -> Move (d + i + 1, am)) ams
+        d', List.append moves bodyInstrs
     | _ -> failwith "compileR cannot compile this yet"
 
 and compileB expr env d cont =
@@ -252,7 +264,7 @@ let take t n state =
 
 let move i am state =
     let closure = amToClosure am state.Fptr state.Heap state.CStore
-    let heap = frameUpdate state.Heap state.Fptr (i - 1) closure
+    let heap = frameUpdate state.Heap state.Fptr i closure
     { state with Heap = heap }
 
 let enter am state =
