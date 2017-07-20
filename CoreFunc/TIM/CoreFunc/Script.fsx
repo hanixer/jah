@@ -78,6 +78,14 @@ f x =
            q = if (x < 1) p 2
     in p+q;
 main = f 1"
+let issueLetrec = "
+f x = letrec a = b;
+             b = x
+      in a;
+main = f 1"
+let optiLet = "
+f x y = (let a=1;b=2;c=3 in b+x) + (let f=2;g=4;h=5;j=6 in h+y);
+main = f 10 20"
 
 
 let g src =
@@ -86,4 +94,4 @@ let g src =
 
 // g lotsOfArgs
 
-g simpleLetrec
+g optiLet

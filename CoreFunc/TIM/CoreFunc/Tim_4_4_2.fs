@@ -1,4 +1,4 @@
-module Tim
+module Tim_4_4_2
 
 open Language
 open Util
@@ -194,8 +194,7 @@ and compileB expr env d cont =
     | EAp (EAp (EVar opVar, e1), e2) ->
         let cont1 = Op (opToOp opVar) :: cont
         let d1, cont2 = compileB e1 env d cont1
-        let d2, instrs = compileB e2 env d cont2
-        max d1 d2, instrs
+        compileB e2 env d1 cont2
     | EAp (EAp (EAp (EVar "if", e1), e2), e3) ->
         let d1, cont1 = compileB e2 env d cont
         let d2, cont2 = compileB e3 env d1 cont
