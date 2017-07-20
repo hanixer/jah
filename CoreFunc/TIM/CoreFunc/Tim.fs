@@ -30,12 +30,13 @@ and Instruction =
     | Op of Op
     | Return
     | Cond of (Instruction list * Instruction list)
+    | PushMarker of int
 
 type Closure = (Instruction list * FramePtr)
 type TimStack = Closure list
 
 type TimValueStack = int list
-type TimDump = DummyTimDump
+type TimDump = (FramePtr * int * TimStack) list
 
 type Frame = Closure list
 
@@ -104,7 +105,7 @@ let statGetAllocations s = s.HeapAllocated
 
 let initialArgStack = [[], FrameNull]
 let initialValueStack = []
-let initialDump = DummyTimDump
+let initialDump = []
 let intCode = [PushV FramePtr; Return]
 
 let emptyState = 
@@ -309,12 +310,22 @@ let returnInstr state =
     if not state.Instrs.IsEmpty then 
         failwith "Return must be last instruction"
 
-    match state.Stack with
-    | (i, f) :: stack ->
+    match state.Stack, state.Dump with
+    | (i, f) :: stack, _ ->
         { state with
             Instrs = i
             Fptr = f
             Stack = stack }
+    | [], (fptr, x, stack) :: dump ->
+        match state.VStack with
+        | n :: vstack ->        
+            let heap = frameUpdate state.Heap fptr x (intCode, FrameInt n) 
+            { state with
+                Heap = heap
+                Stack = stack
+                Dump = dump
+                Instrs = [Return] }
+        | [] -> failwith "VStack must be non-empty for return instruction"
     | _ -> failwith "Stack must be non-empty for return instruction"
 
 let cond i1 i2 state =
@@ -325,6 +336,12 @@ let cond i1 i2 state =
         { state with Instrs = i2; VStack = vstack }
     | _ -> failwith "A number is expected for Cond instruction on VStack"
 
+let pushMarker n state =
+    let d = state.Fptr, n, state.Stack
+    { state with
+        Dump = d :: state.Dump
+        Stack = [] }
+
 let dispatch = function
     | Take (t, n) -> take t n
     | Move (i, am) -> move i am
@@ -334,6 +351,7 @@ let dispatch = function
     | Op op -> oper op
     | Return -> returnInstr
     | Cond (i1, i2) -> cond i1 i2
+    | PushMarker n -> pushMarker n
 
 let step state =
     let tail = List.tail state.Instrs
