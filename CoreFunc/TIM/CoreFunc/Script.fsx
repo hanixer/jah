@@ -3,6 +3,8 @@
 #load "Tim.fs"
 #load "Tim1.fs"
 #load "Tim2.fs"
+#load "Tim_4_5_5.fs"
+#load "Tim_4_5_6.fs"
 
 open Language
 open Tim
@@ -86,7 +88,38 @@ main = f 1"
 let optiLet = "
 f x y = (let a=1;b=2;c=3 in b+x) + (let f=2;g=4;h=5;j=6 in h+y);
 main = f 10 20"
-
+let anotherLetrec = "
+g x y = y;
+f x = letrec y = 1
+      in
+      g y y;
+main = f 1"
+let anotherLet = "
+g x y = y;
+f x = let y = 1
+      in
+      g y y;
+main = f 1"
+let updateTest = "
+f x = x + x;
+main = f (1 + 2)"
+let indChain = "
+g x = x + 1;
+f x = g x;
+h x = f x;
+main = h (1 + 2 + 3)"
+let partAppli = "
+add a b = a+b;
+twicer f x = f (f x);
+g x = add (x*x);
+main = twicer (g 3) 4"
+let pairs = "
+pair x y f = f x y;
+first p = p K;
+second p = p K1;
+maine = let w = if (4 < 2*3) (pair 2 3) (pair 3 2)
+in (first w) * (second w);
+main = pair 2 3"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
@@ -94,4 +127,4 @@ let g src =
 
 // g lotsOfArgs
 
-g optiLet
+g pairs

@@ -1,4 +1,4 @@
-module Tim
+module Tim_4_5_5
 
 open Language
 open Util
@@ -31,7 +31,6 @@ and Instruction =
     | Return
     | Cond of (Instruction list * Instruction list)
     | PushMarker of int
-    | UpdateMarkers of int
 
 type Closure = (Instruction list * FramePtr)
 type TimStack = Closure list
@@ -134,10 +133,8 @@ let arithmeticOps =
       "/", Div
       "<", Lt ]
 
-let isArithmeticOp op = List.map fst arithmeticOps  |> List.contains op
-
 let isBCompilable = function
-    | EAp (EAp (EVar op, _), _) -> isArithmeticOp op
+    | EAp (EAp (EVar op, _), _) -> List.map fst arithmeticOps  |> List.contains op
     | EAp (EAp (EAp (EVar "if", e1), e2), e3) -> true
     | ENum _ -> true
     | _ -> false
@@ -151,42 +148,34 @@ let mkIndNode n = Code (mkEnter (Arg n))
 
 let mkUpdIndNode n = Code [ PushMarker n; Enter (Arg n) ]
 
-let isACompilable = function
-    | EVar _ | ENum _ -> true
-    | _ -> false
-
-let rec compileA expr env =
+let rec compileA expr env d =
     match expr with
-    | ENum n -> IntConst n
+    | ENum n -> d, IntConst n
     | EVar v -> 
         match listTryFindFirst v env with
-        | Some (_, x) -> x
+        | Some (_, x) -> d, x
         | None -> failwithf "Unknown variable '%s'" v
-    | _ -> failwith "Only integer or variable is expected for A scheme"
-
-and processBinding env (d, ams, u) (v, e) =
-    let d', am = compileU e u env d
-    d', (am :: ams), u + 1
+    | _ -> 
+        let d1, instrs = compileR expr env d
+        d1, (Code instrs)
 
 and compileR expr env d =
     match expr with
     | _ when isBCompilable expr ->
         compileB expr env d [Return]
-    | _ when isACompilable expr -> 
-        let am = compileA expr env
-        d, (mkEnter am)
-    | EAp (e1, e2) when isACompilable e2 ->
-        let d1, instrs = compileR e1 env d
-        let am = compileA e2 env
-        d1, (Push am) :: instrs
     | EAp (e1, e2) ->
-        let d1, am = compileU e2 (d + 1) env (d + 1)
+        let d1, am = compileA e2 env d
         let d2, instrs = compileR e1 env d1
-        let allInstrs = Move (d + 1, am) :: Push (Code [Enter (Arg (d + 1))]) :: instrs
-        d2, allInstrs
+        d2, (Push am :: instrs)
+    | EVar _ | ENum _ -> 
+        let d1, am = compileA expr env d
+        d1, (mkEnter am)
     | ELet (false, bindings, body) ->
         let n = List.length bindings
-        let dn, ams, _ = List.fold (processBinding env) (d + n, [], d + 1) bindings
+        let processBinding (d, ams) (v, e) =
+            let d', am = compileA e env d
+            d', (am :: ams)
+        let dn, ams = List.fold processBinding (d + n, []) bindings
         let ams = List.rev ams
         let bindingsEnv = List.mapi (fun i (v, _) -> v, mkUpdIndNode (d + i + 1)) bindings
         let bodyEnv = List.append bindingsEnv env
@@ -195,9 +184,12 @@ and compileR expr env d =
         d', List.append moves bodyInstrs
     | ELet (true, bindings, body) ->
         let n = List.length bindings
-        let bindingsEnv = List.mapi (fun i (v, _) -> v, mkIndNode (d + i + 1)) bindings
+        let bindingsEnv = List.mapi (fun i (v, _) -> v, mkUpdIndNode (d + i + 1)) bindings
         let bodyEnv = List.append bindingsEnv env
-        let dn, ams, _ = List.fold (processBinding bodyEnv) (d + n, [], d + 1) bindings
+        let processBinding (d, ams) (v, e) =
+            let d', am = compileA e bodyEnv d
+            d', (am :: ams)
+        let dn, ams = List.fold processBinding (d + n, []) bindings
         let ams = List.rev ams
         let d', bodyInstrs = compileR body bodyEnv dn
         let moves = List.mapi (fun i am -> Move (d + i + 1, am)) ams
@@ -206,7 +198,7 @@ and compileR expr env d =
 
 and compileB expr env d cont =
     match expr with
-    | EAp (EAp (EVar opVar, e1), e2) when isArithmeticOp opVar ->
+    | EAp (EAp (EVar opVar, e1), e2) ->
         let cont1 = Op (opToOp opVar) :: cont
         let d1, cont2 = compileB e1 env d cont1
         let d2, instrs = compileB e2 env d cont2
@@ -222,10 +214,6 @@ and compileB expr env d cont =
         let d1, compiled = compileR expr env d
         d1, (Push (Code cont) :: compiled)
 
-and compileU expr u env d =
-    let d1, instrs = compileR expr env d
-    d1, Code (PushMarker u :: instrs)
-
 let extendEnvWithArgs env args : TimCompilerEnv =
     args 
     |> List.mapi (fun i arg -> arg, mkUpdIndNode (i + 1))
@@ -237,8 +225,8 @@ let compileSc env (name, args, body)  : Name * (Instruction list) =
     let d, compiledBody = 
         compileR body newEnv n
     let instrs =
-        if n = 0 && d = 0 then compiledBody
-        else UpdateMarkers n :: Take (d, n) :: compiledBody
+        if n = 0 then compiledBody
+        else Take (d, n) :: compiledBody
     name, instrs
 
 let compile program =
@@ -360,28 +348,6 @@ let pushMarker n state =
         Dump = d :: state.Dump
         Stack = [] }
 
-let updateMarkersInstructions m n i =
-    [ [ for i = m downto 1 do yield Push (Arg i) ]
-      [ UpdateMarkers n ]
-      i ]
-    |> List.concat
-
-let updateMarkers n state =
-    let m = List.length state.Stack
-    if m >= n then state
-    else
-        let heap1, fptr = frameAlloc state.Heap state.Stack
-        match state.Dump with
-        | (fptrUpdate, x, s) :: dump ->
-            let clos = (updateMarkersInstructions m n state.Instrs, fptr)
-            let heap2 = frameUpdate heap1 fptrUpdate x clos
-            { state with
-                Instrs = (UpdateMarkers n) :: state.Instrs
-                Heap = heap2
-                Stack = List.append state.Stack s
-                Dump = dump }
-        | _ -> failwith "Non-empty dump is expected in updateMarkers"
-
 let dispatch = function
     | Take (t, n) -> take t n
     | Move (i, am) -> move i am
@@ -392,7 +358,6 @@ let dispatch = function
     | Return -> returnInstr
     | Cond (i1, i2) -> cond i1 i2
     | PushMarker n -> pushMarker n
-    | UpdateMarkers n -> updateMarkers n
 
 let step state =
     let tail = List.tail state.Instrs
@@ -477,34 +442,17 @@ let showClosure (i, f) =
         [ iStr "("; showInstructions Terse i; iStr ",";
           showFramePtr f; iStr ")" ]
 
-let showDumpItem (fptr, x, _) =
-    [ iStr "(";
-      showFramePtr fptr;
-      iStr ", ";
-      iNum x;
-      iStr ")"; ]
-    |> iConcat
-
-let showDump dump =
-    [ iStr "Dump:";
-      iNewline;
-      iStr "  [";
-      List.map showDumpItem dump |> iInterleave iNewline |> iIndent;
-      iStr "]" ]
-    |> iConcat
+let showDump dump = iNil
 
 let showValueStack vstack =
     iConcat 
         [ iStr "VStack:["
           List.map iNum vstack |> iInterleave (iStr ", ")
-          iStr "]"
-          iNewline ]
+          iStr "]" ]
 
 let showStack stack =
     iConcat
-        [ iStr "Arg stack:";
-          iNewline;
-          iStr "  ["
+        [ iStr "Arg stack: [";
           List.map showClosure stack |> iInterleave iNewline |> IIdent;
           iStr "]"; iNewline ]
 
@@ -513,11 +461,7 @@ let showFrame heap f =
     | FrameNull -> iStr "Null frame ptr" |>iAppend<| iNewline
     | FrameAddr a ->
         iConcat
-            [ iStr "Frame (addr ";
-              iFWNum 2 a;
-              iStr "):";
-              iNewline;
-              iStr "  <";              
+            [ iStr "Frame: <";
               heapLookup heap a
               |> frameList 
               |> List.map showClosure 
@@ -536,15 +480,10 @@ let showException = function
 let showState state =
     iConcat [
         iStr "Code:  "; showInstructions Terse state.Instrs; iNewline;
-        iNewline;
         showFrame state.Heap state.Fptr;
-        iNewline;
         showStack state.Stack;
-        iNewline
         showValueStack state.VStack;
-        iNewline
         showDump state.Dump;
-        iNewline
         showException state.Exception;
         iNewline
     ]
