@@ -24,13 +24,13 @@ Code for S:
    {UpdateMarkers 3,
     Take (4,3),
     Move 4 Code {PushMarker 4,
-                 Push Code {PushMarker 3,
-                            Enter Arg 3},
+                 Push PArg Code {PushMarker 3,
+                                 Enter Arg 3},
                  PushMarker 2,
                  Enter Arg 2},
-    Push Code {Enter Arg 4},
-    Push Code {PushMarker 3,
-               Enter Arg 3},
+    Push PArg Code {Enter Arg 4},
+    Push PArg Code {PushMarker 3,
+                    Enter Arg 3},
     PushMarker 1,
     Enter Arg 1}
 
@@ -39,11 +39,11 @@ Code for compose:
    {UpdateMarkers 3,
     Take (4,3),
     Move 4 Code {PushMarker 4,
-                 Push Code {PushMarker 3,
-                            Enter Arg 3},
+                 Push PArg Code {PushMarker 3,
+                                 Enter Arg 3},
                  PushMarker 2,
                  Enter Arg 2},
-    Push Code {Enter Arg 4},
+    Push PArg Code {Enter Arg 4},
     PushMarker 1,
     Enter Arg 1}
 
@@ -51,71 +51,34 @@ Code for compose:
 Code for twice:
    {UpdateMarkers 1,
     Take (1,1),
-    Push Code {PushMarker 1,
-               Enter Arg 1},
-    Push Code {PushMarker 1,
-               Enter Arg 1},
+    Push PArg Code {PushMarker 1,
+                    Enter Arg 1},
+    Push PArg Code {PushMarker 1,
+                    Enter Arg 1},
     Enter Label "compose"}
 
 
-Code for pair:
-   {UpdateMarkers 3,
-    Take (3,3),
-    Push Code {PushMarker 2,
-               Enter Arg 2},
-    Push Code {PushMarker 1,
-               Enter Arg 1},
-    PushMarker 3,
-    Enter Arg 3}
-
-
-Code for first:
+Code for double:
    {UpdateMarkers 1,
     Take (1,1),
-    Push Label "K",
+    Push PCont Code {Push PCont Code {Op Add,
+                                      Return},
+                     PushMarker 1,
+                     Enter Arg 1},
     PushMarker 1,
     Enter Arg 1}
-
-
-Code for second:
-   {UpdateMarkers 1,
-    Take (1,1),
-    Push Label "K1",
-    PushMarker 1,
-    Enter Arg 1}
-
-
-Code for maine:
-   {UpdateMarkers 0,
-    Take (1,0),
-    Move 1 Code {PushMarker 1,
-                 PushV (IntVConst 3),
-                 PushV (IntVConst 2),
-                 Op Mul,
-                 PushV (IntVConst 4),
-                 Op Lt,
-                 Cond {Push Code {Return},
-                       Push IntConst 3,
-                       Push IntConst 2,
-                       Enter Label "pair"}
-                      {Push Code {Return},
-                       Push IntConst 2,
-                       Push IntConst 3,
-                       Enter Label "pair"}},
-    Push Code {Push Code {Op Mul,
-                          Return},
-               Push Code {PushMarker 1,
-                          Enter Arg 1},
-               Enter Label "first"},
-    Push Code {PushMarker 1,
-               Enter Arg 1},
-    Enter Label "second"}
 
 
 Code for main:
-   {Push IntConst 3,
-    Push IntConst 2,
-    Enter Label "pair"}
+   {UpdateMarkers 0,
+    Take (1,0),
+    Move 1 Code {PushMarker 1,
+                 PushV (IntVConst 2),
+                 PushV (IntVConst 2),
+                 Op Add,
+                 Return},
+    Push PArg Code {Enter Arg 1},
+    Enter Label "double"}
 
 
 
@@ -128,32 +91,40 @@ State transitions
       Arg stack:
         [({},FrameNull)]
       
+      Cont stack:
+        []
+      
       VStack:[]
       
       Dump:
         []
       
       
-   1) Code:  {Push IntConst 3, Push IntConst 2, Enter Label "pair"}
+   1) Code:  {UpdateMarkers 0, Take (1,0), Move 1 Code {..}, ..}
       
       Null frame ptr
       
       Arg stack:
         [({},FrameNull)]
       
+      Cont stack:
+        []
+      
       VStack:[]
       
       Dump:
         []
       
       
-   2) Code:  {Push IntConst 2, Enter Label "pair"}
+   2) Code:  {Take (1,0), Move 1 Code {..}, Push PArg Code {..}, ..}
       
       Null frame ptr
       
       Arg stack:
-        [({PushV FramePtr, Return},FrameInt 3)
-         ({},FrameNull)]
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
       
       VStack:[]
       
@@ -161,59 +132,15 @@ State transitions
         []
       
       
-   3) Code:  {Enter Label "pair"}
-      
-      Null frame ptr
-      
-      Arg stack:
-        [({PushV FramePtr, Return},FrameInt 2)
-         ({PushV FramePtr, Return},FrameInt 3)
-         ({},FrameNull)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-      
-   4) Code:  {UpdateMarkers 3, Take (3,3), Push Code {..}, ..}
-      
-      Null frame ptr
-      
-      Arg stack:
-        [({PushV FramePtr, Return},FrameInt 2)
-         ({PushV FramePtr, Return},FrameInt 3)
-         ({},FrameNull)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-      
-   5) Code:  {Take (3,3), Push Code {..}, Push Code {..}, ..}
-      
-      Null frame ptr
-      
-      Arg stack:
-        [({PushV FramePtr, Return},FrameInt 2)
-         ({PushV FramePtr, Return},FrameInt 3)
-         ({},FrameNull)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-      
-   6) Code:  {Push Code {..}, Push Code {..}, PushMarker 3, ..}
+   3) Code:  {Move 1 Code {..}, Push PArg Code {..}, Enter Label "double"}
       
       Frame (addr  1):
-        <({PushV FramePtr, Return},FrameInt 2)
-         ({PushV FramePtr, Return},FrameInt 3)
-         ({},FrameNull)>
+        <({},FrameNull)>
       
       Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
         []
       
       VStack:[]
@@ -222,15 +149,16 @@ State transitions
         []
       
       
-   7) Code:  {Push Code {..}, PushMarker 3, Enter Arg 3}
+   4) Code:  {Push PArg Code {..}, Enter Label "double"}
       
       Frame (addr  1):
-        <({PushV FramePtr, Return},FrameInt 2)
-         ({PushV FramePtr, Return},FrameInt 3)
-         ({},FrameNull)>
+        <({PushMarker 1, PushV (IntVConst 2), PushV (IntVConst 2), ..},FrameAddr 1)>
       
       Arg stack:
-        [({PushMarker 2, Enter Arg 2},FrameAddr 1)]
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
       
       VStack:[]
       
@@ -238,16 +166,17 @@ State transitions
         []
       
       
-   8) Code:  {PushMarker 3, Enter Arg 3}
+   5) Code:  {Enter Label "double"}
       
       Frame (addr  1):
-        <({PushV FramePtr, Return},FrameInt 2)
-         ({PushV FramePtr, Return},FrameInt 3)
-         ({},FrameNull)>
+        <({PushMarker 1, PushV (IntVConst 2), PushV (IntVConst 2), ..},FrameAddr 1)>
       
       Arg stack:
-        [({PushMarker 1, Enter Arg 1},FrameAddr 1)
-         ({PushMarker 2, Enter Arg 2},FrameAddr 1)]
+        [({Enter Arg 1},FrameAddr 1)
+         ({},FrameNull)]
+      
+      Cont stack:
+        []
       
       VStack:[]
       
@@ -255,37 +184,371 @@ State transitions
         []
       
       
-   9) Code:  {Enter Arg 3}
+   6) Code:  {UpdateMarkers 1, Take (1,1), Push PCont Code {..}, ..}
       
       Frame (addr  1):
-        <({PushV FramePtr, Return},FrameInt 2)
-         ({PushV FramePtr, Return},FrameInt 3)
-         ({},FrameNull)>
+        <({PushMarker 1, PushV (IntVConst 2), PushV (IntVConst 2), ..},FrameAddr 1)>
       
       Arg stack:
+        [({Enter Arg 1},FrameAddr 1)
+         ({},FrameNull)]
+      
+      Cont stack:
         []
       
       VStack:[]
       
       Dump:
-        [(FrameAddr 1, 3)]
+        []
       
       
-  10) Code:  {}
+   7) Code:  {Take (1,1), Push PCont Code {..}, PushMarker 1, ..}
       
-      Null frame ptr
+      Frame (addr  1):
+        <({PushMarker 1, PushV (IntVConst 2), PushV (IntVConst 2), ..},FrameAddr 1)>
       
       Arg stack:
+        [({Enter Arg 1},FrameAddr 1)
+         ({},FrameNull)]
+      
+      Cont stack:
         []
       
       VStack:[]
       
       Dump:
-        [(FrameAddr 1, 3)]
+        []
+      
+      
+   8) Code:  {Push PCont Code {..}, PushMarker 1, Enter Arg 1}
+      
+      Frame (addr  2):
+        <({Enter Arg 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+      
+   9) Code:  {PushMarker 1, Enter Arg 1}
+      
+      Frame (addr  2):
+        <({Enter Arg 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        [({Push PCont Code {..}, PushMarker 1, Enter Arg 1},FrameAddr 2)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+      
+  10) Code:  {Enter Arg 1}
+      
+      Frame (addr  2):
+        <({Enter Arg 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 2, 1)]
+      
+      
+  11) Code:  {Enter Arg 1}
+      
+      Frame (addr  1):
+        <({PushMarker 1, PushV (IntVConst 2), PushV (IntVConst 2), ..},FrameAddr 1)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 2, 1)]
+      
+      
+  12) Code:  {PushMarker 1, PushV (IntVConst 2), PushV (IntVConst 2), ..}
+      
+      Frame (addr  1):
+        <({PushMarker 1, PushV (IntVConst 2), PushV (IntVConst 2), ..},FrameAddr 1)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 2, 1)]
+      
+      
+  13) Code:  {PushV (IntVConst 2), PushV (IntVConst 2), Op Add, ..}
+      
+      Frame (addr  1):
+        <({PushMarker 1, PushV (IntVConst 2), PushV (IntVConst 2), ..},FrameAddr 1)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+      
+  14) Code:  {PushV (IntVConst 2), Op Add, Return}
+      
+      Frame (addr  1):
+        <({PushMarker 1, PushV (IntVConst 2), PushV (IntVConst 2), ..},FrameAddr 1)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[2]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+      
+  15) Code:  {Op Add, Return}
+      
+      Frame (addr  1):
+        <({PushMarker 1, PushV (IntVConst 2), PushV (IntVConst 2), ..},FrameAddr 1)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[2, 2]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+      
+  16) Code:  {Return}
+      
+      Frame (addr  1):
+        <({PushMarker 1, PushV (IntVConst 2), PushV (IntVConst 2), ..},FrameAddr 1)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[4]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+      
+  17) Code:  {Return}
+      
+      Frame (addr  1):
+        <({PushV FramePtr, Return},FrameInt 4)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[4]
+      
+      Dump:
+        [(FrameAddr 2, 1)]
+      
+      
+  18) Code:  {Return}
+      
+      Frame (addr  1):
+        <({PushV FramePtr, Return},FrameInt 4)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        [({Push PCont Code {..}, PushMarker 1, Enter Arg 1},FrameAddr 2)]
+      
+      VStack:[4]
+      
+      Dump:
+        []
+      
+      
+  19) Code:  {Push PCont Code {..}, PushMarker 1, Enter Arg 1}
+      
+      Frame (addr  2):
+        <({PushV FramePtr, Return},FrameInt 4)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[4]
+      
+      Dump:
+        []
+      
+      
+  20) Code:  {PushMarker 1, Enter Arg 1}
+      
+      Frame (addr  2):
+        <({PushV FramePtr, Return},FrameInt 4)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 2)]
+      
+      VStack:[4]
+      
+      Dump:
+        []
+      
+      
+  21) Code:  {Enter Arg 1}
+      
+      Frame (addr  2):
+        <({PushV FramePtr, Return},FrameInt 4)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[4]
+      
+      Dump:
+        [(FrameAddr 2, 1)]
+      
+      
+  22) Code:  {PushV FramePtr, Return}
+      
+      Frame ptr (int): 4
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[4]
+      
+      Dump:
+        [(FrameAddr 2, 1)]
+      
+      
+  23) Code:  {Return}
+      
+      Frame ptr (int): 4
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[4, 4]
+      
+      Dump:
+        [(FrameAddr 2, 1)]
+      
+      
+  24) Code:  {Return}
+      
+      Frame ptr (int): 4
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 2)]
+      
+      VStack:[4, 4]
+      
+      Dump:
+        []
+      
+      
+  25) Code:  {Op Add, Return}
+      
+      Frame (addr  2):
+        <({PushV FramePtr, Return},FrameInt 4)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[4, 4]
+      
+      Dump:
+        []
+      
+      
+  26) Code:  {Return}
+      
+      Frame (addr  2):
+        <({PushV FramePtr, Return},FrameInt 4)>
+      
+      Arg stack:
+        [({},FrameNull)]
+      
+      Cont stack:
+        []
+      
+      VStack:[8]
+      
+      Dump:
+        []
+      Exception! System.Exception: Stack must be non-empty for return instruction
+         в FSI_0004.Tim.returnInstr(TimState state) в d:\repos\jah\CoreFunc\TIM\CoreFunc\Tim.fs:строка 359
+         в FSI_0004.Tim.go@424-1(TimState state, FSharpList`1 states) в d:\repos\jah\CoreFunc\TIM\CoreFunc\Tim.fs:строка 431
       
       
 
 
-Steps taken = 10
-Frames allocated =  1
-Total heap allocations = 3
+Steps taken = 26
+Frames allocated =  2
+Total heap allocations = 1

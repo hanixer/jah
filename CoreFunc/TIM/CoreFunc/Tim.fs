@@ -16,6 +16,10 @@ type Op =
     | Add | Sub | Mul | Div | Neg
     | Eq | Ne | Lt | Le | Gt | Ge
 
+type PushType = 
+    | PArg
+    | PCont
+
 type TimAMode =
     | Arg of int
     | Label of string
@@ -25,7 +29,7 @@ and Instruction =
     | Take of int * int
     | Move of int * TimAMode
     | Enter of TimAMode
-    | Push of TimAMode
+    | Push of PushType * TimAMode
     | PushV of ValueAMode
     | Op of Op
     | Return
@@ -54,7 +58,8 @@ type TimCompilerEnv = (Name * TimAMode) list
 type TimState = 
     { Instrs : Instruction list
       Fptr : FramePtr
-      Stack : TimStack
+      ArgStack : TimStack
+      ContStack : TimStack
       VStack : TimValueStack
       Dump : TimDump
       Heap : TimHeap
@@ -105,6 +110,7 @@ let statIncAllocations s n =
 let statGetAllocations s = s.HeapAllocated
 
 let initialArgStack = [[], FrameNull]
+let initialContStack = []
 let initialValueStack = []
 let initialDump = []
 let intCode = [PushV FramePtr; Return]
@@ -116,7 +122,8 @@ let mkEnter = function
 let emptyState = 
     { Instrs = mkEnter (Label "main")
       Fptr = FrameNull 
-      Stack = initialArgStack
+      ArgStack = initialArgStack
+      ContStack = initialArgStack
       VStack = initialValueStack
       Dump = initialDump
       Heap = heapEmpty
@@ -178,11 +185,13 @@ and compileR expr env d =
     | EAp (e1, e2) when isACompilable e2 ->
         let d1, instrs = compileR e1 env d
         let am = compileA e2 env
-        d1, (Push am) :: instrs
+        d1, (Push (PArg, am)) :: instrs
     | EAp (e1, e2) ->
         let d1, am = compileU e2 (d + 1) env (d + 1)
         let d2, instrs = compileR e1 env d1
-        let allInstrs = Move (d + 1, am) :: Push (Code [Enter (Arg (d + 1))]) :: instrs
+        let move = Move (d + 1, am)
+        let pushArg = Push (PArg, Code [Enter (Arg (d + 1))])
+        let allInstrs = move :: pushArg :: instrs
         d2, allInstrs
     | ELet (false, bindings, body) ->
         let n = List.length bindings
@@ -220,7 +229,7 @@ and compileB expr env d cont =
         d, (PushV (IntVConst n) :: cont)
     | _ ->
         let d1, compiled = compileR expr env d
-        d1, (Push (Code cont) :: compiled)
+        d1, (Push (PCont, Code cont) :: compiled)
 
 and compileU expr u env d =
     let d1, instrs = compileR expr env d
@@ -251,7 +260,8 @@ let compile program =
     let compiledCode = List.append compiledScDefs compiledPrimitives
     { Instrs = mkEnter (Label "main")
       Fptr = FrameNull 
-      Stack = initialArgStack
+      ArgStack = initialArgStack
+      ContStack = initialContStack
       VStack = initialValueStack
       Dump = initialDump
       Heap = heapEmpty
@@ -269,18 +279,18 @@ let amToClosure am fptr heap cstore : Closure =
     | IntConst n -> intCode, FrameInt n
 
 let take t n state =
-    if List.length state.Stack < n then
+    if List.length state.ArgStack < n then
         failwith "Too few args for Take instruction"
-    let fromStack = List.take n state.Stack
+    let fromStack = List.take n state.ArgStack
     let empty = [], FrameNull
     let frame = Seq.replicate (t - n) empty |> List.ofSeq
     let heap', fptr' = 
         List.append fromStack frame
         |> frameAlloc state.Heap
-    let stack = List.skip n state.Stack
+    let stack = List.skip n state.ArgStack
     { state with
         Fptr = fptr'
-        Stack = stack
+        ArgStack = stack
         Heap = heap'
         Stats = statIncAllocations state.Stats n }
 
@@ -297,9 +307,11 @@ let enter am state =
         Instrs = code
         Fptr = fptr }
 
-let push am state =
-    { state with 
-        Stack = amToClosure am state.Fptr state.Heap state.CStore :: state.Stack }
+let push pushType am state =
+    let clos = amToClosure am state.Fptr state.Heap state.CStore
+    match pushType with
+    | PArg -> { state with ArgStack = clos :: state.ArgStack }
+    | PCont -> { state with ContStack = clos :: state.ContStack }
 
 let pushv vm state =
     let fin n = { state with VStack = n :: state.VStack }
@@ -328,19 +340,19 @@ let returnInstr state =
     if not state.Instrs.IsEmpty then 
         failwith "Return must be last instruction"
 
-    match state.Stack, state.Dump with
+    match state.ContStack, state.Dump with
     | (i, f) :: stack, _ ->
         { state with
             Instrs = i
             Fptr = f
-            Stack = stack }
+            ContStack = stack }
     | [], (fptr, x, stack) :: dump ->
         match state.VStack with
         | n :: vstack ->        
             let heap = frameUpdate state.Heap fptr x (intCode, FrameInt n) 
             { state with
                 Heap = heap
-                Stack = stack
+                ContStack = stack
                 Dump = dump
                 Instrs = [Return] }
         | [] -> failwith "VStack must be non-empty for return instruction"
@@ -355,22 +367,22 @@ let cond i1 i2 state =
     | _ -> failwith "A number is expected for Cond instruction on VStack"
 
 let pushMarker n state =
-    let d = state.Fptr, n, state.Stack
+    let d = state.Fptr, n, state.ContStack
     { state with
         Dump = d :: state.Dump
-        Stack = [] }
+        ContStack = [] }
 
 let updateMarkersInstructions m n i =
-    [ [ for i = m downto 1 do yield Push (Arg i) ]
+    [ [ for i = m downto 1 do yield Push (PArg, Arg i) ]
       [ UpdateMarkers n ]
       i ]
     |> List.concat
 
 let updateMarkers n state =
-    let m = List.length state.Stack
+    let m = List.length state.ArgStack
     if m >= n then state
     else
-        let heap1, fptr = frameAlloc state.Heap state.Stack
+        let heap1, fptr = frameAlloc state.Heap state.ArgStack
         match state.Dump with
         | (fptrUpdate, x, s) :: dump ->
             let clos = (updateMarkersInstructions m n state.Instrs, fptr)
@@ -378,7 +390,7 @@ let updateMarkers n state =
             { state with
                 Instrs = (UpdateMarkers n) :: state.Instrs
                 Heap = heap2
-                Stack = List.append state.Stack s
+                ArgStack = List.append state.ArgStack s
                 Dump = dump }
         | _ -> failwith "Non-empty dump is expected in updateMarkers"
 
@@ -386,7 +398,7 @@ let dispatch = function
     | Take (t, n) -> take t n
     | Move (i, am) -> move i am
     | Enter am -> enter am
-    | Push am -> push am
+    | Push (pushType, am) -> push pushType am
     | PushV vm -> pushv vm
     | Op op -> oper op
     | Return -> returnInstr
@@ -437,7 +449,7 @@ and showInstruction d instr =
     match instr with
     | Take _ -> sprintf "%A" instr |> iStr
     | Enter am -> iStr "Enter " |>iAppend<| showArg d am
-    | Push am -> iStr "Push " |>iAppend<| showArg d am
+    | Push (pt, am) -> iStr "Push " |>iAppend<| iStr (sprintf "%A " pt) |>iAppend<| showArg d am
     | PushV vm -> sprintf "%A" instr |> iStr
     | Op _ -> sprintf "%A" instr |> iStr
     | Return -> iStr "Return"
@@ -500,9 +512,13 @@ let showValueStack vstack =
           iStr "]"
           iNewline ]
 
-let showStack stack =
+let showStack pushType stack =
+    let s = 
+        match pushType with
+        | PArg -> "Arg stack:"
+        | PCont -> "Cont stack:"
     iConcat
-        [ iStr "Arg stack:";
+        [ iStr s;
           iNewline;
           iStr "  ["
           List.map showClosure stack |> iInterleave iNewline |> IIdent;
@@ -539,7 +555,9 @@ let showState state =
         iNewline;
         showFrame state.Heap state.Fptr;
         iNewline;
-        showStack state.Stack;
+        showStack PArg state.ArgStack;
+        iNewline
+        showStack PCont state.ContStack;
         iNewline
         showValueStack state.VStack;
         iNewline
