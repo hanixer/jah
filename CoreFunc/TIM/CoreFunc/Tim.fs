@@ -41,7 +41,12 @@ type Closure = (Instruction list * FramePtr)
 type TimStack = Closure list
 
 type TimValueStack = int list
-type TimDump = (FramePtr * int * TimStack) list
+type TimDumpItem = 
+    { Fptr : FramePtr
+      ClosNum : int
+      ArgStack : TimStack
+      ContStack : TimStack }
+type TimDump = TimDumpItem list
 
 type Frame = Closure list
 
@@ -109,8 +114,8 @@ let statIncAllocations s n =
     { s with HeapAllocated = s.HeapAllocated + n }
 let statGetAllocations s = s.HeapAllocated
 
-let initialArgStack = [[], FrameNull]
-let initialContStack = []
+let initialArgStack = []
+let initialContStack = [[], FrameNull]
 let initialValueStack = []
 let initialDump = []
 let intCode = [PushV FramePtr; Return]
@@ -346,13 +351,14 @@ let returnInstr state =
             Instrs = i
             Fptr = f
             ContStack = stack }
-    | [], (fptr, x, stack) :: dump ->
+    | [], d :: dump ->
         match state.VStack with
         | n :: vstack ->        
-            let heap = frameUpdate state.Heap fptr x (intCode, FrameInt n) 
+            let heap = frameUpdate state.Heap d.Fptr d.ClosNum (intCode, FrameInt n) 
             { state with
                 Heap = heap
-                ContStack = stack
+                ContStack = d.ContStack
+                ArgStack = d.ArgStack
                 Dump = dump
                 Instrs = [Return] }
         | [] -> failwith "VStack must be non-empty for return instruction"
@@ -367,10 +373,11 @@ let cond i1 i2 state =
     | _ -> failwith "A number is expected for Cond instruction on VStack"
 
 let pushMarker n state =
-    let d = state.Fptr, n, state.ContStack
+    let d = { Fptr = state.Fptr; ClosNum = n; ContStack = state.ContStack; ArgStack = state.ArgStack }
     { state with
         Dump = d :: state.Dump
-        ContStack = [] }
+        ContStack = []
+        ArgStack = [] }
 
 let updateMarkersInstructions m n i =
     [ [ for i = m downto 1 do yield Push (PArg, Arg i) ]
@@ -384,13 +391,14 @@ let updateMarkers n state =
     else
         let heap1, fptr = frameAlloc state.Heap state.ArgStack
         match state.Dump with
-        | (fptrUpdate, x, s) :: dump ->
+        | d :: dump ->
             let clos = (updateMarkersInstructions m n state.Instrs, fptr)
-            let heap2 = frameUpdate heap1 fptrUpdate x clos
+            let heap2 = frameUpdate heap1 d.Fptr d.ClosNum clos
             { state with
                 Instrs = (UpdateMarkers n) :: state.Instrs
                 Heap = heap2
-                ArgStack = List.append state.ArgStack s
+                ArgStack = List.append state.ArgStack d.ArgStack
+                ContStack = d.ContStack
                 Dump = dump }
         | _ -> failwith "Non-empty dump is expected in updateMarkers"
 
@@ -489,11 +497,11 @@ let showClosure (i, f) =
         [ iStr "("; showInstructions Terse i; iStr ",";
           showFramePtr f; iStr ")" ]
 
-let showDumpItem (fptr, x, _) =
+let showDumpItem (d: TimDumpItem) =
     [ iStr "(";
-      showFramePtr fptr;
+      showFramePtr d.Fptr;
       iStr ", ";
-      iNum x;
+      iNum d.ClosNum;
       iStr ")"; ]
     |> iConcat
 

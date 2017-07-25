@@ -100,9 +100,6 @@ f x = let y = 1
       in
       g y y;
 main = f 1"
-let updateTest = "
-f x = x + x;
-main = f (1 + 2)"
 let indChain = "
 g x = x + 1;
 f x = g x;
@@ -117,9 +114,10 @@ let pairs = "
 pair x y f = f x y;
 first p = p K;
 second p = p K1;
-maine = let w = if (4 < 2*3) (pair 2 3) (pair 3 2)
+main = let w = if (4 < 2*3) (pair 2 3) (pair 3 2)
 in (first w) * (second w);
-main = pair 2 3"
+maine = let w = pair 2 3
+in (first w) * (second w)"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
@@ -127,4 +125,4 @@ let g src =
 
 // g lotsOfArgs
 
-g doubl
+g pairs

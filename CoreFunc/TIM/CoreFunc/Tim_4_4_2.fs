@@ -393,7 +393,6 @@ and showInstruction d instr =
         [ iStr "Move "; iNum i; iStr " " ]
         |> iConcat
         |>iAppend<| showArg d am
-    | _ -> sprintf "%A" instr |> iStr
 
 and showInstructions d il =
     let numTerse = 3
