@@ -3,7 +3,7 @@
 #load "Gm.fs"
 
 open Language
-open Gm
+open Pgm
 
 let src2 = "main = letrec x = 43 in S K K x"
 let src3 = "pair x y f = f x y ;
@@ -56,4 +56,4 @@ let g src =
     use f = System.IO.File.CreateText("output.txt")
     runProg src |> fprintf f "%s"
 
-g "main = 2"
+g fib

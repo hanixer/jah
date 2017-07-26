@@ -1,1325 +1,361 @@
 Supercombinator definitions
-Code for I:
-   {UpdateMarkers 1,
-    Take (1,1),
-    PushMarker 1,
-    Enter Arg 1}
+Code for False
+Code:{Pack (1,0)
+      Update 0
+      Pop 0
+      Unwind}
 
 
-Code for K:
-   {UpdateMarkers 2,
-    Take (2,2),
-    PushMarker 1,
-    Enter Arg 1}
+
+Code for True
+Code:{Pack (2,0)
+      Update 0
+      Pop 0
+      Unwind}
 
 
-Code for K1:
-   {UpdateMarkers 2,
-    Take (2,2),
-    PushMarker 2,
-    Enter Arg 2}
+
+Code for if
+Code:{Push 0
+      Eval
+      Get
+      Cond
+        ([Push 1; Eval; Update 3; Pop 3; Unwind],
+         [Push 2; Eval; Update 3; Pop 3; Unwind])}
 
 
-Code for S:
-   {UpdateMarkers 3,
-    Take (4,3),
-    Move 4 Code {PushMarker 4,
-                 Push PArg Code {PushMarker 3,
-                                 Enter Arg 3},
-                 PushMarker 2,
-                 Enter Arg 2},
-    Push PArg Code {Enter Arg 4},
-    Push PArg Code {PushMarker 3,
-                    Enter Arg 3},
-    PushMarker 1,
-    Enter Arg 1}
+
+Code for negate
+Code:{Push 0
+      Eval
+      Get
+      Neg
+      UpdateInt 1
+      Pop 1
+      Unwind}
 
 
-Code for compose:
-   {UpdateMarkers 3,
-    Take (4,3),
-    Move 4 Code {PushMarker 4,
-                 Push PArg Code {PushMarker 3,
-                                 Enter Arg 3},
-                 PushMarker 2,
-                 Enter Arg 2},
-    Push PArg Code {Enter Arg 4},
-    PushMarker 1,
-    Enter Arg 1}
+
+Code for |
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Or
+      Mkbool
+      Update 2
+      Pop 2
+      Unwind}
 
 
-Code for cons:
-   {UpdateMarkers 2,
-    Take (2,2),
-    ReturnConstr 2}
+
+Code for &
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      And
+      Mkbool
+      Update 2
+      Pop 2
+      Unwind}
 
 
-Code for false:
-   {PushMarker 10,
-    ReturnConstr 1}
+
+Code for >=
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Ge
+      Mkbool
+      Update 2
+      Pop 2
+      Unwind}
 
 
-Code for if:
-   {UpdateMarkers 3,
-    Take (3,3),
-    Push PCont Code {Switch <1> -> {PushMarker 3,
-                                    Enter Arg 3}
-                            <2> -> {PushMarker 2,
-                                    Enter Arg 2}
-                            },
-    PushMarker 1,
-    Enter Arg 1}
+
+Code for >
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Gt
+      Mkbool
+      Update 2
+      Pop 2
+      Unwind}
 
 
-Code for main:
-   {UpdateMarkers 0,
-    Take (1,0),
-    Push PArg Label "nil",
-    Move 1 Code {PushMarker 1,
-                 Push PCont Code {Push PCont Code {Op Add,
-                                                   Return},
-                                  Enter Label "x"},
-                 Enter Label "x"},
-    Push PArg Code {Enter Arg 1},
-    Enter Label "cons"}
+
+Code for <=
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Le
+      Mkbool
+      Update 2
+      Pop 2
+      Unwind}
 
 
-Code for nil:
-   {PushMarker 8,
-    ReturnConstr 1}
+
+Code for <
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Lt
+      Mkbool
+      Update 2
+      Pop 2
+      Unwind}
 
 
-Code for topCont:
-   {PushMarker 15,
-    Switch <1> -> {}
-           <2> -> {Move 1 Data 1,
-                   Move 2 Data 2,
-                   Push PCont Code {Print,
-                                    Push PCont Label "topCont",
-                                    Enter Arg 2},
-                   Enter Arg 1}
-           }
+
+Code for ~=
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Ne
+      Mkbool
+      Update 2
+      Pop 2
+      Unwind}
 
 
-Code for true:
-   {PushMarker 9,
-    ReturnConstr 2}
+
+Code for ==
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Eq
+      Mkbool
+      Update 2
+      Pop 2
+      Unwind}
 
 
-Code for twice:
-   {UpdateMarkers 1,
-    Take (1,1),
-    Push PArg Code {PushMarker 1,
-                    Enter Arg 1},
-    Push PArg Code {PushMarker 1,
-                    Enter Arg 1},
-    Enter Label "compose"}
+
+Code for /
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Div
+      UpdateInt 2
+      Pop 2
+      Unwind}
 
 
-Code for x:
-   {PushMarker 12,
-    PushV (IntVConst 3),
-    PushV (IntVConst 5),
-    PushV (IntVConst 5),
-    Op Add,
-    Op Add,
-    Return}
+
+Code for *
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Mul
+      UpdateInt 2
+      Pop 2
+      Unwind}
 
 
-Code for y:
-   {PushMarker 13,
-    PushV (IntVConst 6),
-    Push PCont Code {Op Add,
-                     Return},
-    Enter Label "x"}
+
+Code for -
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Sub
+      UpdateInt 2
+      Pop 2
+      Unwind}
+
+
+
+Code for +
+Code:{Push 1
+      Eval
+      Get
+      Push 0
+      Eval
+      Get
+      Add
+      UpdateInt 2
+      Pop 2
+      Unwind}
+
+
+
+Code for main
+Code:{Pushint 2
+      Update 0
+      Pop 0
+      Unwind}
+
+
+
+Code for twice
+Code:{Push 0
+      Push 1
+      Pushglobal "compose"
+      Mkap
+      Mkap
+      Eval
+      Update 1
+      Pop 1
+      Unwind}
+
+
+
+Code for compose
+Code:{Push 2
+      Push 2
+      Mkap
+      Push 1
+      Mkap
+      Eval
+      Update 3
+      Pop 3
+      Unwind}
+
+
+
+Code for S
+Code:{Push 2
+      Push 2
+      Mkap
+      Push 3
+      Push 2
+      Mkap
+      Mkap
+      Eval
+      Update 3
+      Pop 3
+      Unwind}
+
+
+
+Code for K1
+Code:{Push 1
+      Eval
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for K
+Code:{Push 0
+      Eval
+      Update 2
+      Pop 2
+      Unwind}
+
+
+
+Code for I
+Code:{Push 0
+      Eval
+      Update 1
+      Pop 1
+      Unwind}
+
 
 
 
 State transitions
 
-   0) Code:  {Enter Label "main"}
-      Null Fptr
+   0) VStack:[]
+      Stack:[]
       
-      Null Dptr
+      Dump:[]
       
-      Arg stack:
-        []
+      Code:{Pushglobal "main"
+            Eval}
       
-      Cont stack:
-        [({Switch <1> -> {..}
-                  <2> -> {..}
-                  },FrameAddr 2)]
+   1) VStack:[]
+      Stack:[7: Global main]
       
-      VStack:[]
+      Dump:[]
       
-      Dump:
-        []
+      Code:{Eval}
       
-   1) Code:  {UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..},FrameAddr 1)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
+   2) VStack:[]
+      Stack:[7: Global main]
       
-      Null Dptr
+      Dump:[<{}, S:[], V:[]>]
       
-      Arg stack:
-        []
+      Code:{Unwind}
       
-      Cont stack:
-        [({Switch <1> -> {..}
-                  <2> -> {..}
-                  },FrameAddr 2)]
+   3) VStack:[]
+      Stack:[7: Global main]
       
-      VStack:[]
+      Dump:[<{}, S:[], V:[]>]
       
-      Dump:
-        []
+      Code:{Pushint 2
+            Update 0
+            Pop 0
+            Unwind}
       
-   2) Code:  {Take (1,0), Push PArg Label "nil", Move 1 Code {..}, ..}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..},FrameAddr 1)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
+   4) VStack:[]
+      Stack:[7: Global main
+             24: 2]
       
-      Null Dptr
+      Dump:[<{}, S:[], V:[]>]
       
-      Arg stack:
-        []
+      Code:{Update 0
+            Pop 0
+            Unwind}
       
-      Cont stack:
-        [({Switch <1> -> {..}
-                  <2> -> {..}
-                  },FrameAddr 2)]
+   5) VStack:[]
+      Stack:[7: Ind 24 (2)]
       
-      VStack:[]
+      Dump:[<{}, S:[], V:[]>]
       
-      Dump:
-        []
+      Code:{Pop 0
+            Unwind}
       
-   3) Code:  {Push PArg Label "nil", Move 1 Code {..}, Push PArg Code {..}, ..}
-      Fptr (addr  3):
-        <({},FrameNull)>
+   6) VStack:[]
+      Stack:[7: Ind 24 (2)]
       
-      Null Dptr
+      Dump:[<{}, S:[], V:[]>]
       
-      Arg stack:
-        []
+      Code:{Unwind}
       
-      Cont stack:
-        [({Switch <1> -> {..}
-                  <2> -> {..}
-                  },FrameAddr 2)]
+   7) VStack:[]
+      Stack:[24: 2]
       
-      VStack:[]
+      Dump:[<{}, S:[], V:[]>]
       
-      Dump:
-        []
-      
-   4) Code:  {Move 1 Code {..}, Push PArg Code {..}, Enter Label "cons"}
-      Fptr (addr  3):
-        <({},FrameNull)>
-      
-      Null Dptr
-      
-      Arg stack:
-        [({PushMarker 8, ReturnConstr 1},FrameAddr 1)]
-      
-      Cont stack:
-        [({Switch <1> -> {..}
-                  <2> -> {..}
-                  },FrameAddr 2)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-   5) Code:  {Push PArg Code {..}, Enter Label "cons"}
-      Fptr (addr  3):
-        <({PushMarker 1, Push PCont Code {..}, Enter Label "x"},FrameAddr 3)>
-      
-      Null Dptr
-      
-      Arg stack:
-        [({PushMarker 8, ReturnConstr 1},FrameAddr 1)]
-      
-      Cont stack:
-        [({Switch <1> -> {..}
-                  <2> -> {..}
-                  },FrameAddr 2)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-   6) Code:  {Enter Label "cons"}
-      Fptr (addr  3):
-        <({PushMarker 1, Push PCont Code {..}, Enter Label "x"},FrameAddr 3)>
-      
-      Null Dptr
-      
-      Arg stack:
-        [({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)]
-      
-      Cont stack:
-        [({Switch <1> -> {..}
-                  <2> -> {..}
-                  },FrameAddr 2)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-   7) Code:  {UpdateMarkers 2, Take (2,2), ReturnConstr 2}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..},FrameAddr 1)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Null Dptr
-      
-      Arg stack:
-        [({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)]
-      
-      Cont stack:
-        [({Switch <1> -> {..}
-                  <2> -> {..}
-                  },FrameAddr 2)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-   8) Code:  {Take (2,2), ReturnConstr 2}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..},FrameAddr 1)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Null Dptr
-      
-      Arg stack:
-        [({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)]
-      
-      Cont stack:
-        [({Switch <1> -> {..}
-                  <2> -> {..}
-                  },FrameAddr 2)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-   9) Code:  {ReturnConstr 2}
-      Fptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Null Dptr
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({Switch <1> -> {..}
-                  <2> -> {..}
-                  },FrameAddr 2)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-  10) Code:  {Switch <1> -> {..}
-                     <2> -> {..}
-                     }
-      Fptr (addr  2):
-        <({},FrameNull)
-         ({},FrameNull)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[2]
-      
-      Dump:
-        []
-      
-  11) Code:  {Move 1 Data 1, Move 2 Data 2, Push PCont Code {..}, ..}
-      Fptr (addr  2):
-        <({},FrameNull)
-         ({},FrameNull)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-  12) Code:  {Move 2 Data 2, Push PCont Code {..}, Enter Arg 1}
-      Fptr (addr  2):
-        <({Enter Arg 1},FrameAddr 3)
-         ({},FrameNull)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-  13) Code:  {Push PCont Code {..}, Enter Arg 1}
-      Fptr (addr  2):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-  14) Code:  {Enter Arg 1}
-      Fptr (addr  2):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({Print, Push PCont Label "topCont", Enter Arg 2},FrameAddr 2)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-  15) Code:  {Enter Arg 1}
-      Fptr (addr  3):
-        <({PushMarker 1, Push PCont Code {..}, Enter Label "x"},FrameAddr 3)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({Print, Push PCont Label "topCont", Enter Arg 2},FrameAddr 2)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-  16) Code:  {PushMarker 1, Push PCont Code {..}, Enter Label "x"}
-      Fptr (addr  3):
-        <({PushMarker 1, Push PCont Code {..}, Enter Label "x"},FrameAddr 3)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({Print, Push PCont Label "topCont", Enter Arg 2},FrameAddr 2)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-  17) Code:  {Push PCont Code {..}, Enter Label "x"}
-      Fptr (addr  3):
-        <({PushMarker 1, Push PCont Code {..}, Enter Label "x"},FrameAddr 3)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[]
-      
-      Dump:
-        [(FrameAddr 3, 1)]
-      
-  18) Code:  {Enter Label "x"}
-      Fptr (addr  3):
-        <({PushMarker 1, Push PCont Code {..}, Enter Label "x"},FrameAddr 3)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({Push PCont Code {..}, Enter Label "x"},FrameAddr 3)]
-      
-      VStack:[]
-      
-      Dump:
-        [(FrameAddr 3, 1)]
-      
-  19) Code:  {PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..},FrameAddr 1)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({Push PCont Code {..}, Enter Label "x"},FrameAddr 3)]
-      
-      VStack:[]
-      
-      Dump:
-        [(FrameAddr 3, 1)]
-      
-  20) Code:  {PushV (IntVConst 3), PushV (IntVConst 5), PushV (IntVConst 5), ..}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..},FrameAddr 1)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[]
-      
-      Dump:
-        [(FrameAddr 1, 12)
-         (FrameAddr 3, 1)]
-      
-  21) Code:  {PushV (IntVConst 5), PushV (IntVConst 5), Op Add, ..}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..},FrameAddr 1)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[3]
-      
-      Dump:
-        [(FrameAddr 1, 12)
-         (FrameAddr 3, 1)]
-      
-  22) Code:  {PushV (IntVConst 5), Op Add, Op Add, ..}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..},FrameAddr 1)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[5, 3]
-      
-      Dump:
-        [(FrameAddr 1, 12)
-         (FrameAddr 3, 1)]
-      
-  23) Code:  {Op Add, Op Add, Return}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..},FrameAddr 1)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[5, 5, 3]
-      
-      Dump:
-        [(FrameAddr 1, 12)
-         (FrameAddr 3, 1)]
-      
-  24) Code:  {Op Add, Return}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..},FrameAddr 1)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[10, 3]
-      
-      Dump:
-        [(FrameAddr 1, 12)
-         (FrameAddr 3, 1)]
-      
-  25) Code:  {Return}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushMarker 12, PushV (IntVConst 3), PushV (IntVConst 5), ..},FrameAddr 1)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[13]
-      
-      Dump:
-        [(FrameAddr 1, 12)
-         (FrameAddr 3, 1)]
-      
-  26) Code:  {Return}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushV FramePtr, Return},FrameInt 13)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({Push PCont Code {..}, Enter Label "x"},FrameAddr 3)]
-      
-      VStack:[13]
-      
-      Dump:
-        [(FrameAddr 3, 1)]
-      
-  27) Code:  {Push PCont Code {..}, Enter Label "x"}
-      Fptr (addr  3):
-        <({PushMarker 1, Push PCont Code {..}, Enter Label "x"},FrameAddr 3)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[13]
-      
-      Dump:
-        [(FrameAddr 3, 1)]
-      
-  28) Code:  {Enter Label "x"}
-      Fptr (addr  3):
-        <({PushMarker 1, Push PCont Code {..}, Enter Label "x"},FrameAddr 3)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({Op Add, Return},FrameAddr 3)]
-      
-      VStack:[13]
-      
-      Dump:
-        [(FrameAddr 3, 1)]
-      
-  29) Code:  {PushV FramePtr, Return}
-      Frame ptr (int): 13
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({Op Add, Return},FrameAddr 3)]
-      
-      VStack:[13]
-      
-      Dump:
-        [(FrameAddr 3, 1)]
-      
-  30) Code:  {Return}
-      Frame ptr (int): 13
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({Op Add, Return},FrameAddr 3)]
-      
-      VStack:[13, 13]
-      
-      Dump:
-        [(FrameAddr 3, 1)]
-      
-  31) Code:  {Op Add, Return}
-      Fptr (addr  3):
-        <({PushMarker 1, Push PCont Code {..}, Enter Label "x"},FrameAddr 3)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[13, 13]
-      
-      Dump:
-        [(FrameAddr 3, 1)]
-      
-  32) Code:  {Return}
-      Fptr (addr  3):
-        <({PushMarker 1, Push PCont Code {..}, Enter Label "x"},FrameAddr 3)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[26]
-      
-      Dump:
-        [(FrameAddr 3, 1)]
-      
-  33) Code:  {Return}
-      Fptr (addr  3):
-        <({PushV FramePtr, Return},FrameInt 26)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({Print, Push PCont Label "topCont", Enter Arg 2},FrameAddr 2)]
-      
-      VStack:[26]
-      
-      Dump:
-        []
-      
-  34) Code:  {Print, Push PCont Label "topCont", Enter Arg 2}
-      Fptr (addr  2):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[26]
-      
-      Dump:
-        []
-      
-  35) Code:  {Push PCont Label "topCont", Enter Arg 2}
-      Fptr (addr  2):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[26]
-      
-      Dump:
-        []
-      
-  36) Code:  {Enter Arg 2}
-      Fptr (addr  2):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)]
-      
-      VStack:[26]
-      
-      Dump:
-        []
-      
-  37) Code:  {PushMarker 8, ReturnConstr 1}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushV FramePtr, Return},FrameInt 13)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)]
-      
-      VStack:[26]
-      
-      Dump:
-        []
-      
-  38) Code:  {ReturnConstr 1}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushV FramePtr, Return},FrameInt 13)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[26]
-      
-      Dump:
-        [(FrameAddr 1, 8)]
-      
-  39) Code:  {ReturnConstr 1}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushV FramePtr, Return},FrameInt 13)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  4):
-        <({Enter Arg 1},FrameAddr 3)
-         ({PushMarker 8, ReturnConstr 1},FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)]
-      
-      VStack:[26]
-      
-      Dump:
-        []
-      
-  40) Code:  {PushMarker 15, Switch <1> -> {..}
-                                    <2> -> {..}
-                                    }
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushV FramePtr, Return},FrameInt 13)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushV FramePtr, Return},FrameInt 13)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[1, 26]
-      
-      Dump:
-        []
-      
-  41) Code:  {Switch <1> -> {..}
-                     <2> -> {..}
-                     }
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushV FramePtr, Return},FrameInt 13)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushV FramePtr, Return},FrameInt 13)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[1, 26]
-      
-      Dump:
-        [(FrameAddr 1, 15)]
-      
-  42) Code:  {}
-      Fptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushV FramePtr, Return},FrameInt 13)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Dptr (addr  1):
-        <({UpdateMarkers 1, Take (1,1), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 1, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), PushMarker 2, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 3, Take (4,3), Move 4 Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 1, Take (1,1), Push PArg Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 2, Take (2,2), ReturnConstr 2},FrameAddr 1)
-         ({ReturnConstr 1},FrameAddr 1)
-         ({PushMarker 9, ReturnConstr 2},FrameAddr 1)
-         ({PushMarker 10, ReturnConstr 1},FrameAddr 1)
-         ({UpdateMarkers 3, Take (3,3), Push PCont Code {..}, ..},FrameAddr 1)
-         ({PushV FramePtr, Return},FrameInt 13)
-         ({PushMarker 13, PushV (IntVConst 6), Push PCont Code {..}, ..},FrameAddr 1)
-         ({UpdateMarkers 0, Take (1,0), Push PArg Label "nil", ..},FrameAddr 1)
-         ({PushMarker 15, Switch <1> -> {..}
-                                 <2> -> {..}
-                                 },FrameAddr 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        []
-      
-      VStack:[26]
-      
-      Dump:
-        [(FrameAddr 1, 15)]
+      Code:{Unwind}
       
 
 
-Steps taken = 42
-Frames allocated =  4
-Total heap allocations = 2
-
-
-Output
-...................................26.......
+Steps taken:7
+Heap size:24

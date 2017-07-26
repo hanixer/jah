@@ -1,4 +1,4 @@
-module Gm
+module Pgm
 
 open Language
 open Util
@@ -55,16 +55,27 @@ type GmDump = (GmCode * GmStack * GmVStack) list
 
 type GmOutput = char list
 
-type GmState =
-    { Code : GmCode
+type GmSparks = Addr list
+
+type PgmGlobalState =
+    { Output : GmOutput
       Heap : GmHeap
       Globals : GmGlobals
+      Sparks : GmSparks
+      Stats : GmStats }
+
+type GmClock = int
+
+type PgmLocalState = 
+    { Code : GmCode
       Stack : GmStack
       Dump : GmDump
-      Stats : GmStats
-      Output : GmOutput
-      Exception : System.Exception option
-      VStack : GmVStack }
+      VStack : GmVStack
+      Clock : GmClock }
+
+type GmState =
+    { GlobalState : PgmGlobalState
+      LocalState : PgmLocalState }
 
 type CompiledSC = Name * int * GmCode
 type GmCompiler = CoreExpr -> GmEnvironment -> GmCode
