@@ -39,6 +39,7 @@ and Instruction =
     | UpdateMarkers of int
     | Switch of (int * Instruction list) list
     | ReturnConstr of int
+    | Print
 
 type Closure = (Instruction list * FramePtr)
 type TimStack = Closure list
@@ -74,6 +75,7 @@ type TimState =
       Heap : TimHeap
       CStore : CodeStore
       Stats : TimStats
+      Output : (string * bool)
       Exception : System.Exception option }
       
 
@@ -119,7 +121,6 @@ let statIncAllocations s n =
 let statGetAllocations s = s.HeapAllocated
 
 let initialArgStack = []
-let initialContStack = [[], FrameNull]
 let initialValueStack = []
 let initialDump = []
 let intCode = [PushV FramePtr; Return]
@@ -127,19 +128,6 @@ let intCode = [PushV FramePtr; Return]
 let mkEnter = function
     | Code i -> i
     | am -> [Enter am]
-
-let emptyState = 
-    { Instrs = mkEnter (Label "main")
-      Fptr = FrameNull
-      Dptr = FrameNull 
-      ArgStack = initialArgStack
-      ContStack = initialArgStack
-      VStack = initialValueStack
-      Dump = initialDump
-      Heap = heapEmpty
-      CStore = []
-      Exception = None
-      Stats = statInitial }
 
 let compiledPrimitives = 
     [  ]
@@ -281,6 +269,17 @@ let extraPreludeDefs =
       "false", [], EConstr (1, 0)
       "if", ["cond"; "tbranch"; "fbranch"], (ECase (EVar "cond", [1, [], EVar "fbranch"; 2, [], EVar "tbranch"])) ]
 
+let topCont = 
+    let headCont =
+        [ Print; Push (PCont, Label "topCont"); Enter (Arg 2) ]
+    Switch 
+        [ 1, []
+          2, [ Move (1, (Data 1))
+               Move (2, Data 2)
+               Push (PCont, Code headCont)
+               Enter (Arg 1) ] ]
+    |> List.singleton
+
 let compile program =
     let scDefs = List.concat [preludeDefs; extraPreludeDefs; program]
     let initialEnv : TimCompilerEnv = 
@@ -288,17 +287,23 @@ let compile program =
         |> List.append <|
         [ for name, code in compiledPrimitives do yield name, Label name ]
     let compiledScDefs = List.map (compileSc initialEnv) scDefs
-    let compiledCode = List.append compiledScDefs compiledPrimitives
+    let compiledCode =
+        [ compiledScDefs
+          ["topCont", topCont]
+          compiledPrimitives ]
+        |> List.concat
+    let heap, frame = frameAlloc heapEmpty (List.replicate 2 ([], FrameNull))
     { Instrs = mkEnter (Label "main")
       Fptr = FrameNull 
       Dptr = FrameNull
       ArgStack = initialArgStack
-      ContStack = initialContStack
+      ContStack = [topCont, frame]
       VStack = initialValueStack
       Dump = initialDump
-      Heap = heapEmpty
+      Heap = heap
       CStore = compiledCode
       Exception = None
+      Output = ("", false)
       Stats = statInitial }
 
 let timFinal state = state.Instrs.IsEmpty
@@ -462,6 +467,9 @@ let returnConstr tag state =
             Instrs = [ReturnConstr tag] }
     | _ -> failwith "Both ContStack and Dump are empty during ReturnConstr"
 
+let print state =
+    let output, isChanged = state.Output
+    { state with Output = (string state.VStack.[0]), true }
 
 let dispatch = function
     | Take (t, n) -> take t n
@@ -476,12 +484,13 @@ let dispatch = function
     | UpdateMarkers n -> updateMarkers n
     | Switch jumps -> switch jumps
     | ReturnConstr tag -> returnConstr tag
+    | Print -> print
 
 let step state =
     let tail = List.tail state.Instrs
     match state.Instrs with
     | instr :: instrs ->
-        dispatch instr { state with Instrs = instrs }
+        dispatch instr { state with Instrs = instrs; Output = fst state.Output, false }
     | _ -> failwith "Execution must be finished at this point"
 
 let doAdmin s =
@@ -491,7 +500,6 @@ let doAdmin s =
 exception OverflowException
 
 let rec eval state =
-    printfn "eval now"        
     let rec go state states =
         if timFinal state then
             state :: states
@@ -659,15 +667,28 @@ let showStats state =
       iStr "Total heap allocations = "; iNum (statGetAllocations state.Stats); iNewline ]
     |> iConcat 
         
+let showOutput states =
+    let show i state =
+        let i = i + 1
+        let x =
+            if state.Output |> snd then fst state.Output |> iStr
+            else iStr "."
+        if i % 50 = 0 then iAppend x iNewline
+        else x
+    [ iStr "Output"; iNewline;
+      List.mapi show states |> iConcat ]
+    |> iConcat
 
 let showFullResults states =
     let s  = List.head states
+    let last = List.last states
     iConcat
         [ iStr "Supercombinator definitions"; iNewline;
           showScDefs s; iNewline; iNewline;
           iStr "State transitions"; iNewline; iNewline;
           iLayn (List.map showState states); iNewline; iNewline;
-          showStats (List.last states) ]
+          showStats (List.last states); iNewline; iNewline;
+          showOutput states; ]
     |> iDisplay
 
 let showResults states =
