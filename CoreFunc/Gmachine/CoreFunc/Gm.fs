@@ -548,9 +548,16 @@ let compileSc (name, env, body) =
     let compiled = compileR d body newEnv 
     name, env.Length, compiled
 
+let extraPreludeDefs =
+    [ "cons", [], EConstr (2, 2)
+      "nil", [], EConstr (1, 0)
+      "true", [], EConstr (2, 0)
+      "false", [], EConstr (1, 0)
+      "if", ["cond"; "tbranch"; "fbranch"], (ECase (EVar "cond", [1, [], EVar "fbranch"; 2, [], EVar "tbranch"])) ]
+
 let buildInitialHeap program = 
     let compiled = 
-        List.concat [preludeDefs; program; primitives]
+        List.concat [preludeDefs; extraPreludeDefs; program; primitives]
         |> List.map compileSc
     mapAccumul allocateSc heapEmpty compiled
 

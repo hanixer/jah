@@ -44,14 +44,16 @@ main = double (2 + 2)"
 let fib = "
 fib n = if (n < 2) 1 (fib (n-1) + fib (n-2));
 main = fib 4"
+let lengt = "
+length xs = 
+    case xs of
+      <1> -> 0;
+      <2> p ps -> p + (length ps);
+main = length (cons 1 (cons 2 nil))"
+
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
     runProg src |> fprintf f "%s"
-parse "main = (2-3)"
-let e = parseExpr "case 1 of <1> 2 3 -> 4; <5> -> 6" 
-let env = ["z",0;"w",1;"i",5]
-compileR (List.length env) e env
-compileE e env
-compileB e env
+
 g fib

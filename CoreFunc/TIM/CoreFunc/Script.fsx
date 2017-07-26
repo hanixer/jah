@@ -59,8 +59,6 @@ main = four * five"
 let factorial = "
 factorial n = if n 1 (n * factorial (n - 1));
 main = factorial 3"
-let simpleIf = "
-main = if 1 2 3"
 let let1 = "
 g x y = y;
 h x = x;
@@ -118,6 +116,57 @@ main = let w = if (4 < 2*3) (pair 2 3) (pair 3 2)
 in (first w) * (second w);
 maine = let w = pair 2 3
 in (first w) * (second w)"
+let threeArgs = "
+f x y z = x;
+g = f (2 + 3) (3 + 4) (4 + 5);
+g2 = f (2 + 3) (3 + 4) 4;
+g3 = f (2 + 3) 5 4;
+g4 = f 1 2 3;
+main = g2 "
+let threeArgs2 = "
+f x y z = x;
+g = if (2 < 3) (3 < 4) (4 < 5);
+g2 = if (2 < 3) (3 < 4) 4;
+g3 = if (2 < g) 5 4;
+g4 = if 1 2 3;
+main = g2 "
+let simpleIf = "main = let x = (4 + 4) in if (2 < x) 2 3"
+let lengt = "
+length xs = 
+    case xs of
+      <1> -> 0;
+      <2> p ps -> p + (length ps);
+main = length (cons 1 (cons 2 nil))"
+let append = "
+length xs = 
+    case xs of
+      <1> -> 0;
+      <2> p ps -> 1 + (length ps);
+append xs ys = 
+    case xs of
+        <1> -> ys;
+        <2> p ps -> 
+            cons p (append ps ys);
+main = 
+    let xs = append (cons 1 nil) (cons 2 nil)
+    in
+    length xs + length xs"
+let append2 = "
+length xs = 
+    case xs of
+      <1> -> 0;
+      <2> p ps -> 1 + (length ps);
+append xs ys = 
+    case xs of
+        <1> -> ys;
+        <2> p ps -> 
+            cons p (append ps ys);
+main = 
+    let xs = append (cons 1 nil) (cons 2 nil)
+    in
+    let l = length xs
+    in
+    l + l"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
@@ -125,4 +174,4 @@ let g src =
 
 // g lotsOfArgs
 
-g "main = case Pack{0,1} 1 of <0> x -> x; <1> i j -> i * j"
+g append

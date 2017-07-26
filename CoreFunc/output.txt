@@ -58,22 +58,96 @@ Code for twice:
     Enter Label "compose"}
 
 
-Code for main:
-   {UpdateMarkers 0,
-    Take (2,0),
-    Push PCont Code {Switch <0> -> {Move 1 Data 1,
-                                    Enter Arg 1}
-                            <1> -> {Move 1 Data 1,
-                                    Move 2 Data 2,
-                                    Push PCont Code {Push PCont Code {Op Mul,
-                                                                      Return},
-                                                     Enter Arg 1},
+Code for cons:
+   {UpdateMarkers 2,
+    Take (2,2),
+    ReturnConstr 2}
+
+
+Code for nil:
+   {ReturnConstr 1}
+
+
+Code for true:
+   {ReturnConstr 2}
+
+
+Code for false:
+   {ReturnConstr 1}
+
+
+Code for if:
+   {UpdateMarkers 3,
+    Take (3,3),
+    Push PCont Code {Switch <1> -> {PushMarker 3,
+                                    Enter Arg 3}
+                            <2> -> {PushMarker 2,
                                     Enter Arg 2}
                             },
-    Push PArg IntConst 1,
-    UpdateMarkers 1,
-    Take (1,1),
-    ReturnConstr 0}
+    PushMarker 1,
+    Enter Arg 1}
+
+
+Code for length:
+   {UpdateMarkers 1,
+    Take (3,1),
+    Push PCont Code {Switch <1> -> {PushV (IntVConst 0),
+                                    Return}
+                            <2> -> {Move 2 Data 1,
+                                    Move 3 Data 2,
+                                    Push PCont Code {PushV (IntVConst 1),
+                                                     Op Add,
+                                                     Return},
+                                    Push PArg Arg 2,
+                                    Enter Label "length"}
+                            },
+    PushMarker 1,
+    Enter Arg 1}
+
+
+Code for append:
+   {UpdateMarkers 2,
+    Take (5,2),
+    Push PCont Code {Switch <1> -> {PushMarker 2,
+                                    Enter Arg 2}
+                            <2> -> {Move 3 Data 1,
+                                    Move 4 Data 2,
+                                    Move 5 Code {PushMarker 5,
+                                                 Push PArg Code {PushMarker 2,
+                                                                 Enter Arg 2},
+                                                 Push PArg Arg 2,
+                                                 Enter Label "append"},
+                                    Push PArg Code {Enter Arg 5},
+                                    Push PArg Arg 1,
+                                    Enter Label "cons"}
+                            },
+    PushMarker 1,
+    Enter Arg 1}
+
+
+Code for main:
+   {UpdateMarkers 0,
+    Take (3,0),
+    Move 1 Code {PushMarker 1,
+                 Move 2 Code {PushMarker 2,
+                              Push PArg Label "nil",
+                              Push PArg IntConst 2,
+                              Enter Label "cons"},
+                 Push PArg Code {Enter Arg 2},
+                 Move 3 Code {PushMarker 3,
+                              Push PArg Label "nil",
+                              Push PArg IntConst 1,
+                              Enter Label "cons"},
+                 Push PArg Code {Enter Arg 3},
+                 Enter Label "append"},
+    Push PCont Code {Push PCont Code {Op Add,
+                                      Return},
+                     Push PArg Code {PushMarker 1,
+                                     Enter Arg 1},
+                     Enter Label "length"},
+    Push PArg Code {PushMarker 1,
+                    Enter Arg 1},
+    Enter Label "length"}
 
 
 
@@ -95,7 +169,7 @@ State transitions
       Dump:
         []
       
-   1) Code:  {UpdateMarkers 0, Take (2,0), Push PCont Code {..}, ..}
+   1) Code:  {UpdateMarkers 0, Take (3,0), Move 1 Code {..}, ..}
       Null Fptr
       
       Null Dptr
@@ -111,7 +185,7 @@ State transitions
       Dump:
         []
       
-   2) Code:  {Take (2,0), Push PCont Code {..}, Push PArg IntConst 1, ..}
+   2) Code:  {Take (3,0), Move 1 Code {..}, Push PCont Code {..}, ..}
       Null Fptr
       
       Null Dptr
@@ -127,9 +201,10 @@ State transitions
       Dump:
         []
       
-   3) Code:  {Push PCont Code {..}, Push PArg IntConst 1, UpdateMarkers 1, ..}
+   3) Code:  {Move 1 Code {..}, Push PCont Code {..}, Push PArg Code {..}, ..}
       Fptr (addr  1):
         <({},FrameNull)
+         ({},FrameNull)
          ({},FrameNull)>
       
       Null Dptr
@@ -145,9 +220,10 @@ State transitions
       Dump:
         []
       
-   4) Code:  {Push PArg IntConst 1, UpdateMarkers 1, Take (1,1), ..}
+   4) Code:  {Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"}
       Fptr (addr  1):
-        <({},FrameNull)
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({},FrameNull)
          ({},FrameNull)>
       
       Null Dptr
@@ -156,30 +232,26 @@ State transitions
         []
       
       Cont stack:
-        [({Switch <0> -> {..}
-                  <1> -> {..}
-                  },FrameAddr 1)
-         ({},FrameNull)]
+        [({},FrameNull)]
       
       VStack:[]
       
       Dump:
         []
       
-   5) Code:  {UpdateMarkers 1, Take (1,1), ReturnConstr 0}
+   5) Code:  {Push PArg Code {..}, Enter Label "length"}
       Fptr (addr  1):
-        <({},FrameNull)
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({},FrameNull)
          ({},FrameNull)>
       
       Null Dptr
       
       Arg stack:
-        [({PushV FramePtr, Return},FrameInt 1)]
+        []
       
       Cont stack:
-        [({Switch <0> -> {..}
-                  <1> -> {..}
-                  },FrameAddr 1)
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
          ({},FrameNull)]
       
       VStack:[]
@@ -187,20 +259,19 @@ State transitions
       Dump:
         []
       
-   6) Code:  {Take (1,1), ReturnConstr 0}
+   6) Code:  {Enter Label "length"}
       Fptr (addr  1):
-        <({},FrameNull)
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({},FrameNull)
          ({},FrameNull)>
       
       Null Dptr
       
       Arg stack:
-        [({PushV FramePtr, Return},FrameInt 1)]
+        [({PushMarker 1, Enter Arg 1},FrameAddr 1)]
       
       Cont stack:
-        [({Switch <0> -> {..}
-                  <1> -> {..}
-                  },FrameAddr 1)
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
          ({},FrameNull)]
       
       VStack:[]
@@ -208,9 +279,51 @@ State transitions
       Dump:
         []
       
-   7) Code:  {ReturnConstr 0}
+   7) Code:  {UpdateMarkers 1, Take (3,1), Push PCont Code {..}, ..}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        [({PushMarker 1, Enter Arg 1},FrameAddr 1)]
+      
+      Cont stack:
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+   8) Code:  {Take (3,1), Push PCont Code {..}, PushMarker 1, ..}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        [({PushMarker 1, Enter Arg 1},FrameAddr 1)]
+      
+      Cont stack:
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+   9) Code:  {Push PCont Code {..}, PushMarker 1, Enter Arg 1}
       Fptr (addr  2):
-        <({PushV FramePtr, Return},FrameInt 1)>
+        <({PushMarker 1, Enter Arg 1},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)>
       
       Null Dptr
       
@@ -218,9 +331,7 @@ State transitions
         []
       
       Cont stack:
-        [({Switch <0> -> {..}
-                  <1> -> {..}
-                  },FrameAddr 1)
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
          ({},FrameNull)]
       
       VStack:[]
@@ -228,104 +339,2862 @@ State transitions
       Dump:
         []
       
-   8) Code:  {Switch <0> -> {..}
-                     <1> -> {..}
-                     }
-      Fptr (addr  1):
-        <({},FrameNull)
+  10) Code:  {PushMarker 1, Enter Arg 1}
+      Fptr (addr  2):
+        <({PushMarker 1, Enter Arg 1},FrameAddr 1)
+         ({},FrameNull)
          ({},FrameNull)>
       
-      Dptr (addr  2):
-        <({PushV FramePtr, Return},FrameInt 1)>
+      Null Dptr
       
       Arg stack:
         []
       
       Cont stack:
-        [({},FrameNull)]
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  11) Code:  {Enter Arg 1}
+      Fptr (addr  2):
+        <({PushMarker 1, Enter Arg 1},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 2, 1)]
+      
+  12) Code:  {PushMarker 1, Enter Arg 1}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 2, 1)]
+      
+  13) Code:  {Enter Arg 1}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  14) Code:  {PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  15) Code:  {Move 2 Code {..}, Push PArg Code {..}, Move 3 Code {..}, ..}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  16) Code:  {Push PArg Code {..}, Move 3 Code {..}, Push PArg Code {..}, ..}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  17) Code:  {Move 3 Code {..}, Push PArg Code {..}, Enter Label "append"}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        [({Enter Arg 2},FrameAddr 1)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  18) Code:  {Push PArg Code {..}, Enter Label "append"}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        [({Enter Arg 2},FrameAddr 1)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  19) Code:  {Enter Label "append"}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        [({Enter Arg 3},FrameAddr 1)
+         ({Enter Arg 2},FrameAddr 1)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  20) Code:  {UpdateMarkers 2, Take (5,2), Push PCont Code {..}, ..}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        [({Enter Arg 3},FrameAddr 1)
+         ({Enter Arg 2},FrameAddr 1)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  21) Code:  {Take (5,2), Push PCont Code {..}, PushMarker 1, ..}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        [({Enter Arg 3},FrameAddr 1)
+         ({Enter Arg 2},FrameAddr 1)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  22) Code:  {Push PCont Code {..}, PushMarker 1, Enter Arg 1}
+      Fptr (addr  3):
+        <({Enter Arg 3},FrameAddr 1)
+         ({Enter Arg 2},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  23) Code:  {PushMarker 1, Enter Arg 1}
+      Fptr (addr  3):
+        <({Enter Arg 3},FrameAddr 1)
+         ({Enter Arg 2},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 3)]
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  24) Code:  {Enter Arg 1}
+      Fptr (addr  3):
+        <({Enter Arg 3},FrameAddr 1)
+         ({Enter Arg 2},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 3, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  25) Code:  {Enter Arg 3}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 3, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  26) Code:  {PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 3, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  27) Code:  {Push PArg Label "nil", Push PArg IntConst 1, Enter Label "cons"}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 3)
+         (FrameAddr 3, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  28) Code:  {Push PArg IntConst 1, Enter Label "cons"}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        [({ReturnConstr 1},FrameAddr 1)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 3)
+         (FrameAddr 3, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  29) Code:  {Enter Label "cons"}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        [({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 3)
+         (FrameAddr 3, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  30) Code:  {UpdateMarkers 2, Take (2,2), ReturnConstr 2}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        [({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 3)
+         (FrameAddr 3, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  31) Code:  {Take (2,2), ReturnConstr 2}
+      Fptr (addr  1):
+        <({PushMarker 1, Move 2 Code {..}, Push PArg Code {..}, ..},FrameAddr 1)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({PushMarker 3, Push PArg Label "nil", Push PArg IntConst 1, ..},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        [({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 3)
+         (FrameAddr 3, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  32) Code:  {ReturnConstr 2}
+      Fptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 3)
+         (FrameAddr 3, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  33) Code:  {ReturnConstr 2}
+      Fptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 3, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  34) Code:  {ReturnConstr 2}
+      Fptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Null Dptr
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 3)]
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  35) Code:  {Switch <1> -> {..}
+                     <2> -> {..}
+                     }
+      Fptr (addr  3):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 2},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[2]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  36) Code:  {Move 3 Data 1, Move 4 Data 2, Move 5 Code {..}, ..}
+      Fptr (addr  3):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 2},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  37) Code:  {Move 4 Data 2, Move 5 Code {..}, Push PArg Code {..}, ..}
+      Fptr (addr  3):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 2},FrameAddr 1)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  38) Code:  {Move 5 Code {..}, Push PArg Code {..}, Push PArg Arg 1, ..}
+      Fptr (addr  3):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 2},FrameAddr 1)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  39) Code:  {Push PArg Code {..}, Push PArg Arg 1, Enter Label "cons"}
+      Fptr (addr  3):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 2},FrameAddr 1)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)
+         ({PushMarker 5, Push PArg Code {..}, Push PArg Arg 2, ..},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  40) Code:  {Push PArg Arg 1, Enter Label "cons"}
+      Fptr (addr  3):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 2},FrameAddr 1)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)
+         ({PushMarker 5, Push PArg Code {..}, Push PArg Arg 2, ..},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({Enter Arg 5},FrameAddr 3)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  41) Code:  {Enter Label "cons"}
+      Fptr (addr  3):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 2},FrameAddr 1)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)
+         ({PushMarker 5, Push PArg Code {..}, Push PArg Arg 2, ..},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  42) Code:  {UpdateMarkers 2, Take (2,2), ReturnConstr 2}
+      Fptr (addr  3):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 2},FrameAddr 1)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)
+         ({PushMarker 5, Push PArg Code {..}, Push PArg Arg 2, ..},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  43) Code:  {Take (2,2), ReturnConstr 2}
+      Fptr (addr  3):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 2},FrameAddr 1)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)
+         ({PushMarker 5, Push PArg Code {..}, Push PArg Arg 2, ..},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)]
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  44) Code:  {ReturnConstr 2}
+      Fptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  45) Code:  {ReturnConstr 2}
+      Fptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 2, 1)]
+      
+  46) Code:  {ReturnConstr 2}
+      Fptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 2, 1)]
+      
+  47) Code:  {ReturnConstr 2}
+      Fptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  48) Code:  {Switch <1> -> {..}
+                     <2> -> {..}
+                     }
+      Fptr (addr  2):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  49) Code:  {Move 2 Data 1, Move 3 Data 2, Push PCont Code {..}, ..}
+      Fptr (addr  2):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  50) Code:  {Move 3 Data 2, Push PCont Code {..}, Push PArg Arg 2, ..}
+      Fptr (addr  2):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  51) Code:  {Push PCont Code {..}, Push PArg Arg 2, Enter Label "length"}
+      Fptr (addr  2):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  52) Code:  {Push PArg Arg 2, Enter Label "length"}
+      Fptr (addr  2):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  53) Code:  {Enter Label "length"}
+      Fptr (addr  2):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        [({ReturnConstr 2},FrameAddr 4)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  54) Code:  {UpdateMarkers 1, Take (3,1), Push PCont Code {..}, ..}
+      Fptr (addr  2):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        [({ReturnConstr 2},FrameAddr 4)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  55) Code:  {Take (3,1), Push PCont Code {..}, PushMarker 1, ..}
+      Fptr (addr  2):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        [({ReturnConstr 2},FrameAddr 4)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  56) Code:  {Push PCont Code {..}, PushMarker 1, Enter Arg 1}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  57) Code:  {PushMarker 1, Enter Arg 1}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  58) Code:  {Enter Arg 1}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 6, 1)]
+      
+  59) Code:  {ReturnConstr 2}
+      Fptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 6, 1)]
+      
+  60) Code:  {ReturnConstr 2}
+      Fptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  61) Code:  {Switch <1> -> {..}
+                     <2> -> {..}
+                     }
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  62) Code:  {Move 2 Data 1, Move 3 Data 2, Push PCont Code {..}, ..}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  63) Code:  {Move 3 Data 2, Push PCont Code {..}, Push PArg Arg 2, ..}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  64) Code:  {Push PCont Code {..}, Push PArg Arg 2, Enter Label "length"}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  65) Code:  {Push PArg Arg 2, Enter Label "length"}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  66) Code:  {Enter Label "length"}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({PushV FramePtr, Return},FrameInt 1)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  67) Code:  {UpdateMarkers 1, Take (3,1), Push PCont Code {..}, ..}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({PushV FramePtr, Return},FrameInt 1)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  68) Code:  {Take (3,1), Push PCont Code {..}, PushMarker 1, ..}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({PushV FramePtr, Return},FrameInt 1)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  69) Code:  {Push PCont Code {..}, PushMarker 1, Enter Arg 1}
+      Fptr (addr  7):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  70) Code:  {PushMarker 1, Enter Arg 1}
+      Fptr (addr  7):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 7)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  71) Code:  {Enter Arg 1}
+      Fptr (addr  7):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 7, 1)]
+      
+  72) Code:  {PushV FramePtr, Return}
+      Frame ptr (int): 1
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[]
+      
+      Dump:
+        [(FrameAddr 7, 1)]
+      
+  73) Code:  {Return}
+      Frame ptr (int): 1
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[1]
+      
+      Dump:
+        [(FrameAddr 7, 1)]
+      
+  74) Code:  {Return}
+      Frame ptr (int): 1
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 7)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[1]
+      
+      Dump:
+        []
+      
+  75) Code:  {Switch <1> -> {..}
+                     <2> -> {..}
+                     }
+      Fptr (addr  7):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[1]
+      
+      Dump:
+        []
+      
+  76) Code:  {PushV (IntVConst 0), Return}
+      Fptr (addr  7):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[]
+      
+      Dump:
+        []
+      
+  77) Code:  {Return}
+      Fptr (addr  7):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 6)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
       
       VStack:[0]
       
       Dump:
         []
       
-   9) Code:  {Move 1 Data 1, Enter Arg 1}
-      Fptr (addr  1):
-        <({},FrameNull)
-         ({},FrameNull)>
+  78) Code:  {PushV (IntVConst 1), Op Add, Return}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
       
-      Dptr (addr  2):
-        <({PushV FramePtr, Return},FrameInt 1)>
-      
-      Arg stack:
-        []
-      
-      Cont stack:
-        [({},FrameNull)]
-      
-      VStack:[]
-      
-      Dump:
-        []
-      
-  10) Code:  {Enter Arg 1}
-      Fptr (addr  1):
+      Dptr (addr  4):
         <({PushV FramePtr, Return},FrameInt 1)
-         ({},FrameNull)>
-      
-      Dptr (addr  2):
-        <({PushV FramePtr, Return},FrameInt 1)>
+         ({ReturnConstr 1},FrameAddr 1)>
       
       Arg stack:
         []
       
       Cont stack:
-        [({},FrameNull)]
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
       
-      VStack:[]
+      VStack:[0]
       
       Dump:
         []
       
-  11) Code:  {PushV FramePtr, Return}
-      Frame ptr (int): 1
+  79) Code:  {Op Add, Return}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
       
-      Dptr (addr  2):
-        <({PushV FramePtr, Return},FrameInt 1)>
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
       
       Arg stack:
         []
       
       Cont stack:
-        [({},FrameNull)]
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
       
-      VStack:[]
+      VStack:[1, 0]
       
       Dump:
         []
       
-  12) Code:  {Return}
-      Frame ptr (int): 1
+  80) Code:  {Return}
+      Fptr (addr  6):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
       
-      Dptr (addr  2):
-        <({PushV FramePtr, Return},FrameInt 1)>
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
       
       Arg stack:
         []
       
       Cont stack:
-        [({},FrameNull)]
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 2)
+         ({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
       
       VStack:[1]
       
       Dump:
         []
       
-  13) Code:  {}
+  81) Code:  {PushV (IntVConst 1), Op Add, Return}
+      Fptr (addr  2):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[1]
+      
+      Dump:
+        []
+      
+  82) Code:  {Op Add, Return}
+      Fptr (addr  2):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[1, 1]
+      
+      Dump:
+        []
+      
+  83) Code:  {Return}
+      Fptr (addr  2):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  84) Code:  {Push PCont Code {..}, Push PArg Code {..}, Enter Label "length"}
+      Fptr (addr  1):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({ReturnConstr 2},FrameAddr 4)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  85) Code:  {Push PArg Code {..}, Enter Label "length"}
+      Fptr (addr  1):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({ReturnConstr 2},FrameAddr 4)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  86) Code:  {Enter Label "length"}
+      Fptr (addr  1):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({ReturnConstr 2},FrameAddr 4)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({PushMarker 1, Enter Arg 1},FrameAddr 1)]
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  87) Code:  {UpdateMarkers 1, Take (3,1), Push PCont Code {..}, ..}
+      Fptr (addr  1):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({ReturnConstr 2},FrameAddr 4)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({PushMarker 1, Enter Arg 1},FrameAddr 1)]
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  88) Code:  {Take (3,1), Push PCont Code {..}, PushMarker 1, ..}
+      Fptr (addr  1):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({ReturnConstr 2},FrameAddr 4)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({PushMarker 1, Enter Arg 1},FrameAddr 1)]
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  89) Code:  {Push PCont Code {..}, PushMarker 1, Enter Arg 1}
+      Fptr (addr  8):
+        <({PushMarker 1, Enter Arg 1},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  90) Code:  {PushMarker 1, Enter Arg 1}
+      Fptr (addr  8):
+        <({PushMarker 1, Enter Arg 1},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  91) Code:  {Enter Arg 1}
+      Fptr (addr  8):
+        <({PushMarker 1, Enter Arg 1},FrameAddr 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[2]
+      
+      Dump:
+        [(FrameAddr 8, 1)]
+      
+  92) Code:  {PushMarker 1, Enter Arg 1}
+      Fptr (addr  1):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({ReturnConstr 2},FrameAddr 4)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[2]
+      
+      Dump:
+        [(FrameAddr 8, 1)]
+      
+  93) Code:  {Enter Arg 1}
+      Fptr (addr  1):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({ReturnConstr 2},FrameAddr 4)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[2]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 8, 1)]
+      
+  94) Code:  {ReturnConstr 2}
+      Fptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[2]
+      
+      Dump:
+        [(FrameAddr 1, 1)
+         (FrameAddr 8, 1)]
+      
+  95) Code:  {ReturnConstr 2}
+      Fptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[2]
+      
+      Dump:
+        [(FrameAddr 8, 1)]
+      
+  96) Code:  {ReturnConstr 2}
+      Fptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  97) Code:  {Switch <1> -> {..}
+                     <2> -> {..}
+                     }
+      Fptr (addr  8):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2, 2]
+      
+      Dump:
+        []
+      
+  98) Code:  {Move 2 Data 1, Move 3 Data 2, Push PCont Code {..}, ..}
+      Fptr (addr  8):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+  99) Code:  {Move 3 Data 2, Push PCont Code {..}, Push PArg Arg 2, ..}
+      Fptr (addr  8):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 100) Code:  {Push PCont Code {..}, Push PArg Arg 2, Enter Label "length"}
+      Fptr (addr  8):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 101) Code:  {Push PArg Arg 2, Enter Label "length"}
+      Fptr (addr  8):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 102) Code:  {Enter Label "length"}
+      Fptr (addr  8):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        [({ReturnConstr 2},FrameAddr 4)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 103) Code:  {UpdateMarkers 1, Take (3,1), Push PCont Code {..}, ..}
+      Fptr (addr  8):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        [({ReturnConstr 2},FrameAddr 4)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 104) Code:  {Take (3,1), Push PCont Code {..}, PushMarker 1, ..}
+      Fptr (addr  8):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        [({ReturnConstr 2},FrameAddr 4)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 105) Code:  {Push PCont Code {..}, PushMarker 1, Enter Arg 1}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 106) Code:  {PushMarker 1, Enter Arg 1}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 107) Code:  {Enter Arg 1}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[2]
+      
+      Dump:
+        [(FrameAddr 9, 1)]
+      
+ 108) Code:  {ReturnConstr 2}
+      Fptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[2]
+      
+      Dump:
+        [(FrameAddr 9, 1)]
+      
+ 109) Code:  {ReturnConstr 2}
+      Fptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  5):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 110) Code:  {Switch <1> -> {..}
+                     <2> -> {..}
+                     }
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2, 2]
+      
+      Dump:
+        []
+      
+ 111) Code:  {Move 2 Data 1, Move 3 Data 2, Push PCont Code {..}, ..}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 112) Code:  {Move 3 Data 2, Push PCont Code {..}, Push PArg Arg 2, ..}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 113) Code:  {Push PCont Code {..}, Push PArg Arg 2, Enter Label "length"}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 114) Code:  {Push PArg Arg 2, Enter Label "length"}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 115) Code:  {Enter Label "length"}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({PushV FramePtr, Return},FrameInt 1)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 116) Code:  {UpdateMarkers 1, Take (3,1), Push PCont Code {..}, ..}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({PushV FramePtr, Return},FrameInt 1)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 117) Code:  {Take (3,1), Push PCont Code {..}, PushMarker 1, ..}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        [({PushV FramePtr, Return},FrameInt 1)]
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 118) Code:  {Push PCont Code {..}, PushMarker 1, Enter Arg 1}
+      Fptr (addr 10):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 119) Code:  {PushMarker 1, Enter Arg 1}
+      Fptr (addr 10):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 10)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 120) Code:  {Enter Arg 1}
+      Fptr (addr 10):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[2]
+      
+      Dump:
+        [(FrameAddr 10, 1)]
+      
+ 121) Code:  {PushV FramePtr, Return}
+      Frame ptr (int): 1
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[2]
+      
+      Dump:
+        [(FrameAddr 10, 1)]
+      
+ 122) Code:  {Return}
+      Frame ptr (int): 1
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        []
+      
+      VStack:[1, 2]
+      
+      Dump:
+        [(FrameAddr 10, 1)]
+      
+ 123) Code:  {Return}
+      Frame ptr (int): 1
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Switch <1> -> {..}
+                  <2> -> {..}
+                  },FrameAddr 10)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[1, 2]
+      
+      Dump:
+        []
+      
+ 124) Code:  {Switch <1> -> {..}
+                     <2> -> {..}
+                     }
+      Fptr (addr 10):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[1, 2]
+      
+      Dump:
+        []
+      
+ 125) Code:  {PushV (IntVConst 0), Return}
+      Fptr (addr 10):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2]
+      
+      Dump:
+        []
+      
+ 126) Code:  {Return}
+      Fptr (addr 10):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({},FrameNull)
+         ({},FrameNull)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 9)
+         ({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[0, 2]
+      
+      Dump:
+        []
+      
+ 127) Code:  {PushV (IntVConst 1), Op Add, Return}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[0, 2]
+      
+      Dump:
+        []
+      
+ 128) Code:  {Op Add, Return}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[1, 0, 2]
+      
+      Dump:
+        []
+      
+ 129) Code:  {Return}
+      Fptr (addr  9):
+        <({ReturnConstr 2},FrameAddr 4)
+         ({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({PushV (IntVConst 1), Op Add, Return},FrameAddr 8)
+         ({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[1, 2]
+      
+      Dump:
+        []
+      
+ 130) Code:  {PushV (IntVConst 1), Op Add, Return}
+      Fptr (addr  8):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[1, 2]
+      
+      Dump:
+        []
+      
+ 131) Code:  {Op Add, Return}
+      Fptr (addr  8):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[1, 1, 2]
+      
+      Dump:
+        []
+      
+ 132) Code:  {Return}
+      Fptr (addr  8):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({ReturnConstr 2},FrameAddr 4)
+         ({Enter Arg 5},FrameAddr 3)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({Op Add, Return},FrameAddr 1)
+         ({},FrameNull)]
+      
+      VStack:[2, 2]
+      
+      Dump:
+        []
+      
+ 133) Code:  {Op Add, Return}
+      Fptr (addr  1):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({ReturnConstr 2},FrameAddr 4)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({},FrameNull)]
+      
+      VStack:[2, 2]
+      
+      Dump:
+        []
+      
+ 134) Code:  {Return}
+      Fptr (addr  1):
+        <({ReturnConstr 2},FrameAddr 5)
+         ({PushMarker 2, Push PArg Label "nil", Push PArg IntConst 2, ..},FrameAddr 1)
+         ({ReturnConstr 2},FrameAddr 4)>
+      
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
+      
+      Arg stack:
+        []
+      
+      Cont stack:
+        [({},FrameNull)]
+      
+      VStack:[4]
+      
+      Dump:
+        []
+      
+ 135) Code:  {}
       Null Fptr
       
-      Dptr (addr  2):
-        <({PushV FramePtr, Return},FrameInt 1)>
+      Dptr (addr  4):
+        <({PushV FramePtr, Return},FrameInt 1)
+         ({ReturnConstr 1},FrameAddr 1)>
       
       Arg stack:
         []
@@ -333,13 +3202,13 @@ State transitions
       Cont stack:
         []
       
-      VStack:[1]
+      VStack:[4]
       
       Dump:
         []
       
 
 
-Steps taken = 13
-Frames allocated =  2
-Total heap allocations = 1
+Steps taken = 135
+Frames allocated =  10
+Total heap allocations = 12

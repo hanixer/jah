@@ -155,7 +155,6 @@ let isArithmeticOp op = List.map fst arithmeticOps  |> List.contains op
 
 let isBCompilable = function
     | EAp (EAp (EVar op, _), _) -> isArithmeticOp op
-    | EAp (EAp (EAp (EVar "if", e1), e2), e3) -> true
     | ENum _ -> true
     | _ -> false
 
@@ -221,6 +220,8 @@ and compileR expr env d =
         let d', bodyInstrs = compileR body bodyEnv dn
         let moves = List.mapi (fun i am -> Move (d + i + 1, am)) ams
         d', List.append moves bodyInstrs
+    | EConstr (tag, 0) ->
+        d, [ReturnConstr tag]
     | EConstr (tag, arity) ->
         d, [ UpdateMarkers arity; Take (arity, arity); ReturnConstr tag ]
     | ECase (e, alters) ->
@@ -229,7 +230,6 @@ and compileR expr env d =
             max dAcc dNew, res
         let d1, compiledAlters = mapAccumul handleAlter d alters
         let d2, compiledE = compileR e env d1
-        printfn "Case d2 %d" d2
         d2, Push (PCont, (Code [Switch compiledAlters])) :: compiledE
     | _ -> failwith "compileR cannot compile this yet"
 
@@ -249,11 +249,6 @@ and compileB expr env d cont =
         let d1, cont2 = compileB e1 env d cont1
         let d2, instrs = compileB e2 env d cont2
         max d1 d2, instrs
-    | EAp (EAp (EAp (EVar "if", e1), e2), e3) ->
-        let d1, cont1 = compileB e2 env d cont
-        let d2, cont2 = compileB e3 env d1 cont
-        let cont3 = [ Cond (cont1, cont2) ]
-        compileB e1 env d2 cont3
     | ENum n ->
         d, (PushV (IntVConst n) :: cont)
     | _ ->
@@ -281,10 +276,13 @@ let compileSc env (name, args, body)  : Name * (Instruction list) =
 
 let extraPreludeDefs =
     [ "cons", [], EConstr (2, 2)
-      "nil", [], EConstr (1, 0) ]
+      "nil", [], EConstr (1, 0)
+      "true", [], EConstr (2, 0)
+      "false", [], EConstr (1, 0)
+      "if", ["cond"; "tbranch"; "fbranch"], (ECase (EVar "cond", [1, [], EVar "fbranch"; 2, [], EVar "tbranch"])) ]
 
 let compile program =
-    let scDefs = List.append preludeDefs program
+    let scDefs = List.concat [preludeDefs; extraPreludeDefs; program]
     let initialEnv : TimCompilerEnv = 
         [ for name, args, body in scDefs do yield name, Label name ]
         |> List.append <|
@@ -305,7 +303,7 @@ let compile program =
 
 let timFinal state = state.Instrs.IsEmpty
 
-let amToClosure am state (*am fptr heap cstore*) : Closure =
+let amToClosure am state : Closure =
     match am with
     | Arg n -> frameGet state.Heap state.Fptr n
     | Code il -> il, state.Fptr
@@ -364,7 +362,7 @@ let oper op state =
         | Sub -> (-)
         | Mul -> (*)
         | Div -> (/)
-        | Lt -> fun x y -> if x < y then 0 else 1
+        | Lt -> fun x y -> if x < y then 2 else 1
         | _-> (+)
     match state.VStack with
     | n1 :: n2 :: vstack ->
