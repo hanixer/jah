@@ -1,10 +1,10 @@
 #load "Language.fs"
 #load "Util.fs"
 #load "Tim.fs"
-#load "Tim1.fs"
-#load "Tim2.fs"
-#load "Tim_4_5_5.fs"
-#load "Tim_4_5_6.fs"
+// #load "Tim1.fs"
+// #load "Tim2.fs"
+// #load "Tim_4_5_5.fs"
+// #load "Tim_4_5_6.fs"
 
 open Language
 open Tim
@@ -125,4 +125,4 @@ let g src =
 
 // g lotsOfArgs
 
-g pairs
+g "main = case Pack{0,1} 1 of <0> x -> x; <1> i j -> i * j"

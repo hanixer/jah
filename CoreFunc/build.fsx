@@ -1,19 +1,11 @@
 // include Fake libs
 #r "./packages/FAKE/tools/FakeLib.dll"
-#r "packages/Fantomas/lib/FantomasLib.dll"
 
 open Fake
-open Fantomas.FakeHelpers
-open Fantomas.FormatConfig
 
 // Directories
 let buildDir  = "./build/"
 let deployDir = "./deploy/"
-let fantomasConfig =
-    { FormatConfig.Default with
-            PageWidth = 120
-            ReorderOpenDeclaration = true }
-
 
 // Filesets
 let appReferences  =
@@ -46,12 +38,6 @@ Target "Deploy" (fun _ ->
     !! (buildDir + "/**/*.*")
     -- "*.zip"
     |> Zip buildDir (deployDir + "ApplicationName." + version + ".zip")
-)
-
-Target "FormatCode" (fun _ ->
-    !! "src/**/*.fs"
-      |> formatCode fantomasConfig
-      |> Log "Formatted files: "
 )
 
 // Build order
