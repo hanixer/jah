@@ -170,6 +170,10 @@ main =
 let between = "
 between n m = if (n<m) (cons n (between (n+1) m)) nil ;
 main = between 1 4"
+let cafTesting = "
+x = 5 + 5 + 3;
+y = x + 6;
+main = cons (x + x) nil"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
@@ -177,4 +181,4 @@ let g src =
 
 // g lotsOfArgs
 
-g between
+g cafTesting

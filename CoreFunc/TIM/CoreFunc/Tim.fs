@@ -56,7 +56,7 @@ type Frame = Closure list
 
 type TimHeap = Heap<Frame>
 
-type CodeStore = (Name * (Instruction list)) list
+type CodeStore = Addr * Map<Name, int>
 
 type TimStats =
     { Steps : int
@@ -103,11 +103,22 @@ let frameUpdate heap fptr n closure =
     | _ ->
         failwith "FrameAddr is expected"
 
+let frameUpdateFptr heap fptr frame =   
+    match fptr with
+    | FrameAddr addr ->
+        heapUpdate heap addr frame
+    | _ -> failwith "FrameAddr is expected"
+
+let fptrToAddr = function
+    | FrameAddr addr -> addr
+    | _ -> failwith "FrameAddr is expected"
+
 let frameList (f : Frame) : Closure list = f
 
-let codeLookup (cstore : CodeStore) l =
-    match listTryFindFirst l cstore with
-    | Some (_, instrs) -> instrs
+let codeLookup heap ((globalFptr, cstore) : CodeStore) l =
+    match Map.tryFind l cstore with
+    | Some addr ->
+        frameGet heap (FrameAddr globalFptr) addr
     | None ->
         failwithf "Attemp to jump to unknown label %s" l
 
@@ -128,9 +139,6 @@ let intCode = [PushV FramePtr; Return]
 let mkEnter = function
     | Code i -> i
     | am -> [Enter am]
-
-let compiledPrimitives = 
-    [  ]
 
 let arithmeticOps = 
     [ "+", Add
@@ -244,8 +252,11 @@ and compileB expr env d cont =
         d1, (Push (PCont, Code cont) :: compiled)
 
 and compileU expr u env d =
-    let d1, instrs = compileR expr env d
-    d1, Code (PushMarker u :: instrs)
+    match expr with
+    | ENum n -> d, IntConst n
+    | _ ->
+        let d1, instrs = compileR expr env d
+        d1, Code (PushMarker u :: instrs)
 
 let extendEnvWithArgs env args : TimCompilerEnv =
     args 
@@ -280,19 +291,32 @@ let topCont =
                Enter (Arg 1) ] ]
     |> List.singleton
 
+let allocateInitialHeap (compiledCode : (Name * Instruction list) list) : (TimHeap * CodeStore) =
+    let n = List.length compiledCode
+    let heap, globalFptr = frameAlloc heapEmpty (List.replicate n ([], FrameNull)) 
+    let codeToClosure i (_, instrs) =
+        let normal = instrs, globalFptr
+        match instrs with
+        | Take (_, 0) :: _ | UpdateMarkers _ :: _ ->
+            normal
+        | _ ->
+            PushMarker (i + 1) :: instrs, globalFptr
+    let frame = List.mapi codeToClosure compiledCode
+    let heap = frameUpdateFptr heap globalFptr frame
+    let cstoreMap = List.mapi (fun i (name, _) -> name, i + 1) compiledCode |> Map.ofList
+    heap, (fptrToAddr globalFptr, cstoreMap)
+
 let compile program =
     let scDefs = List.concat [preludeDefs; extraPreludeDefs; program]
     let initialEnv : TimCompilerEnv = 
-        [ for name, args, body in scDefs do yield name, Label name ]
-        |> List.append <|
-        [ for name, code in compiledPrimitives do yield name, Label name ]
+        List.mapi (fun i (name, args, body) -> name, Label name) scDefs
     let compiledScDefs = List.map (compileSc initialEnv) scDefs
     let compiledCode =
         [ compiledScDefs
-          ["topCont", topCont]
-          compiledPrimitives ]
+          ["topCont", topCont] ]
         |> List.concat
-    let heap, frame = frameAlloc heapEmpty (List.replicate 2 ([], FrameNull))
+    let heap, codeStore = allocateInitialHeap compiledCode
+    let heap, frame = frameAlloc heap (List.replicate 2 ([], FrameNull))
     { Instrs = mkEnter (Label "main")
       Fptr = FrameNull 
       Dptr = FrameNull
@@ -301,7 +325,7 @@ let compile program =
       VStack = initialValueStack
       Dump = initialDump
       Heap = heap
-      CStore = compiledCode
+      CStore = codeStore
       Exception = None
       Output = ("", false)
       Stats = statInitial }
@@ -312,7 +336,7 @@ let amToClosure am state : Closure =
     match am with
     | Arg n -> frameGet state.Heap state.Fptr n
     | Code il -> il, state.Fptr
-    | Label l -> codeLookup state.CStore l, state.Fptr
+    | Label l -> codeLookup state.Heap state.CStore l
     | IntConst n -> intCode, FrameInt n
     | Data n -> frameGet state.Heap state.Dptr n
 
@@ -658,7 +682,13 @@ let showSc (name, il) =
           iStr "   "; showInstructions Full il; iNewline; iNewline ]
 
 let showScDefs state =
-    List.map showSc state.CStore
+    let globalAddr, store = state.CStore  
+    let names = store |> Map.toList |> List.map fst
+    let takeInstrs name =
+        let instrs = codeLookup state.Heap state.CStore name |> fst
+        name, instrs
+    
+    List.map (takeInstrs >> showSc) names
     |> iInterleave iNewline
 
 let showStats state =
