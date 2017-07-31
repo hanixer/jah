@@ -1,6 +1,6 @@
 #load "Language.fs"
 #load "Util.fs"
-#load "Gm.fs"
+#load "Pgm.fs"
 
 open Language
 open Pgm
@@ -54,6 +54,8 @@ main = length (cons 1 (cons 2 nil))"
 
 let g src =
     use f = System.IO.File.CreateText("output.txt")
-    runProg src |> fprintf f "%s"
+    // runProg src |> fprintf f "%s"
+    1
 
 g fib
+compileR 1 (EAp (EAp (EVar "par", EVar "I"), EAp(EVar "I", ENum 3))) ["I", 1]

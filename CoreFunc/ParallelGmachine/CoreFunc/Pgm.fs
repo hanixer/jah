@@ -30,6 +30,7 @@ type Instruction =
     | Get
     | Return
     | UpdateInt of int
+    | Par
 
 
 and GmCode = Instruction list
@@ -45,7 +46,7 @@ type Node =
 
 type GmHeap = Heap<Node>
 
-type GmStats = int
+type GmStats = int list
 
 type GmEnvironment = (Name * int) list
 
@@ -57,31 +58,83 @@ type GmOutput = char list
 
 type GmSparks = Addr list
 
-type PgmGlobalState =
-    { Output : GmOutput
-      Heap : GmHeap
-      Globals : GmGlobals
-      Sparks : GmSparks
-      Stats : GmStats }
-
 type GmClock = int
 
 type PgmLocalState = 
+    { PCode : GmCode
+      PStack : GmStack
+      PDump : GmDump
+      PVStack : GmVStack
+      PClock : GmClock }
+
+type PgmGlobalState = 
+    { POutput : GmOutput
+      PHeap : GmHeap
+      PGlobals : GmGlobals
+      PSparks : GmSparks
+      PStats : GmStats
+      PException : System.Exception option }
+
+type PgmState = PgmGlobalState * (PgmLocalState list)
+
+type GmState = // PgmGlobalState * PgmLocalState
     { Code : GmCode
       Stack : GmStack
       Dump : GmDump
       VStack : GmVStack
-      Clock : GmClock }
+      Clock : GmClock
+      Output : GmOutput
+      Heap : GmHeap
+      Globals : GmGlobals
+      Sparks : GmSparks
+      Stats : GmStats
+      Exception : System.Exception option }
 
-type GmState =
-    { GlobalState : PgmGlobalState
-      LocalState : PgmLocalState }
-
+let pgmOutput (glob : PgmGlobalState, _) = glob.POutput
+let pgmPutOutput output (glob, locs) : PgmState = { glob with POutput = output }, locs
+let pgmHeap (glob : PgmGlobalState, _) = glob.PHeap
+let pgmPutHeap heap (glob, locs) : PgmState = { glob with PHeap = heap }, locs
+let pgmGlobals (glob : PgmGlobalState, _) = glob.PGlobals
+let pgmPutGlobals globals (glob, locs) : PgmState = { glob with PGlobals = globals }, locs
+let pgmSparks (glob : PgmGlobalState, _) = glob.PSparks
+let pgmPutSparks sparks (glob, locs) : PgmState = { glob with PSparks = sparks}, locs
+let pgmStats (glob : PgmGlobalState, _) = glob.PStats
+let pgmPutStats stats (glob, locs) : PgmState = { glob with PStats = stats }, locs
+let pgmException (glob : PgmGlobalState, _) = glob.PException
+let pgmPutException exc (glob, locs) : PgmState = { glob with PException = exc }, locs
+let pgmLocals = snd
+let pgmPutLocals locals (glob, _) = glob, locals
+let pgmGlobal = fst
+let pgmPutGlobal g (_, l) = g, l
+(*
+let gmOutput (glob, _) = glob.Output
+let gmPutOutput output (glob, local) = { glob with Output = output }, local
+let gmHeap (glob, _) = glob.Heap
+let gmPutHeap heap (glob, local) = { glob with Heap = heap }, local
+let gmGlobals (glob, _) = glob.Globals
+let gmPutGlobals globals (glob, local) = { glob with Globals = globals }, local
+let gmSparks (glob, _) = glob.Sparks
+let gmPutSparks sparks (glob, local) = { glob with Sparks = sparks}, local
+let gmStats (glob, _) = glob.Stats
+let gmPutStats stats (glob, local) = { glob with Stats = stats }, local
+let gmException (glob, _) = glob.Exception
+let gmPutException exc (glob, local) = { glob with Exception = exc }, local
+let gmCode (_, local) = local.Code
+let gmPutCode code (glob, local) = glob, { local with Code = code }
+let gmStack (_, local) = local.Stack
+let gmPutStack stack (glob, local) = glob, { local with Stack = stack }
+let gmDump (_, local) = local.Dump
+let gmPutDump dump (glob, local) = glob, { local with Dump = dump }
+let gmVStack (_, local) = local.VStack
+let gmPutVStack vstack (glob, local) = glob, { local with VStack = vstack }
+let gmClock (_, local) = local.Clock
+let gmPutClock clock (glob, local) = glob, { local with Clock = clock }
+*)
 type CompiledSC = Name * int * GmCode
 type GmCompiler = CoreExpr -> GmEnvironment -> GmCode
 
-let emptyState = 
-    { Code = []; Heap = heapEmpty; Globals = []; Stack = []; Stats = 0; Dump = []; Output = []; Exception = None; VStack = [] }
+// let emptyState = 
+//     { Output = []; Heap = heapEmpty; Globals = []; Sparks = []; Stats = []; Code = None; Locals = [] }
 
 let statInitial = 0
 let statIncSteps s = s + 1
@@ -349,7 +402,7 @@ let allocateSc heap (name, nargs, is) =
     let heap', addr = heapAlloc heap (NGlobal (nargs, is))
     heap', (name, addr)
 
-let initialCode = [ Pushglobal "main"; Eval ]
+let initialCode = [ Eval; Print ]
 
 let argOffset n (env : GmEnvironment) =
     List.map (fun (name, m) -> (name, m + n)) env
@@ -541,6 +594,13 @@ let rec compileR d expr env =
         compLet compileC (compileR d') last defs body env
     | EAp (EAp (EAp (EVar "if", c), t), e) ->
         compileIf compileB (compileR d) c t e env
+    | EAp (EAp (EVar "par", e1), e2) ->
+        let n = List.length env
+        [ compileC e2 env
+          [Push 0; Par]
+          compileC e1 (argOffset 1 env)
+          [Mkap; Update n; Pop n; Unwind] ]
+        |> List.concat
     | ECase (condExpr, alts) ->
         let d' = d + List.length alts
         compileCase (compileR d') condExpr alts env
@@ -565,20 +625,25 @@ let buildInitialHeap program =
         |> List.map compileSc
     mapAccumul allocateSc heapEmpty compiled
 
-let compile program =
-    let heap, globals = buildInitialHeap program
-    { emptyState with
-        Code = initialCode
-        Heap = heap
-        Globals = globals
-        Stats = statInitial }
-
-
-let gmFinal (s : GmState) =
-    s.Code.IsEmpty && s.Dump.IsEmpty
-
 let tryFindGlobal s name =
     List.tryFind (fst >> ((=) name)) s.Globals
+
+let compile program =
+    let heap, globals = buildInitialHeap program
+    match listTryFindFirst "main" globals with
+    | Some (_, mainAddr) ->
+        { Code = initialCode
+          Stack = [mainAddr]
+          Dump = []
+          VStack = []
+          Clock = 0
+          Output = []
+          Heap = heap
+          Globals = globals
+          Sparks = []
+          Stats = []
+          Exception = None }
+    | None -> failwith "'main' undefined"
 
 let pushglobal f (s : GmState) =
     match tryFindGlobal s f with
@@ -798,6 +863,14 @@ let returnInstr state =
     | _ ->
         failwith "Expected nonempty dump"
 
+let par state =
+    match state.Stack with
+    | a :: stack ->
+        { state with    
+            Sparks = a :: state.Sparks
+            Stack = stack }
+    | _ -> failwith "par expecting nonempty stack"
+
 let dispatch (i : Instruction) =
     match i with
     | Pushglobal f -> pushglobal f
@@ -835,31 +908,80 @@ let dispatch (i : Instruction) =
     | Get -> get
     | Return -> returnInstr
     | UpdateInt n -> updateInt n
+    | Par -> par
 
-let step (s : GmState) = 
-    match s.Code with
-    | i :: is -> dispatch i { s with Code = is }
-    | _ -> failwith "expected nonempty code in step"
+let makeTask addr = { PCode = [Eval]; PStack = [addr]; PDump = []; PVStack = []; PClock = 0 }
 
-let doAdmin (s : GmState) =
-    { s with 
-        Stats = statIncSteps s.Stats}
+let tick (local : PgmLocalState) = { local with PClock = local.PClock + 1 }
+
+let globalLocalToGm (g : PgmGlobalState) (l : PgmLocalState) : GmState =
+    { Code = l.PCode
+      Stack = l.PStack
+      Dump = l.PDump
+      VStack = l.PVStack
+      Clock = l.PClock
+      Output = g.POutput
+      Heap = g.PHeap
+      Globals = g.PGlobals
+      Sparks = g.PSparks
+      Stats = g.PStats
+      Exception = g.PException }
+
+let gmToGlobalLocal (g : GmState) : PgmGlobalState * PgmLocalState =
+    let glob = 
+        { POutput = g.Output
+          PHeap = g.Heap
+          PGlobals = g.Globals
+          PSparks = g.Sparks
+          PStats = g.Stats
+          PException = g.Exception }
+    let local =
+        { PCode = g.Code
+          PStack = g.Stack
+          PDump = g.Dump
+          PVStack = g.VStack
+          PClock = g.Clock }
+    glob, local
+
+let step (glob : PgmGlobalState) (local : PgmLocalState) : PgmGlobalState * PgmLocalState =
+    match local.PCode with
+    | instr :: instrs ->
+        let gmState = globalLocalToGm glob local
+        let gmState1 = dispatch instr { gmState with Code = instrs }
+        gmToGlobalLocal gmState1
+    | _ -> failwith "step expects some code available"
+
+let steps (state : PgmState) : PgmState = 
+    let newTasks = List.map makeTask (pgmSparks state)
+    let locals = List.append (pgmLocals state) newTasks |> List.map tick
+    let glob = { (pgmGlobal state) with PSparks = [] }
+    mapAccumul step glob locals
+
+let doAdmin (s : PgmState) : PgmState =
+    let accumulate (local : PgmLocalState) (stats, locals) =
+        if local.PCode.IsEmpty then local.PClock :: stats, locals
+        else stats, local :: locals
+    let stats, locals = List.foldBack accumulate (snd s) (pgmStats s, [])
+    s
+    |> pgmPutStats stats
+    |> pgmPutLocals locals
 
 exception OverflowException
 
-let rec eval state =        
+let gmFinal (state : PgmState) =
+    (state |> snd |> List.isEmpty) && (state |> pgmSparks |> List.isEmpty)
+
+let rec eval (state : PgmState) : PgmState list =        
     let rec go state states =
         if gmFinal state then
             states
         else
             try
-                if state.Stats > 1000 then raise OverflowException
-                printfn "Step #%d" state.Stats                
-                let newState = state |> step |> doAdmin
+                let newState = state |> steps |> doAdmin
                 go newState (state :: states)
             with
             | e ->
-                { state with Exception = Some e } :: states
+                pgmPutException (Some e) state :: states
     go state [] |> List.rev        
 
-let runProg<'p> = parse >> compile >> eval >> showResults
+// let runProg<'p> = parse >> compile >> eval// >> showResults

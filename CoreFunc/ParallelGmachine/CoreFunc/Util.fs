@@ -28,3 +28,4 @@ let mapAccumul (f : 'acc -> 'a -> 'acc * 'b) (initialAcc : 'acc) (xs : 'a list) 
         let acc', y = f acc elt
         acc', y :: ys) (initialAcc, [])
 
+let listTryFindFirst x = List.tryFind (fst >> ((=) x))
