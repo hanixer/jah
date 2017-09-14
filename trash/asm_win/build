@@ -1,0 +1,3 @@
+vcvars32.bat
+nasm -fwin32 %1.asm
+link /subsystem:console /nodefaultlib /entry:main %1.obj 
