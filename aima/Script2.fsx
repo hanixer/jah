@@ -17,12 +17,59 @@ type Formula =
 type Parser<'r> = (char list -> ('r * char list) list)
 
 let isComplex = function
-    | Not _ | And _ | Or _ | Imp _ | Iff _ -> true
+    |  And _ | Or _ | Imp _ | Iff _ -> true
     | _ -> false
 
 let inline (!+) (str:string) = str.ToCharArray() |> List.ofArray
 let inline (~&) (str:string) = str.ToCharArray() |> List.ofArray
 let (~%) (chars:char list) = new System.String(Array.ofList chars)
+
+let shouldParen current parent =
+    match current, parent with
+    | _, Not _ when isComplex current -> true
+    | Or _, And _ -> true
+    | Imp _, And _ | Imp _, Or _ -> true
+    | Iff _, And _ | Iff _, Or _ | Iff _, Imp _ -> true
+    | _ -> false
+
+let rec toString fm =
+    printfn "toString:"
+    let acc = new System.Text.StringBuilder()
+    printfn "%A" acc
+    let add (s : string) = ignore(acc.Append(s))
+
+    printfn "%A" acc
+    let rec go fm paren  =
+        printfn "go: %A %A" fm paren
+        if paren then ignore (acc.Append("("))
+        match fm with
+        | True -> add "true"
+        | False -> add "false"
+        | Symbol s -> add s
+        | Not fm1 -> 
+            add "~"
+            go fm1 (shouldParen fm1 fm)
+        | And fms-> goComplex "&" fms
+        | Or fms -> goComplex "|" fms
+        | Imp fms -> goComplex "=>" fms
+        | Iff fms -> goComplex "<=>" fms
+        | _ -> ()
+        if paren then add(")")
+
+    and goComplex op fms =
+        match  fms with
+        | fm1 :: fms ->
+            go fm1 (shouldParen fm1 fm)
+            List.iter (fun fm2 ->
+                add (" " + op + " ")
+                go fm2 (shouldParen fm2 fm)) fms
+        | _ -> ()
+
+    go fm false
+    acc.ToString()
+
+toString (Not (And [Not True; False]))
+
 (*
 let rec toString fm =
     let rec go current parent 
@@ -282,15 +329,22 @@ let rec distributeAndOverOr fm =
     match fm with
     | Or fms ->
         let fms = List.map distributeAndOverOr fms
-        combinations fms |> And
+        let combs = combinations fms
+        if combs.Length > 1 then And combs
+        else combs.Head
     | _ -> transformChildren distributeAndOverOr fm
 
+let rec unwrap fm =
+    1
 
 let toCnf s =
     logic s
     |> eliminateImplications
     |> moveNotInwards
     |> distributeAndOverOr
+    |> (fun x ->
+        printfn "toCnf: %A" x
+        x)
 
 let t() = 
     let kb = makeKb()
@@ -314,3 +368,22 @@ moveNotInwards (logic "~~~~~~a")
 
 combinations [Symbol "a"; And [Symbol "b"; Symbol "c"]]
 distributeAndOverOr (logic "A | B & C")
+distributeAndOverOr (logic "~(A & B)")
+
+toString (toCnf "A&(B&(C&D))")
+toString(toCnf("A <=> B"))
+toString(toCnf("~~A <=> B"))
+toString(toCnf("~~~A <=> B"))
+toString(toCnf("~~~~A <=> B"))
+toString(toCnf("~(A & B)"))
+toString(toCnf("~(A | B)"))
+toString(toCnf("B11 <=> P12 | P21"))
+(*
+assert toString(toCnf('A <=> B')) == '((A | ~B) & (B | ~A))'
+assert toString(toCnf("B <=> (P1 | P2)")) == '((~P1 | B) & (~P2 | B) & (P1 | P2 | ~B))'
+assert toString(toCnf('A <=> (B & C)')) == '((A | ~B | ~C) & (B | ~A) & (C | ~A))'
+assert toString(toCnf("a | (b & c) | d")) == '((b | a | d) & (c | a | d))'
+assert toString(toCnf("A & (B | (D & E))")) == '(A & (D | B) & (E | B))'
+assert toString(toCnf("A | (B | (C | (D & E)))")) == '((D | A | B | C) & (E | A | B | C))'
+assert toString(toCnf('(A <=> ~B) ==> (C | ~D)')) == '((B | ~A | C | ~D) & (A | ~A | C | ~D) & (B | ~B | C | ~D) & (A | ~B | C | ~D))'
+*)
