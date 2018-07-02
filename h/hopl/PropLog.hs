@@ -6,7 +6,6 @@ import Control.Applicative ((<|>))
 import Data.List (lookup, sort, nub, transpose)
 import Text.Printf
 import Control.Monad (forM_)
-import Text.PrettyPrint.Boxes
 
 data Formula a = 
     FmTrue
@@ -172,5 +171,5 @@ nnf (Not (Imp p q)) = And (nnf p) (nnf (Not q))
 nnf (Not (Iff p q)) = Or (And (nnf p) (nnf (Not q))) (And (nnf (Not p)) (nnf q))
 nnf fm = fm
 
-printTable :: [[String]] -> IO ()
-printTable rows = printBox $ hsep 2 left (map (vcat left . map text) (transpose rows))
+-- printTable :: [[String]] -> IO ()
+-- printTable rows = printBox $ hsep 2 left (map (vcat left . map text) (transpose rows))
