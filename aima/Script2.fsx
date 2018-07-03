@@ -1,15 +1,13 @@
 // Parsing
 
+type ComplexOp = And | Or | Imp | Iff
 
 type Formula =
     | True
     | False
     | Symbol of string
     | Not of Formula
-    | And of Formula list
-    | Or of Formula list
-    | Imp of Formula list
-    | Iff of Formula list
+    | Complex of ComplexOp * Formula list
     | Forall of Formula * Formula
     | Exists of Formula * Formula
     | Pred of string * Formula list
@@ -17,7 +15,7 @@ type Formula =
 type Parser<'r> = (char list -> ('r * char list) list)
 
 let isComplex = function
-    |  And _ | Or _ | Imp _ | Iff _ -> true
+    | Complex _ -> true
     | _ -> false
 
 let inline (!+) (str:string) = str.ToCharArray() |> List.ofArray
@@ -27,20 +25,23 @@ let (~%) (chars:char list) = new System.String(Array.ofList chars)
 let shouldParen current parent =
     match current, parent with
     | _, Not _ when isComplex current -> true
-    | Or _, And _ -> true
-    | Imp _, And _ | Imp _, Or _ -> true
-    | Iff _, And _ | Iff _, Or _ | Iff _, Imp _ -> true
+    | Complex (cOp,_), Complex (pOp, _) ->
+        match cOp, pOp with
+        | Or, And -> true
+        | Imp, And | Imp, Or -> true
+        | Iff, And | Iff, Or | Iff, Imp -> true
+        | _ -> false
     | _ -> false
 
 let rec toString fm =
-    printfn "toString:"
     let acc = new System.Text.StringBuilder()
-    printfn "%A" acc
     let add (s : string) = ignore(acc.Append(s))
-
-    printfn "%A" acc
+    let complexOpToStr = function
+        | And -> "&"    
+        | Or  ->  "|" 
+        | Imp  ->  "=>" 
+        | Iff  ->  "<=>" 
     let rec go fm paren  =
-        printfn "go: %A %A" fm paren
         if paren then ignore (acc.Append("("))
         match fm with
         | True -> add "true"
@@ -49,10 +50,8 @@ let rec toString fm =
         | Not fm1 -> 
             add "~"
             go fm1 (shouldParen fm1 fm)
-        | And fms-> goComplex "&" fms
-        | Or fms -> goComplex "|" fms
-        | Imp fms -> goComplex "=>" fms
-        | Iff fms -> goComplex "<=>" fms
+        | Complex (op, fms) ->
+            goComplex (complexOpToStr op) fms
         | _ -> ()
         if paren then add(")")
 
@@ -68,17 +67,10 @@ let rec toString fm =
     go fm false
     acc.ToString()
 
-toString (Not (And [Not True; False]))
+let printFm name fm = printfn "%s: %A" name (toString fm)
+let printAndReturn name fm = printfn "%s: %A" name (toString fm) ; fm
 
-(*
-let rec toString fm =
-    let rec go current parent 
-        let shouldParen =
-            match current, parent with
-            | And _, Some (And _) -> false
-            | And _, Some (Not _) -> false
-            | And _, Some p when isComplex p -> true
-*)
+
 let parse p = p
 
 let parsestr p str = parse p [for c in str -> c]
@@ -166,7 +158,7 @@ let pAlternatives = function
 
 let pBinary pExpr pPrim ops construct =
     let pOps = List.map pLiteral ops
-    pChain2 (pPrim pExpr) (pAlternatives pOps) construct
+    pChain2 (pPrim pExpr) (pAlternatives pOps) (fun fms -> Complex (construct, fms))
 
 let pAnd pExpr =
     pBinary pExpr pPrim ["&"; "^"; "and"] And
@@ -197,7 +189,7 @@ let rec overSymbols f a b =
     match a with
     | Symbol a -> f a b
     | Not fm -> overSymbols f fm b
-    | And fms | Or fms | Imp fms | Iff fms -> List.fold (fun s x -> overSymbols f x s) b fms
+    | Complex (_, fms) -> List.fold (fun s x -> overSymbols f x s) b fms
     | _ -> b
 
 let propSymbolsIn fm = overSymbols (fun x xs -> x::xs) fm []
@@ -221,10 +213,10 @@ let rec evalTruth fm env =
         match List.tryFind ((fst >> ((=) s))) env with
         | Some (_, v) -> v
         | _ -> failwithf "Symbol '%s' not found" s
-    | And fms -> List.forall (fun fm -> evalTruth fm env) fms
-    | Or fms -> List.exists (fun fm -> evalTruth fm env) fms
-    | Imp (fm1::fm2::_) -> not (evalTruth fm1 env) || evalTruth fm2 env
-    | Iff (fm1::fm2::_) -> evalTruth fm1 env = evalTruth fm2 env
+    | Complex (And, fms) -> List.forall (fun fm -> evalTruth fm env) fms
+    | Complex (Or, fms) -> List.exists (fun fm -> evalTruth fm env) fms
+    | Complex (Imp, (fm1::fm2::_)) -> not (evalTruth fm1 env) || evalTruth fm2 env
+    | Complex (Iff, (fm1::fm2::_)) -> evalTruth fm1 env = evalTruth fm2 env
     | _ -> failwithf "Not implemented: %A" fm
 
 let validity fm = 
@@ -240,111 +232,216 @@ type Kb = System.Collections.Generic.List<Formula>
 
 let makeKb () = new System.Collections.Generic.List<Formula>()
 let kbToFormula (kb : Kb) =
-    let mutable fm = []
+    let mutable fms = []
     for fm1 in kb do
-        fm <- fm1::fm
-    And fm
+        fms <- fm1::fms
+    Complex (And, fms)
 
 let tell (kb : Kb) s = 
     kb.Add(logic s)
-    printfn "tell: %s === %A" s (kbToFormula kb)
-
-let askEach kb query fn =
-    if validity (Imp [kbToFormula kb; logic query]) = Valid then
-        fn 1
 
 let ask (kb : Kb) query =
-    printfn "ask: %s" query
-    validity (Imp [kbToFormula kb; logic query]) = Valid
+    validity (Complex (Imp, [kbToFormula kb; logic query])) = Valid
 
 let rec transform f fm = 
-    printfn "transform: %A" fm
     let g = f >> transform f
     match fm with
     | Not fm -> g fm |> Not
-    | And fms -> List.map g fms |> And 
-    | Or fms -> List.map g fms |> Or
-    | Imp fms -> List.map g fms |> Imp
-    | Iff fms -> List.map g fms |> Iff
+    | Complex (op, fms) -> Complex (op, List.map g fms)
     | True | False | Symbol _ -> f fm
     | _ -> f fm
 
 let rec children fm =
     match fm with
-    | And fms | Or fms | Imp fms | Iff fms -> fms
+    | Complex (_, fms) -> fms
     | Not fms -> [fms]
     | _ -> []
 
 let rec transformChildren f fm =
     match fm with
-    | And fms -> List.map f fms |> And
-    | Or fms -> List.map f fms |> Or
-    | Imp fms -> List.map f fms |> Imp
-    | Iff fms -> List.map f fms |> Iff
+    | Complex (op, fms) -> Complex (op, List.map f fms)
     | Not fm -> f fm |> Not
     | _ -> fm
 
 let rec eliminateImplications fm =
     let chn = children fm |> List.map eliminateImplications
     match fm with
-    | Imp _ -> 
+    | Complex (Imp, _) ->
         let a = List.item 0 chn
         let b = List.item 1 chn
-        Or [Not a; b]
-    | Iff _ ->
+        Complex (Or, [Not a; b])
+    | Complex (Iff, _) ->
         let a = List.item 0 chn
         let b = List.item 1 chn
-        And [Or [Not a; b]; Or [Not b; a]]
-    | And _ -> And chn
-    | Or _ -> Or chn
+        Complex (And, [Complex (Or, [Not a; b]); Complex (Or, [Not b; a])])
+    | Complex (op, _) -> Complex (op, chn)
+    | Not fm1 -> eliminateImplications fm1 |> Not
     | _ -> fm
+    |> printAndReturn "eliminate"
 
-let rec moveNotInwards fm = 
-    let chn = children fm
+let rec moveNotInwards fm =
+    printFm "->moveNotInwards" fm
+    let flipNot = function
+        | (Not a) -> a
+        | a -> Not a
     match fm with
     | Not (Not a) -> moveNotInwards a
-    | Not (And fms) ->
-        List.map Not fms |> Or
-    | Not (Or fms) ->
-        List.map Not fms |> And
+    | Not (Complex (And, fms)) ->
+        let fms = List.map (flipNot >> moveNotInwards) fms
+        Complex (Or, fms)
+    | Not (Complex (Or, fms)) ->
+        let fms = List.map (flipNot >> moveNotInwards) fms
+        Complex (And, fms)
     | _ -> transformChildren moveNotInwards fm
+    |> printAndReturn "<-moveNotInwards"
 
 let combinations orClauses =
     let folder acc el =
         [ for a in acc do
             match el with
-            | And fms -> 
+            | Complex (And, fms) -> 
                 for b in fms do
                    yield (b::a)
             | _ -> yield (el::a) ]
     let listToFormula = function
         | [a] -> a
-        | x::xs -> Or (x::xs)
+        | x::xs -> Complex (Or, (x::xs))
         | _ -> failwith "combinations: cannot be empty list"
     List.fold folder [[]] orClauses
     |> List.map (List.rev >> listToFormula)
 
 let rec distributeAndOverOr fm =
-    printfn "distribute: %A" fm
+    printFm "->distribute" fm
     match fm with
-    | Or fms ->
+    | Complex(Or, fms) ->
         let fms = List.map distributeAndOverOr fms
         let combs = combinations fms
-        if combs.Length > 1 then And combs
+        if combs.Length > 1 then Complex (And, combs)
         else combs.Head
     | _ -> transformChildren distributeAndOverOr fm
+    |> printAndReturn "<-distribute"
 
 let rec unwrap fm =
-    1
+    printFm "unwrap" fm
+    match fm with
+    | Complex (op, fms) ->
+        let fms = List.map unwrap fms
+        let mapping fm1 =
+            match fm1 with
+            | Complex (op1, fms1) when op = op1 -> fms1
+            | _ -> [fm1]
+        Complex (op, List.collect mapping fms)
+    | Not fm -> unwrap fm |> Not
+    | _ -> fm
+    |> printAndReturn "unwrap"
+
+let formulaToCnf fm =
+    fm
+    |> eliminateImplications
+    |> moveNotInwards
+    |> distributeAndOverOr
+    |> unwrap
 
 let toCnf s =
     logic s
     |> eliminateImplications
     |> moveNotInwards
     |> distributeAndOverOr
-    |> (fun x ->
-        printfn "toCnf: %A" x
-        x)
+    |> unwrap
+
+type Literal = { Name : string; IsComplement : bool }
+
+type Clause = Set<Literal>
+
+type Clauses = Set<Clause>
+
+let toLiteral = function
+    | Symbol s -> 
+        { Name = s; IsComplement = false }
+    | Not (Symbol s) -> 
+        { Name = s; IsComplement = true }
+    | _ -> failwith "Literal is expected"
+let toClause fm = 
+    match fm with
+    | Complex (Or, fms) ->
+        List.map toLiteral fms
+        |> Set.ofList
+    | Symbol _ | Not (Symbol _) -> 
+        toLiteral fm |> Set.singleton
+    | _ -> failwith "Clause expected"
+let cnfToClauses fm : Clauses =
+    match fm with
+    | Complex (And, fms) ->
+        List.map toClause fms
+        |> Set.ofList
+    | _ -> failwith "CNF formula is expected"
+
+let isEqual a b =
+    Complex (Iff, [a; b]) |> validity = Valid
+
+let removeElem xs x =
+    List.filter ((<>) x) xs
+
+let plResolve c1 c2 =
+    [ for e1 in c1 do
+        for e2 in c2 do
+            if isEqual (Not e1) e2 then
+                yield removeElem c1 e1 
+                |>List.append<| 
+                removeElem c2 e2 
+                |> List.distinct ]
+
+let isComplement (l1 : Literal) (l2 : Literal) =
+    l1.Name = l2.Name && l1.IsComplement <> l2.IsComplement
+    |> (fun x -> printfn "isComplement: %A %A -> %A" l1 l2 x ; x)
+
+let mergeClauses (c1 : Clause) (l1 : Literal) c2 l2 =
+    let c1 = Set.remove l1 c1 |> (fun x -> printfn "mergeClauses1: %A" x; x)
+    let c2 = Set.remove l2 c2 |> (fun x -> printfn "mergeClauses2: %A" x; x)
+
+    Set.union c1 c2
+    |> (fun x -> printfn "mergeClauses: %A" x; x)
+
+let plResolve2 c1 c2 : Clauses =
+    seq {
+        for l1 in c1 do
+            for l2 in c2 do
+                if isComplement l1 l2 then
+                    yield mergeClauses c1 l1 c2 l2
+    }
+    |> Set.ofSeq
+
+let clausesCombinations (clauses : Clauses) =
+    [ for c1 in clauses do
+        for c2 in clauses.Remove(c1) do
+            yield (c1, c2) ]
+
+let plResolution kb a =
+    let kb = kbToFormula kb
+    
+    let forClauses clausesComb newClauses =
+        match clausesComb with
+        | (c1, c2) :: rest ->
+            let resolvents = plResolve2 c1 c2
+            if resolvents.IsEmpty then true
+            else failwith ""
+            None
+        | _ -> Some newClauses
+        
+    let clauses = (Complex (And, [kb; Not a])) |> formulaToCnf |> cnfToClauses
+    1
+
+
+
+///////////////////////////////////////////////////////////
+/// Testing
+///////////////////////////////////////////////////////////
+let vvv = function
+    | (Complex (Or, fms)) -> fms
+    | a -> [a]
+plResolve (vvv (logic "~P21|B11")) (vvv (logic ("~B11|P12|P21"))) |> List.map (List.map toString)
+plResolve (vvv (logic "P11|P31")) (vvv (logic ("~P11|P22"))) |> List.map (List.map toString)
+plResolve (vvv (logic "P11")) (vvv (logic ("~P11"))) |> List.map (List.map toString)
 
 let t() = 
     let kb = makeKb()
@@ -362,28 +459,20 @@ let t() =
     ((tell kb "ToBe and ~ToBe"))
     ((ask kb "SillyQuestion") )
 
-let e = eliminateImplications (logic "b11<=>(p12|p21)")
-moveNotInwards e
-moveNotInwards (logic "~~~~~~a")
+let testIt given expected =
+    let v = given |> toCnf |> toString
+    if not (v = expected) then
+        failwithf "Expected: \n\t'%s'\nbut was\n\t'%s'" expected v
 
-combinations [Symbol "a"; And [Symbol "b"; Symbol "c"]]
-distributeAndOverOr (logic "A | B & C")
-distributeAndOverOr (logic "~(A & B)")
 
-toString (toCnf "A&(B&(C&D))")
-toString(toCnf("A <=> B"))
-toString(toCnf("~~A <=> B"))
-toString(toCnf("~~~A <=> B"))
-toString(toCnf("~~~~A <=> B"))
-toString(toCnf("~(A & B)"))
-toString(toCnf("~(A | B)"))
-toString(toCnf("B11 <=> P12 | P21"))
-(*
-assert toString(toCnf('A <=> B')) == '((A | ~B) & (B | ~A))'
-assert toString(toCnf("B <=> (P1 | P2)")) == '((~P1 | B) & (~P2 | B) & (P1 | P2 | ~B))'
-assert toString(toCnf('A <=> (B & C)')) == '((A | ~B | ~C) & (B | ~A) & (C | ~A))'
-assert toString(toCnf("a | (b & c) | d")) == '((b | a | d) & (c | a | d))'
-assert toString(toCnf("A & (B | (D & E))")) == '(A & (D | B) & (E | B))'
-assert toString(toCnf("A | (B | (C | (D & E)))")) == '((D | A | B | C) & (E | A | B | C))'
-assert toString(toCnf('(A <=> ~B) ==> (C | ~D)')) == '((B | ~A | C | ~D) & (A | ~A | C | ~D) & (B | ~B | C | ~D) & (A | ~B | C | ~D))'
-*)
+let testCnf () =
+    testIt "~(A & B)" "~A | ~B"
+    testIt "~~~~A" "A"
+    testIt "~(((~P | ~Q) => ~(P | Q)) => R)" "(P | ~P) & (P | ~Q) & (Q | ~P) & (Q | ~Q) & ~R"
+    testIt "(((~P | ~Q) => ~(P | Q)) => R)" "(~P | ~Q | R) & (P | Q | R)"
+    testIt "(A | (B | (C & D))) | E | (F | (G | (H & I)))" "(A | B | C | E | F | G | H) & (A | B | C | E | F | G | I) & (A | B | D | E | F | G | H) & (A | B | D | E | F | G | I)"
+    testIt "A & B & C & D & (E | (F & G)) & H & I & J & K" ""
+
+"(B11 <=> (P12 | P21)) & ~B11"  |> toCnf |> cnfToClauses
+"(B11 <=> (P12 | P21)) & ~B11"  |> toCnf|> toString
+plResolve2 (toCnf "~P21|B11" |> toClause ) (toCnf "~B11|P12|P21" |> toClause)
