@@ -416,22 +416,96 @@ let clausesCombinations (clauses : Clauses) =
         for c2 in clauses.Remove(c1) do
             yield (c1, c2) ]
 
-let plResolution kb a =
+let isEntailedCnf kb a =
     let kb = kbToFormula kb
-    
-    let forClauses clausesComb newClauses =
+    Complex (And, [kb; Not a]) |> formulaToCnf |> cnfToClauses
+
+
+let plResolution kb a =
+    let rec forClauses clausesComb (newClauses : Clauses) oldClauses =
         match clausesComb with
         | (c1, c2) :: rest ->
             let resolvents = plResolve2 c1 c2
             if resolvents.IsEmpty then true
-            else failwith ""
-            None
-        | _ -> Some newClauses
-        
-    let clauses = (Complex (And, [kb; Not a])) |> formulaToCnf |> cnfToClauses
-    1
+            else 
+                let newClauses = Set.union newClauses resolvents
+                forClauses rest newClauses oldClauses               
+        | _ ->
+            if Set.isSubset newClauses oldClauses then false
+            else
+                let oldClauses = Set.union newClauses oldClauses
+                let clausesComb = clausesCombinations oldClauses
+                forClauses clausesComb newClauses oldClauses
+            
+    let clauses = isEntailedCnf kb a
+    let clausesComb = clausesCombinations clauses
 
+    forClauses clausesComb Set.empty clauses
 
+let isClauseTrue model clause  =
+    let isGoodLiteral (literal : Literal) =
+        match List.tryFind (fun (n, _) -> literal.Name = n) model with
+        | Some (_, v) -> literal.IsComplement <> v // literal and model value are the same
+        | _ -> false
+
+    Set.forall isGoodLiteral clause
+
+let findPureSymbol symbols clauses =
+    let mergedClauses = Set.unionMany clauses
+
+    let pureSymbolValueMaybe s =
+        let filtered = Seq.filter (fun (l : Literal) -> l.Name = s) mergedClauses
+        if Seq.length filtered = 1 then 
+            let value = not (Seq.head filtered).IsComplement
+            Some (s, value)
+        else None
+
+    List.tryPick pureSymbolValueMaybe symbols
+
+let literalToSymbolValue (l : Literal) = l.Name, not l.IsComplement
+
+let findUnitClause clauses model =
+    let isNotContracted (l : Literal) =
+        List.forall (fun (n, v) -> n <> l.Name || v <> l.IsComplement) model
+        |> (fun x -> printfn "isNotContr: %A %A" l x; x)
+    let findUnitSymbolValue clause =
+        let filtered = Set.filter isNotContracted clause
+        if filtered.Count = 1 then
+            Seq.head filtered |> literalToSymbolValue |> Some
+        else None
+        |> (fun x -> printfn "findUnitSymbolValue: %A " x; x)
+    
+    Seq.tryPick findUnitSymbolValue clauses
+
+let rec DPLL clauses symbols model =
+    let updateModel (p, value) =
+        DPLL clauses (List.filter ((<>) p) symbols) ((p, value)::model)
+
+    if Set.forall (isClauseTrue model) clauses then true
+    elif Set.exists (isClauseTrue model >> not) clauses then false
+    else
+        match findPureSymbol symbols clauses with
+        | Some pvalue ->
+            updateModel pvalue
+        | _ ->
+            match findUnitClause clauses model with
+            | Some pvalue ->
+                updateModel pvalue
+            | _ ->
+                let p = List.head symbols
+                updateModel (p, true) || updateModel (p, false)
+
+let clausesToSymbols clauses =
+    Seq.collect (fun clause ->
+        Seq.map (fun (l : Literal) -> l.Name) clause
+        |> Seq.distinct) clauses
+    |> List.ofSeq
+    |> List.distinct
+
+let isEntailedDPLL kb a =
+    let clauses = isEntailedCnf kb a
+    let symbols = clausesToSymbols clauses
+    DPLL clauses symbols []
 
 ///////////////////////////////////////////////////////////
 /// Testing
@@ -476,3 +550,47 @@ let testCnf () =
 "(B11 <=> (P12 | P21)) & ~B11"  |> toCnf |> cnfToClauses
 "(B11 <=> (P12 | P21)) & ~B11"  |> toCnf|> toString
 plResolve2 (toCnf "~P21|B11" |> toClause ) (toCnf "~B11|P12|P21" |> toClause)
+
+let testResolution () =
+    let kb = makeKb ()
+    tell kb ("B12 <=> P11 | P13 | P22 | P02")
+    tell kb ("B21 <=> P20 | P22 | P31 | P11")
+    tell kb ("B01 <=> P00 | P02 | P11")
+    tell kb ("B10 <=> P11 | P20 | P00")
+    tell kb ("~B21")
+    tell kb ("~B12")
+    tell kb ("B10")
+    tell kb ("B01")
+    plResolution kb (logic "P00")
+
+let testResolution2 () =
+    let kb = makeKb ()
+    tell kb ("(B11 <=> P12 | P21) & ~B11")
+    plResolution kb (logic "B")
+
+let testDPLLSimple () =
+    let fm = logic "A&B&(A|B)"
+    let fm = logic "A&B"
+    let clauses = fm |> formulaToCnf |> cnfToClauses
+    let symbols = clausesToSymbols clauses
+
+    DPLL clauses symbols []
+    
+let testDPLL () =
+    let kb = makeKb ()
+    tell kb ("B12 <=> P11 | P13 | P22 | P02")
+    tell kb ("B21 <=> P20 | P22 | P31 | P11")
+    tell kb ("B01 <=> P00 | P02 | P11")
+    tell kb ("B10 <=> P11 | P20 | P00")
+    tell kb ("~B21")
+    tell kb ("~B12")
+    tell kb ("B10")
+    tell kb ("B01")
+    isEntailedDPLL kb (logic "P00")
+
+findUnitClause (Set.singleton 
+    (Set.ofList 
+        [{Name = "A"; IsComplement = false}; 
+        {Name="B"; IsComplement = true}])) ["A", false]
+
+testDPLLSimple();;
