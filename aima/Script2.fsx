@@ -349,17 +349,15 @@ let toCnf s =
     |> distributeAndOverOr
     |> unwrap
 
-type Literal = { Name : string; IsComplement : bool }
+type Literal = string * bool
 
 type Clause = Set<Literal>
 
 type Clauses = Set<Clause>
 
 let toLiteral = function
-    | Symbol s -> 
-        { Name = s; IsComplement = false }
-    | Not (Symbol s) -> 
-        { Name = s; IsComplement = true }
+    | Symbol s -> (s, true)
+    | Not (Symbol s) -> (s, false)
     | _ -> failwith "Literal is expected"
 let toClause fm = 
     match fm with
@@ -391,9 +389,8 @@ let plResolve c1 c2 =
                 removeElem c2 e2 
                 |> List.distinct ]
 
-let isComplement (l1 : Literal) (l2 : Literal) =
-    l1.Name = l2.Name && l1.IsComplement <> l2.IsComplement
-    |> (fun x -> printfn "isComplement: %A %A -> %A" l1 l2 x ; x)
+let isComplement (n1, v1) (n2, v2) =
+    n1 = n2 && v1 <> v2
 
 let mergeClauses (c1 : Clause) (l1 : Literal) c2 l2 =
     let c1 = Set.remove l1 c1 |> (fun x -> printfn "mergeClauses1: %A" x; x)
@@ -442,32 +439,40 @@ let plResolution kb a =
 
     forClauses clausesComb Set.empty clauses
 
-let isClauseTrue model clause  =
-    let isGoodLiteral (literal : Literal) =
-        match List.tryFind (fun (n, _) -> literal.Name = n) model with
-        | Some (_, v) -> literal.IsComplement <> v // literal and model value are the same
-        | _ -> false
-
-    Set.forall isGoodLiteral clause
+let isClauseTrue (model : Map<string, bool>) clause  =
+    let rec go literals unassigned =
+        if Seq.isEmpty literals then
+            unassigned
+        else
+            let (n, v), t = Seq.head literals, Seq.tail literals
+            match Map.tryFind n model with
+            | Some v1 ->
+                if v = v1 then true
+                else
+                    go t unassigned
+            | None -> go t true
+    
+    go clause false
 
 let findPureSymbol symbols clauses =
     let mergedClauses = Set.unionMany clauses
 
     let pureSymbolValueMaybe s =
-        let filtered = Seq.filter (fun (l : Literal) -> l.Name = s) mergedClauses
+        let filtered = Seq.filter (fst >> ((=) s)) mergedClauses
         if Seq.length filtered = 1 then 
-            let value = not (Seq.head filtered).IsComplement
+            let value =  (Seq.head filtered) |> snd
             Some (s, value)
         else None
 
     List.tryPick pureSymbolValueMaybe symbols
 
-let literalToSymbolValue (l : Literal) = l.Name, not l.IsComplement
+let literalToSymbolValue (l : Literal) = l
 
 let findUnitClause clauses model =
-    let isNotContracted (l : Literal) =
-        List.forall (fun (n, v) -> n <> l.Name || v <> l.IsComplement) model
-        |> (fun x -> printfn "isNotContr: %A %A" l x; x)
+    let isNotContracted (n, v) =
+        match Map.tryFind n model with
+        | Some v2 -> v = v2
+        | _ -> true
     let findUnitSymbolValue clause =
         let filtered = Set.filter isNotContracted clause
         if filtered.Count = 1 then
@@ -477,9 +482,9 @@ let findUnitClause clauses model =
     
     Seq.tryPick findUnitSymbolValue clauses
 
-let rec DPLL clauses symbols model =
+let rec DPLL clauses symbols (model : Map<string, bool>) =
     let updateModel (p, value) =
-        DPLL clauses (List.filter ((<>) p) symbols) ((p, value)::model)
+        DPLL clauses (List.filter ((<>) p) symbols) (Map.add p value model)
 
     if Set.forall (isClauseTrue model) clauses then true
     elif Set.exists (isClauseTrue model >> not) clauses then false
@@ -497,7 +502,7 @@ let rec DPLL clauses symbols model =
 
 let clausesToSymbols clauses =
     Seq.collect (fun clause ->
-        Seq.map (fun (l : Literal) -> l.Name) clause
+        Seq.map fst clause
         |> Seq.distinct) clauses
     |> List.ofSeq
     |> List.distinct
@@ -505,7 +510,7 @@ let clausesToSymbols clauses =
 let isEntailedDPLL kb a =
     let clauses = isEntailedCnf kb a
     let symbols = clausesToSymbols clauses
-    DPLL clauses symbols []
+    DPLL clauses symbols Map.empty
 
 ///////////////////////////////////////////////////////////
 /// Testing
@@ -574,7 +579,7 @@ let testDPLLSimple () =
     let clauses = fm |> formulaToCnf |> cnfToClauses
     let symbols = clausesToSymbols clauses
 
-    DPLL clauses symbols []
+    DPLL clauses symbols Map.empty
     
 let testDPLL () =
     let kb = makeKb ()
@@ -588,9 +593,9 @@ let testDPLL () =
     tell kb ("B01")
     isEntailedDPLL kb (logic "P00")
 
-findUnitClause (Set.singleton 
-    (Set.ofList 
-        [{Name = "A"; IsComplement = false}; 
-        {Name="B"; IsComplement = true}])) ["A", false]
+// findUnitClause (Set.singleton 
+//     (Set.ofList 
+//         [{Name = "A"; IsComplement = false}; 
+//         {Name="B"; IsComplement = true}])) ["A", false]
 
 testDPLLSimple();;
