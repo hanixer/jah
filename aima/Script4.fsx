@@ -72,7 +72,6 @@ let rec toString fm =
             goTerm t1
             add " = "
             goTerm t2
-        | _ -> ()
         if paren then add(")")
 
     and goComplex op fm1 fm2 fm =
@@ -195,7 +194,8 @@ let pFirstUpperAlphaThenManyAlphanumeric =
     first::rest |> mreturn
     |> pToken
 
-let pConst = pFirstUpperAlphaThenManyAlphanumeric >>= 
+let pConst = 
+    pFirstUpperAlphaThenManyAlphanumeric >>= 
     fun x -> %x |> Const |> mreturn
 
 let pTerm, pBracketsAndTermsList = 
@@ -418,6 +418,37 @@ let rec replaceVars used substs fm  =
 let standardizeVars fm =
     replaceVars Set.empty Map.empty fm
     |> snd
+
+let removeExistentials fm =
+    let mutable substs : Map<string, Term> = Map.empty
+
+    let replaceVarsInTerms = function
+        | Var v when Map.containsKey v substs ->
+            Map.find v substs
+        | term -> term
+
+    let rec replaceVarsInFormulas = function
+        | Pred (name, terms) ->
+            Pred (name, List.map replaceVarsInTerms terms)
+        | TermEqual (term1, term2) ->
+            TermEqual (replaceVarsInTerms term1,
+                       replaceVarsInTerms term2)
+        | Complex (op, fm1, fm2) ->
+            Complex (op, replaceVarsInFormulas fm1, replaceVarsInFormulas fm2)
+    let rec go universalVars skolems = function
+    | Forall (vars, fm1) ->
+        let universalVars1 = List.append universalVars vars
+        Forall (vars, go universalVars1 1 fm1)
+        
+    | Exists (vars, fm1) -> 
+        // for each var:
+        //   find new skolem function
+        //   replace variable by function application in child formula
+        failwith "unimplemented"
+    failwith "unimplemented"
+
+
+
 
 type Kb = 
     struct 
