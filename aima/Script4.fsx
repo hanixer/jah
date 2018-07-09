@@ -13,6 +13,13 @@ type Formula =
     | Forall of string list * Formula
     | Exists of string list * Formula
 
+
+type Literal =
+    | LTermEqual of bool * Term * Term
+    | LPred of bool * string * Term list
+type Clause = Set<Literal>
+type Clauses = Set<Clause>
+
 let inline (~&) (str:string) = str.ToCharArray() |> List.ofArray
 let (~%) (chars:char list) = new System.String(Array.ofList chars)
 
@@ -279,6 +286,8 @@ let formula s =
     | [(f, _)] -> f
     | _ -> failwithf "parsing error %s" s
 
+let emptyTheta : Map<string, Term> option = Map.empty |> Some
+
 let rec unify fm1 fm2 theta =
     match fm1, fm2 with
     | Pred (p1, terms1), Pred (p2, terms2) when p1 = p2 ->
@@ -316,9 +325,22 @@ and unifyTerms term1 term2 theta =
             | None -> 
                 Map.add x term2 theta |> Some
         | _, Var _ -> unifyTerms term2 term1 (theta |> Some)
-        | _ -> theta |> Some
+        | Fn (name1, terms1), Fn (name2, terms2) when name1 = name2 ->
+            unifyTermsList terms1 terms2 (Some theta)
+        | _ when term1 = term2 -> theta |> Some
+        | _ -> None
 
     Option.bind binder theta
+
+let rec unifyLiteral literal1 literal2 theta =
+    match literal1, literal2 with
+    | LPred (neg1, name1, terms1), LPred (neg2, name2, terms2)
+      when name1 = name2 && neg1 = neg2 ->
+        unifyTermsList terms1 terms2 theta
+    | LTermEqual (neg1, term11, term12), LTermEqual (neg2, term21, term22)
+      when neg1 = neg2 ->
+        unifyTermsList [term11; term12] [term21; term22] theta
+    | _ -> None
 
 //////////////////////////////////////////////////////////////////
 /// CNF
@@ -371,15 +393,16 @@ let rec newVarName var used =
         newVarName (var + "'") used
     else var
 
-let rec replcaeVarsInTerms substs = function
-    | Fn (name, terms) -> Fn (name, List.map (replcaeVarsInTerms substs) terms)
+let rec substituteInTerm substs = function
+    | Fn (name, terms) -> Fn (name, List.map (substituteInTerm substs) terms)
     | Var name ->
         match Map.tryFind name substs with
         | Some  other -> Var other
         | _ -> Var name
     | term -> term
 
-let rec replaceVars used substs fm  =
+let standardizeVars fm =
+
     let getNewVarsAndSubsts var (vars, used, substs)  =
         if Set.contains var used then
             let newVar = newVarName var used
@@ -391,40 +414,59 @@ let rec replaceVars used substs fm  =
             let vars1 = var::vars
             let used1 = Set.add var used
             (vars1, used1, substs)
+            
+    let rec replaceVars used substs fm  =
+        match fm with
+        | Forall (vars, fm1) ->
+            let (vars, used, newSubsts) =
+                List.foldBack getNewVarsAndSubsts vars ([], used, substs)
+            let used, fm1 = replaceVars used newSubsts fm1 
+            used, Forall (vars, fm1)
+        | Exists (vars, fm1) ->
+            let (vars, used, newSubsts) =
+                List.foldBack getNewVarsAndSubsts vars ([], used, substs)
+            let used, fm1 = replaceVars used newSubsts fm1 
+            used, Exists (vars, fm1)
+        | Pred (name, terms) -> 
+            used, Pred (name, List.map (substituteInTerm substs) terms)
+        | TermEqual (term1, term2) ->
+            used, TermEqual (substituteInTerm substs term1, 
+                             substituteInTerm substs term2)
+        | Complex (op, fm1, fm2) ->
+            let used1, fm1 = replaceVars used substs fm1
+            let used2, fm2 = replaceVars used1 substs fm2
+            used2, Complex (op, fm1, fm2)
+        | Not fm1 ->
+            let used1, fm2 = replaceVars used substs fm1
+            used1, Not fm2
 
-    match fm with
-    | Forall (vars, fm1) ->
-        let (vars, used, newSubsts) =
-            List.foldBack getNewVarsAndSubsts vars ([], used, substs)
-        let used, fm1 = replaceVars used newSubsts fm1 
-        used, Forall (vars, fm1)
-    | Exists (vars, fm1) ->
-        let (vars, used, newSubsts) =
-            List.foldBack getNewVarsAndSubsts vars ([], used, substs)
-        let used, fm1 = replaceVars used newSubsts fm1 
-        used, Exists (vars, fm1)
-    | Pred (name, terms) -> 
-        used, Pred (name, List.map (replcaeVarsInTerms substs) terms)
-    | TermEqual (term1, term2) ->
-        used, TermEqual (replcaeVarsInTerms substs term1, 
-                         replcaeVarsInTerms substs term2)
-    | Complex (op, fm1, fm2) ->
-        let used1, fm1 = replaceVars used substs fm1
-        let used2, fm2 = replaceVars used1 substs fm2
-        used2, Complex (op, fm1, fm2)
-    | Not fm1 ->
-        replaceVars used substs fm1
-
-let standardizeVars fm =
     replaceVars Set.empty Map.empty fm
     |> snd
 
-let removeExistentials fm =
-    let mutable substs : Map<string, Term> = Map.empty
+let skolemize fm =
+    let mutable skolems : Map<string, Term> = Map.empty
+
+    let rec split (str : string) digits =
+        if str.Length > 0 then
+            if str.[str.Length - 1] |> System.Char.IsDigit then
+                split str.[0..str.Length - 2] (str.[str.Length-1..] + digits)
+            else
+                (str, digits)
+        else (str, digits)
+
+    let rec newSkolemName name =
+        if Map.containsKey name skolems then 
+            let (name, digits) = split name ""
+            let n = 
+                if digits.Length > 0 
+                then LanguagePrimitives.ParseInt32(digits)
+                else 0
+            newSkolemName (name + (sprintf "%d" (n + 1)))
+        else name
 
     let replaceVarsInTerms = function
-        | Var v when Map.containsKey v substs ->
-            Map.find v substs
+        | Var v when Map.containsKey v skolems ->
+            Map.find v skolems
         | term -> term
 
     let rec replaceVarsInFormulas = function
@@ -434,29 +476,122 @@ let removeExistentials fm =
             TermEqual (replaceVarsInTerms term1,
                        replaceVarsInTerms term2)
         | Complex (op, fm1, fm2) ->
-            Complex (op, replaceVarsInFormulas fm1, replaceVarsInFormulas fm2)
-    let rec go universalVars skolems = function
-    | Forall (vars, fm1) ->
-        let universalVars1 = List.append universalVars vars
-        Forall (vars, go universalVars1 1 fm1)
-        
-    | Exists (vars, fm1) -> 
-        // for each var:
-        //   find new skolem function
-        //   replace variable by function application in child formula
-        failwith "unimplemented"
-    failwith "unimplemented"
+            Complex (op, replaceVarsInFormulas fm1, 
+                         replaceVarsInFormulas fm2)
+        | Forall (vars, fm1) ->
+            Forall (vars, replaceVarsInFormulas fm1)
+        | Exists (vars, fm1) ->
+            Exists (vars, replaceVarsInFormulas fm1)
+        | Not fm1 -> replaceVarsInFormulas fm1 |> Not
+    
+    let rec go universalVars fm = 
+        match fm with
+        | Forall (vars, fm1) ->
+            let universalVars1 = List.append universalVars vars
+            Forall (vars, go universalVars1  fm1)
+        | Exists (vars, fm1) -> 
+            for var in vars do
+                let skolem = newSkolemName (String.map System.Char.ToUpper var)
+                skolems <- Map.add var (Fn (skolem, List.map Var universalVars)) skolems
+            replaceVarsInFormulas fm1 
+            |> go universalVars
+        | Not fm1 -> go universalVars fm1 |> Not
+        | Complex (op, fm1, fm2) ->
+            Complex (op, go universalVars fm1,
+                         go universalVars fm2)
+        | fm -> fm
 
+    go List.empty fm
 
+let rec removeUniversalQuantifier fm =
+    match fm with
+    | Forall (_, fm1) -> removeUniversalQuantifier fm1
+    | _ -> transformChildren removeUniversalQuantifier fm
 
+let rec distributeAndOverOr fm =
+    let rec listToFormula op = function
+        | [a] -> a
+        | x::xs -> Complex (op, x, listToFormula op xs)
+        | _ -> failwith "combinations: cannot be empty list"
+    let combinations orClauses =
+        let folder acc el =
+            [ for a in acc do
+                match el with
+                | Complex (And, fm1, fm2) -> 
+                    yield (fm1::a)
+                    yield (fm2::a)
+                | _ -> yield (el::a) ]
+        List.fold folder [[]] orClauses
+        |> List.map (List.rev >> listToFormula Or)
+
+    match fm with
+    | Complex(Or, fm1, fm2) ->
+        let fm1 = distributeAndOverOr fm1
+        let fm2 = distributeAndOverOr fm2
+        let combs = combinations [fm1; fm2]
+        if combs.Length > 1 then listToFormula And combs
+        else combs.Head
+    | _ -> transformChildren distributeAndOverOr fm
+
+let formulaToCnf fm =
+    fm
+    |> eliminateImplications 
+    |> moveNotInwards 
+    |> standardizeVars
+    |> skolemize 
+    |> removeUniversalQuantifier 
+    |> distributeAndOverOr
+
+let stringToCnf s =
+    s |> formula |> formulaToCnf
+
+let toLiteral = function
+    | Pred (name, terms) -> 
+        LPred (true, name, terms) 
+    | TermEqual (term1, term2) -> 
+        LTermEqual (true, term1, term2) 
+    | Not (Pred (name, terms)) ->
+        LPred (false, name, terms) 
+    | Not (TermEqual (term1, term2)) -> 
+        LTermEqual (false, term1, term2) 
+    | fm -> failwithf "literal is expected but got %A" fm
+    
+let rec toClause = function
+    | Complex (Or, fm1, fm2) -> 
+        let clause1 = toClause fm1
+        let clause2 = toClause fm2
+        Set.union clause1 clause2
+    | fm -> 
+        fm |> toLiteral |> Set.singleton
+
+let rec cnfToClauses = function
+    | Complex (And, fm1, fm2) ->
+        let clauses1 = cnfToClauses fm1
+        let clauses2 = cnfToClauses fm2
+        Set.union clauses1 clauses2
+    | fm -> toClause fm |> Set.singleton
+
+let isLiteralPositive = function
+    | LPred (v, _, _) -> v
+    | LTermEqual (v, _, _) -> v
+
+let rec splitClause clause =
+    let folder (positive, negative) literal =
+        if isLiteralPositive literal then
+            (literal::positive, negative)
+        else
+            (positive, literal::negative)
+         
+    match Set.fold folder ([], []) clause with
+    | [p], ns -> p, ns
+    | _ -> failwith "wrong clause, definitive is expected"
 
 type Kb = 
-    struct 
-        val fms : System.Collections.Generic.List<Formula>
-    end
+    { mutable Clauses : Clauses }
 
-let makeKb () = new System.Collections.Generic.List<Formula>()
+let makeKb () = {Clauses = Set.empty}
 
+(*
 let kbToFormula (kb : Kb) =
     match kb.fms.Count with
     | 0 -> failwith "Empty KB"
@@ -466,9 +601,11 @@ let kbToFormula (kb : Kb) =
         for fm2 in kb.fms.GetRange(1, kb.fms.Count - 1) do
             fm <- Complex (And, fm, fm2)
         fm
+*)
 
 let tell (kb : Kb) s = 
-    kb.fms.Add(formula s)
+    let clauses = stringToCnf s |> cnfToClauses
+    kb.Clauses <- Set.union clauses kb.Clauses
 
 let findSubstitutions (kb : Kb) clauses =
     // clauses = p1 & p2 & .. & pn
@@ -481,7 +618,33 @@ let folFcAsk (kb : Kb) query =
     1
 
 
+let fetchRulesForGoal (kb : Kb) goal theta =
+    [for clause in kb.Clauses do
+        let positive, negative = splitClause clause
+        let theta1 = unifyLiteral positive goal theta
+        if theta1.IsSome then
+            yield positive, negative, theta1]
 
+let substituteInLiteral theta literal =
+    match literal with
+    | LTermEqual (neg, term1, term2) ->
+        LTermEqual (neg, substituteInTerm theta term1, substituteInTerm theta term2)
+    | LPred (neg, name, terms) ->
+        LPred (neg, name, List.map (substituteInTerm theta) terms)
+
+let rec folBcOr (kb : Kb) goal theta =
+    [for (positive, negative, theta) in fetchRulesForGoal kb goal theta do
+        yield! folBcAnd kb lhs (unifyLiteral rhs goal theta)]
+        
+and folBcAnd kb (goals : Literal seq) theta =
+    if Seq.length goals > 0 then
+        let head = Seq.head goals
+        let rest = Seq.tail goals
+        [for theta1 in folBcOr kb head theta do
+            for theta2 in folBcAnd kb rest theta1 do
+                yield theta2]
+    else
+        [theta]
 
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
@@ -511,9 +674,9 @@ let unifyier () =
     unf "((P(A) AND P(B)) OR (P(C) => (P(A) <=> P(C))))" "((P(A) AND P(B)) OR (P(C) => (P(A) <=> P(x))))"
 
 let anmls = "forall x (forall y (Animal(y) => Loves(x,y))) => (exists y Loves(y,x))" |> formula
-eliminateImplications anmls |> toString
-eliminateImplications anmls
-eliminateImplications (formula "(forall x A(x)) => B(x)") |> toString
-"forall x,y P(x) | exists x ~P(x,y)" |> formula
-anmls |> eliminateImplications |> moveNotInwards  |> toString
-anmls |> eliminateImplications |> moveNotInwards |> (standardizeVars) |> toString
+
+let kb = makeKb()
+
+tell kb "A|B"
+tell kb "A&B"
+tell kb "X=>Y"
