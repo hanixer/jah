@@ -317,6 +317,7 @@ and unifyTermsList terms1 terms2 theta =
 and unifyTerms term1 term2 theta =
     let rec binder theta =
         match term1, term2 with
+        | Var x, Var y when x = y -> theta |> Some
         | Var x, _ -> 
             match Map.tryFind x theta with
             | Some term when term <> term2 ->
@@ -333,6 +334,7 @@ and unifyTerms term1 term2 theta =
     Option.bind binder theta
 
 let rec unifyLiteral literal1 literal2 theta =
+    printfn "unifyLiteral: %A %A %A" literal1 literal2 theta
     match literal1, literal2 with
     | LPred (neg1, name1, terms1), LPred (neg2, name2, terms2)
       when name1 = name2 && neg1 = neg2 ->
@@ -341,7 +343,7 @@ let rec unifyLiteral literal1 literal2 theta =
       when neg1 = neg2 ->
         unifyTermsList [term11; term12] [term21; term22] theta
     | _ -> None
-
+    |> (fun x -> printfn "unfiyLiteral end: %A" x; x)
 //////////////////////////////////////////////////////////////////
 /// CNF
 //////////////////////////////////////////////////////////////////
@@ -509,10 +511,15 @@ let rec removeUniversalQuantifier fm =
     | _ -> transformChildren removeUniversalQuantifier fm
 
 let rec distributeAndOverOr fm =
+    let f s x = printfn "%s: %s" s (toString x); x
+
     let rec listToFormula op = function
         | [a] -> a
         | x::xs -> Complex (op, x, listToFormula op xs)
         | _ -> failwith "combinations: cannot be empty list"
+    let rec formulaToList = function
+    | Complex (And, fm1, fm2) -> List.append (formulaToList fm1) (formulaToList fm2)
+    | fm -> [fm]
     let combinations orClauses =
         let folder acc el =
             [ for a in acc do
@@ -524,23 +531,44 @@ let rec distributeAndOverOr fm =
         List.fold folder [[]] orClauses
         |> List.map (List.rev >> listToFormula Or)
 
-    match fm with
-    | Complex(Or, fm1, fm2) ->
-        let fm1 = distributeAndOverOr fm1
-        let fm2 = distributeAndOverOr fm2
-        let combs = combinations [fm1; fm2]
-        if combs.Length > 1 then listToFormula And combs
-        else combs.Head
-    | _ -> transformChildren distributeAndOverOr fm
+    let combs clauses1 clauses2 =
+        [for c1 in clauses1 do
+            for c2 in clauses2 do
+                yield Complex (Or, c1, c2)]
+
+    let rec distributeFmToList = function
+        | Complex (And, fm1, fm2) ->
+            let fms1 = distributeFmToList fm1
+            let fms2 = distributeFmToList fm2
+            List.append fms1 fms2
+        | Complex (Or, fm1, fm2) ->
+            let fms1 = distributeFmToList fm1
+            let fms2 = distributeFmToList fm2
+            combs fms1 fms2
+        | fm -> [fm]
+
+
+    f "distributeAndOverOr" fm
+    fm
+    |> distributeFmToList
+    |> listToFormula And
+    |> f "distributeAndOverOr end"
 
 let formulaToCnf fm =
+    let f x = printfn "%s" (toString x); x
     fm
     |> eliminateImplications 
+    |> f
     |> moveNotInwards 
+    |> f
     |> standardizeVars
+    |> f
     |> skolemize 
+    |> f
     |> removeUniversalQuantifier 
+    |> f
     |> distributeAndOverOr
+    |> f
 
 let stringToCnf s =
     s |> formula |> formulaToCnf
@@ -587,9 +615,10 @@ let rec splitClause clause =
     | _ -> failwith "wrong clause, definitive is expected"
 
 type Kb = 
-    { mutable Clauses : Clauses }
+    { mutable Clauses : Clauses
+      mutable Counter : int }
 
-let makeKb () = {Clauses = Set.empty}
+let makeKb () = {Clauses = Set.empty; Counter = 0}
 
 (*
 let kbToFormula (kb : Kb) =
@@ -614,9 +643,6 @@ let findSubstitutions (kb : Kb) clauses =
     //   return a list of substitutions
     1
 
-let folFcAsk (kb : Kb) query =
-    1
-
 let toPositive negative =
     Seq.map 
         (function
@@ -624,34 +650,78 @@ let toPositive negative =
         | LTermEqual (a, b, c) -> LTermEqual (not a, b, c))
         negative
 
-let fetchRulesForGoal (kb : Kb) goal theta =
-    [for clause in kb.Clauses do
-        let positive, negative = splitClause clause
-        let theta1 = unifyLiteral positive goal theta
-        let lhs = toPositive negative
-        if theta1.IsSome then
-            yield lhs, positive, theta1]
+let nextVar s (kb : Kb) =
+    kb.Counter <- kb.Counter + 1
+    s + (sprintf "%d" kb.Counter)
 
 let substituteInLiteral theta literal =
+    
+    let rec substituteInTerm substs = function
+        | Fn (name, terms) -> Fn (name, List.map (substituteInTerm substs) terms)
+        | Var name ->
+            match Map.tryFind name substs with
+            | Some  other -> other
+            | _ -> Var name
+        | term -> term
+        
     match literal with
     | LTermEqual (neg, term1, term2) ->
         LTermEqual (neg, substituteInTerm theta term1, substituteInTerm theta term2)
     | LPred (neg, name, terms) ->
         LPred (neg, name, List.map (substituteInTerm theta) terms)
 
+let standardizeVarsInClause kb clause =
+    let rec allVarsInTerm = function
+    | Var x -> [x]
+    | Fn (name, terms) -> List.collect allVarsInTerm terms
+    | _ -> []
+
+    let allVarsInLiteral = function
+    | LPred (a, b, terms) -> List.collect allVarsInTerm terms
+    | LTermEqual (_, term1, term2) ->
+        allVarsInTerm term1
+        |>List.append<|
+        allVarsInTerm term2
+
+    let allVars = clause |> Set.toList |> List.collect allVarsInLiteral |> List.distinct
+
+    let substs = 
+        allVars
+        |> List.map (fun v -> (v, nextVar "v" kb |> Var))
+        |> Map.ofList
+
+    Set.map (substituteInLiteral substs) clause
+
+let fetchRulesForGoal (kb : Kb) goal theta =
+    printfn "fetch: %A %A" goal theta
+    [for clause in kb.Clauses do
+        let positive, negative = clause |> standardizeVarsInClause kb |> splitClause
+        let theta1 = unifyLiteral positive goal theta
+        let lhs = toPositive negative
+        if theta1.IsSome then
+            yield lhs, positive, theta1]
+    |> (fun x -> printfn "fetch end: %A" x; x)
+
 let rec folBcOr (kb : Kb) goal theta =
+    printfn "OR: %A %A" goal theta
     [for (lhs, rhs, theta) in fetchRulesForGoal kb goal theta do
         yield! folBcAnd kb lhs theta]
         
-and folBcAnd kb (goals : Literal seq) theta =
-    if Seq.length goals > 0 then
+and folBcAnd kb (goals : Literal seq) thetaOpt =
+    printfn "AND: %A %A" goals thetaOpt
+    match thetaOpt, Seq.length goals with
+    | _, 0 -> [thetaOpt]
+    | None, _ -> [None]
+    | Some theta, _ ->
         let head = Seq.head goals
         let rest = Seq.tail goals
-        [for theta1 in folBcOr kb head theta do
+        [for theta1 in folBcOr kb (substituteInLiteral theta head) thetaOpt do
             for theta2 in folBcAnd kb rest theta1 do
                 yield theta2]
-    else
-        [theta]
+
+let folBcAsk kb s =
+    let goal = s |> stringToCnf |> toLiteral
+    folBcOr kb goal emptyTheta
 
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
@@ -683,7 +753,55 @@ let unifyier () =
 let anmls = "forall x (forall y (Animal(y) => Loves(x,y))) => (exists y Loves(y,x))" |> formula
 
 let kb = makeKb()
+let kb2 = makeKb()
+tell kb2 "P(Me)"
+fetchRulesForGoal kb2 (LPred (true, "P", [Var "x"])) emptyTheta
 
-tell kb "A|B"
-tell kb "A&B"
-tell kb "X=>Y"
+tell kb "P(x) => Q(x)"
+tell kb "P(Me)"
+fetchRulesForGoal kb (LPred (true, "Q", [Var "x"])) emptyTheta |> List.head
+folBcAsk kb "Q(x)"
+
+(*
+American(x) ∧ Weapon(y) ∧ Sells(x, y, z) ∧ Hostile(z) ⇒ Criminal(x) . (9.3)
+Owns(Nono, M1) (9.4)
+Missile . (M1) (9.5)
+Missile(x) ∧ Owns(Nono, x) ⇒ Sells(West, x, Nono) . (9.6)
+Missile(x) ⇒ Weapon(x) (9.7)
+Enemy(x, America) ⇒ Hostile(x) . (9.8)
+American(West) . (9.9)
+Enemy(Nono, America) . (9.10
+*)
+let kb3 = makeKb()
+tell kb3 "American(x) & Weapon(y) & Sells(x, y, z) & Hostile(z) => Criminal(x)"
+tell kb3 "Owns(Nono, M1)"
+tell kb3 "Missile(M1)"
+tell kb3 "Missile(x) & Owns(Nono, x) => Sells(West, x, Nono)"
+tell kb3 "Missile(x) => Weapon(x)"
+tell kb3 "Enemy(x, America) => Hostile(x)"
+tell kb3 "American(West)"
+tell kb3 "Enemy(Nono, America)"
+
+folBcAsk kb3 "Criminal(West)"
+
+(*
+let kb4 = makeKb()
+tell kb4 "A<=>A2<=>A3<=>A4<=>A5<=>A6<=>A7"
+"A<=>B<=>C"|>stringToCnf|>toString
+"A<=>A2"|>stringToCnf|>toString
+"((A | ~A) & (~A2 | A2) & (~A2 | ~A) | A3) "|>stringToCnf|>toString
+"A<=>A2<=>A3<=>A4<=>A5<=>A6<=>A7"|>stringToCnf|>toString
+"A&B|C&D|E" |> formula |> distributeAndOverOr |> toString
+"A&B|C" |> formula |> distributeAndOverOr |> toString
+"A<=>B<=>C"|>stringToCnf|>toString
+standardizeVarsInLiteral kb 
+    (Set.ofList [
+        LPred (true, "", [Var "x"])
+        LTermEqual (true, Var "x", Var "y")
+        LTermEqual (true, Var "e", Var "y")
+        LTermEqual (true, Fn ("", [Var "e"; Var "y"]), Const "z")
+        LTermEqual (true, Fn ("", [Const "e"; Const "y"]), Const "z")
+    ])
+*)
+
+        
