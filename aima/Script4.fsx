@@ -617,13 +617,20 @@ let findSubstitutions (kb : Kb) clauses =
 let folFcAsk (kb : Kb) query =
     1
 
+let toPositive negative =
+    Seq.map 
+        (function
+        | LPred (a, b, c) -> LPred (not a, b, c)
+        | LTermEqual (a, b, c) -> LTermEqual (not a, b, c))
+        negative
 
 let fetchRulesForGoal (kb : Kb) goal theta =
     [for clause in kb.Clauses do
         let positive, negative = splitClause clause
         let theta1 = unifyLiteral positive goal theta
+        let lhs = toPositive negative
         if theta1.IsSome then
-            yield positive, negative, theta1]
+            yield lhs, positive, theta1]
 
 let substituteInLiteral theta literal =
     match literal with
@@ -633,8 +640,8 @@ let substituteInLiteral theta literal =
         LPred (neg, name, List.map (substituteInTerm theta) terms)
 
 let rec folBcOr (kb : Kb) goal theta =
-    [for (positive, negative, theta) in fetchRulesForGoal kb goal theta do
-        yield! folBcAnd kb lhs (unifyLiteral rhs goal theta)]
+    [for (lhs, rhs, theta) in fetchRulesForGoal kb goal theta do
+        yield! folBcAnd kb lhs theta]
         
 and folBcAnd kb (goals : Literal seq) theta =
     if Seq.length goals > 0 then
