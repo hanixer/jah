@@ -12,3 +12,4 @@ h/eopl/ImplrefNew.hi
 *.hi
 *.o
 build*Qt*
+aima/.ipynb_checkpoints/py-checkpoint.ipynb

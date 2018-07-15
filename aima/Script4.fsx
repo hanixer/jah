@@ -804,4 +804,11 @@ standardizeVarsInLiteral kb
     ])
 *)
 
-        
+let kb4 = makeKb()
+tell kb4 "forall x (forall y Animal(y) => Loves(x,y)) => (exists y Loves(y,x))"
+tell kb4 "forall x (exists z Animal(z) & Kills(x,z)) => (forall y ~Loves(y,x))"
+tell kb4 "forall x Animal(x) => Loves(Jack,x)"
+tell kb4 "Kills(Jack,Tuna) & Kills(Curiosity,Tuna)"
+tell kb4 "Cat(Tuna)"
+tell kb4 "forall x Cat(x) => Animal(x)"
+tell kb4 "~Kills(Curiosity,Tuna)"
