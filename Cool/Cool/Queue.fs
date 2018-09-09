@@ -12,7 +12,6 @@
         else List.exists f outs
     let enqueueListUnique isEqual xs q =         
         List.foldBack (fun x q ->
-            printfn "lisuniq: x<%A> q<%A>" x q
             if exists (isEqual x) q then q
             else enqueue x q) xs q
 
@@ -26,5 +25,6 @@
     let tryDequeue (ins, outs as q) =
         if isEmpty q then None
         else dequeue q |> Some
+    let map f (ins, outs) = (List.map f ins, List.map f outs)
     let singleton x = enqueue x empty
         

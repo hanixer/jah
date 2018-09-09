@@ -895,8 +895,9 @@
     <Compile Include="CoolType.fs" />
     <Compile Include="Parser.fs" />
     <Compile Include="Interpreter.fs" />
-    <Compile Include="Tac.fs" />
     <Compile Include="Queue.fs" />
+    <Compile Include="Display.fs" />
+    <Compile Include="Tac.fs" />
     <None Include="Tac.fsx" />
     <None Include="Display.fsx" />
     <None Include="Script1.fsx" />
