@@ -9,6 +9,7 @@ let p5 = "
 a <- int 33
 bt b tilend
 y <- b
+jmp tilend
 label tilend
 x <- + y a
 return x"
@@ -234,6 +235,7 @@ label bran2
 _dea <- call out_int ans
 label bran3
 _dea11111111 <- call out_int ans
+jmp end
 label end
 return ans
 "
@@ -249,4 +251,47 @@ jmp end"
 
 //asrt 223 p7 p7
 //readTac p7 |> stmtsToBlocks
-transformToGraphAndBack p7
+// transformToGraphAndBack p7
+let p9 = "
+a <- 5
+jmp k
+label k
+return a
+"
+let tc2 = 
+    2, 
+    "
+a <- int 33
+bt b tilend
+y <- b
+label tilend
+x <- + y b
+return x", 
+    "
+bt b tilend
+y <- b
+label tilend
+x <- + y b
+return x"
+let tc4 =
+    4, "
+i <- int 555
+a <- call in_int
+bt b tilend
+y <- b
+label tilend
+x <- i
+x <- + y b
+return x",
+    "
+a <- call in_int
+bt b tilend
+y <- b
+label tilend
+x <- + y b
+return x"
+
+let ar (id, a, b) = asrt id a b
+let disgr g = List.iter (fun node -> printfn "id <%d> label<%s>" node.Id (nodeLabel node)) g.Nodes
+
+testcases();;
